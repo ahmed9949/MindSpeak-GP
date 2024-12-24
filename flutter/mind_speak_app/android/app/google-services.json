@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "477366859386",
+    "project_id": "mindspeakgp",
+    "storage_bucket": "mindspeakgp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:477366859386:android:def431a4184bd6d1a2adc3",
+        "android_client_info": {
+          "package_name": "com.example.mind_speak_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC74Wz0ANUsgMuKjq3or1Msp4k08TV8dI8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

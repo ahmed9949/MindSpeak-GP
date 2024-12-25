@@ -3,7 +3,7 @@
 import 'package:mind_speak_app/forgot_password.dart';
 import 'package:mind_speak_app/home.dart';
 // import 'package:mind_speak_app/service/auth.dart';
-// import 'package:authenticat/signup.dart';
+import 'package:mind_speak_app/signup.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -56,7 +56,7 @@ class _LogInState extends State<LogIn> {
             SizedBox(
                 width: MediaQuery.of(context).size.width,
                 child: Image.asset(
-                  "images/car.PNG",
+                  "assets/car.png",
                   fit: BoxFit.cover,
                 )),
             const SizedBox(
@@ -172,63 +172,63 @@ class _LogInState extends State<LogIn> {
             const SizedBox(
               height: 30.0,
             ),
-            const Row(
+            Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // GestureDetector(
                 //   onTap: (){
                 //     AuthMethods().signInWithGoogle(context);
                 //   },
-                //   child: Image.asset(
-                //     "images/google.png",
-                //     height: 45,
-                //     width: 45,
-                //     fit: BoxFit.cover,
-                //   ),
-                // ),
-                SizedBox(
+                   Image.asset(
+                    "assets/google.png",
+                    height: 45,
+                    width: 45,
+                    fit: BoxFit.cover,
+                  ),
+                
+                const SizedBox(
                   width: 30.0,
                 ),
                 // GestureDetector(
                 //   onTap: (){
                 //     AuthMethods().signInWithApple();
                 //   },
-                //   child: Image.asset(
-                //     "images/apple1.png",
-                //     height: 50,
-                //     width: 50,
-                //     fit: BoxFit.cover,
-                //   ),
+                   Image.asset(
+                    "assets/apple1.png",
+                    height: 50,
+                    width: 50,
+                    fit: BoxFit.cover,
+                  ),
                 // )
               ],
             ),
             const SizedBox(
               height: 40.0,
             ),
-            const Row(
+            Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text("Don't have an account?",
+                const Text("Don't have an account?",
                     style: TextStyle(
                         color: Color(0xFF8c8e98),
                         fontSize: 18.0,
                         fontWeight: FontWeight.w500)),
-                SizedBox(
+                const SizedBox(
                   width: 5.0,
                 ),
-                // GestureDetector(
-                //   onTap: () {
-                //     Navigator.push(context,
-                //         MaterialPageRoute(builder: (context) => SignUp()));
-                //   },
-                //   child: const Text(
-                //     "SignUp",
-                //     style: TextStyle(
-                //         color: Color(0xFF273671),
-                //         fontSize: 20.0,
-                //         fontWeight: FontWeight.w500),
-                //   ),
-                // ),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => const SignUp()));
+                  },
+                  child: const Text(
+                    "SignUp",
+                    style: TextStyle(
+                        color: Color(0xFF273671),
+                        fontSize: 20.0,
+                        fontWeight: FontWeight.w500),
+                  ),
+                ),
               ],
             )
           ],

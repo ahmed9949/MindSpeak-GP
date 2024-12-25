@@ -63,10 +63,10 @@ class _SignUpState extends State<SignUp> {
       body: Container(
         child: Column(
           children: [
-            Container(
+            SizedBox(
                 width: MediaQuery.of(context).size.width,
                 child: Image.asset(
-                  "assets/car.PNG",
+                  "assets/car.png",
                   fit: BoxFit.cover,
                 )),
             const SizedBox(

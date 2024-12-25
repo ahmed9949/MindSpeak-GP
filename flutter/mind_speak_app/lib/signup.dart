@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import 'package:mind_speak_app/Home.dart';
 import 'package:mind_speak_app/login.dart';
+import 'package:uuid/uuid.dart';
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -11,41 +16,112 @@ class SignUp extends StatefulWidget {
 }
 
 class _SignUpState extends State<SignUp> {
-  String email = "", password = "", name = "";
+  String email = "",
+      password = "",
+      role = "parent",
+      username = "",
+      userid = "",
+      childid = "",
+      childname = "",
+      childpicture = "",
+      nationalid = "",
+      nationalproof = "";
+  bool status = true;
+  File? _childImage;
 
-  TextEditingController namecontroller = TextEditingController();
   TextEditingController emailcontroller = TextEditingController();
   TextEditingController passwordcontroller = TextEditingController();
+  TextEditingController usernamecontroller = TextEditingController();
+  TextEditingController childNameController = TextEditingController();
+  TextEditingController nationalIdController = TextEditingController();
+  TextEditingController nationalProofController = TextEditingController();
 
   final _formkey = GlobalKey<FormState>();
+  final ImagePicker _picker = ImagePicker();
+  final Uuid uuid = Uuid();
 
+  Future<void> pickChildImage() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _childImage = File(pickedFile.path);
+      });
+    }
+  }
 
-  
+  Future<String> uploadImage(File image) async {
+    String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+    Reference storageRef =
+        FirebaseStorage.instance.ref().child('child_images/$fileName');
+    UploadTask uploadTask = storageRef.putFile(image);
+    TaskSnapshot taskSnapshot = await uploadTask;
+    return await taskSnapshot.ref.getDownloadURL();
+  }
 
   registration() async {
-    if (namecontroller.text != "" &&
-        emailcontroller.text != "") {
+    if (password.isNotEmpty && email.isNotEmpty && username.isNotEmpty) {
       try {
         UserCredential userCredential = await FirebaseAuth.instance
             .createUserWithEmailAndPassword(email: email, password: password);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+
+        String generatedUserId = uuid.v4();
+        String childImageUrl = "";
+        if (role == 'parent' && _childImage != null) {
+          childImageUrl = await uploadImage(_childImage!);
+        }
+
+        if (role == 'parent') {
+          String generatedChildId = uuid.v4();
+          await FirebaseFirestore.instance
+              .collection('parent')
+              .doc(userCredential.user!.uid)
+              .set({
+            'userid': generatedUserId,
+            'childid': generatedChildId,
+            'childname': childNameController.text,
+            'childpicture': childImageUrl
+          });
+        } else if (role == 'therapist') {
+          await FirebaseFirestore.instance
+              .collection('therapist')
+              .doc(userCredential.user!.uid)
+              .set({
+            'userid': generatedUserId,
+            'nationalid': nationalIdController.text,
+            'nationalproof': nationalProofController.text,
+            'status': status
+          });
+        }
+
+        await FirebaseFirestore.instance
+            .collection('user')
+            .doc(userCredential.user!.uid)
+            .set({
+          'userid': generatedUserId,
+          'username': usernamecontroller.text,
+          'email': email,
+          'password': password,
+          'role': role
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(
           "Registered Successfully",
           style: TextStyle(fontSize: 20.0),
         )));
-        // ignore: use_build_context_synchronously
+
         Navigator.push(
-            context, MaterialPageRoute(builder: (context) => const Home()));
+            context, MaterialPageRoute(builder: (context) => Home()));
       } on FirebaseAuthException catch (e) {
         if (e.code == 'weak-password') {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
               backgroundColor: Colors.orangeAccent,
               content: Text(
                 "Password Provided is too Weak",
                 style: TextStyle(fontSize: 18.0),
               )));
         } else if (e.code == "email-already-in-use") {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
               backgroundColor: Colors.orangeAccent,
               content: Text(
                 "Account Already exists",
@@ -60,16 +136,16 @@ class _SignUpState extends State<SignUp> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SingleChildScrollView(  // Added SingleChildScrollView
+      body: SingleChildScrollView(
         child: Column(
           children: [
-            SizedBox(
+            Container(
                 width: MediaQuery.of(context).size.width,
                 child: Image.asset(
-                  "assets/car.png",
+                  "assets/car.PNG",
                   fit: BoxFit.cover,
                 )),
-            const SizedBox(
+            SizedBox(
               height: 30.0,
             ),
             Padding(
@@ -78,171 +154,101 @@ class _SignUpState extends State<SignUp> {
                 key: _formkey,
                 child: Column(
                   children: [
-                    Container(
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 2.0, horizontal: 30.0),
-                      decoration: BoxDecoration(
-                          color: const Color(0xFFedf0f8),
-                          borderRadius: BorderRadius.circular(30)),
-                      child: TextFormField(
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please Enter Name';
-                          }
-                          return null;
-                        },
-                        controller: namecontroller,
-                        decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            hintText: "Name",
-                            hintStyle: TextStyle(
-                                color: Color(0xFFb2b7bf), fontSize: 18.0)),
-                      ),
-                    ),
-                    const SizedBox(
-                      height: 30.0,
-                    ),
-                    Container(
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 2.0, horizontal: 30.0),
-                      decoration: BoxDecoration(
-                          color: const Color(0xFFedf0f8),
-                          borderRadius: BorderRadius.circular(30)),
-                      child: TextFormField(
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please Enter Email';
-                          }
-                          return null;
-                        },
-                        controller: emailcontroller,
-                        decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            hintText: "Email",
-                            hintStyle: TextStyle(
-                                color: Color(0xFFb2b7bf), fontSize: 18.0)),
-                      ),
-                    ),
-                    const SizedBox(
-                      height: 30.0,
-                    ),
-                    Container(
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 2.0, horizontal: 30.0),
-                      decoration: BoxDecoration(
-                          color: const Color(0xFFedf0f8),
-                          borderRadius: BorderRadius.circular(30)),
-                      child: TextFormField(
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please Enter Password';
-                          }
-                          return null;
-                        },
-                        controller: passwordcontroller,
-                        decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            hintText: "Password",
-                            hintStyle: TextStyle(
-                                color: Color(0xFFb2b7bf), fontSize: 18.0)),
-                        obscureText: true,
-                      ),
-                    ),
-                    const SizedBox(
-                      height: 30.0,
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        if (_formkey.currentState!.validate()) {
-                          setState(() {
-                            email = emailcontroller.text;
-                            name = namecontroller.text;
-                            password = passwordcontroller.text;
-                          });
+                    TextFormField(
+                      controller: usernamecontroller,
+                      decoration: InputDecoration(
+                          hintText: "Username",
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30))),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please Enter Username';
                         }
-                        registration();
+                        return null;
                       },
-                      child: Container(
-                          width: MediaQuery.of(context).size.width,
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 13.0, horizontal: 30.0),
-                          decoration: BoxDecoration(
-                              color: const Color(0xFF273671),
-                              borderRadius: BorderRadius.circular(30)),
-                          child: const Center(
-                              child: Text(
-                            "Sign Up",
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 22.0,
-                                fontWeight: FontWeight.w500),
-                          ))),
                     ),
+                    SizedBox(height: 20.0),
+                    TextFormField(
+                      controller: emailcontroller,
+                      decoration: InputDecoration(
+                          hintText: "Email",
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30))),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please Enter Email';
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 20.0),
+                    TextFormField(
+                      controller: passwordcontroller,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                          hintText: "Password",
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30))),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please Enter Password';
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 20.0),
+                    DropdownButtonFormField(
+                      value: role,
+                      items: ['parent', 'therapist']
+                          .map((role) => DropdownMenuItem(
+                                value: role,
+                                child: Text(role),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          role = value.toString();
+                        });
+                      },
+                      decoration: InputDecoration(
+                        labelText: 'Role',
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(30)),
+                      ),
+                    ),
+                    SizedBox(height: 20.0),
+                    if (role == 'parent') ...[
+                      TextFormField(
+                        controller: childNameController,
+                        decoration: InputDecoration(
+                            hintText: "Child Name",
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(30))),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please Enter Child Name';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 20.0),
+                      GestureDetector(
+                        onTap: pickChildImage,
+                        child: CircleAvatar(
+                          radius: 50,
+                          backgroundImage: _childImage != null
+                              ? FileImage(_childImage!)
+                              : null,
+                          child: _childImage == null
+                              ? Icon(Icons.camera_alt, size: 50)
+                              : null,
+                        ),
+                      ),
+                      SizedBox(height: 20.0),
+                    ]
                   ],
                 ),
               ),
-            ),
-            const SizedBox(
-              height: 40.0,
-            ),
-            const Text(
-              "or LogIn with",
-              style: TextStyle(
-                  color: Color(0xFF273671),
-                  fontSize: 22.0,
-                  fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(
-              height: 30.0,
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset(
-                  "assets/google.png",
-                  height: 45,
-                  width: 45,
-                  fit: BoxFit.cover,
-                ),
-                const SizedBox(
-                  width: 30.0,
-                ),
-                Image.asset(
-                  "assets/apple1.png",
-                  height: 50,
-                  width: 50,
-                  fit: BoxFit.cover,
-                )
-              ],
-            ),
-            const SizedBox(
-              height: 40.0,
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text("Already have an account?",
-                    style: TextStyle(
-                        color: Color(0xFF8c8e98),
-                        fontSize: 18.0,
-                        fontWeight: FontWeight.w500)),
-                const SizedBox(
-                  width: 5.0,
-                ),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => const LogIn()));
-                  },
-                  child: const Text(
-                    "LogIn",
-                    style: TextStyle(
-                        color: Color(0xFF273671),
-                        fontSize: 20.0,
-                        fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ],
             )
           ],
         ),

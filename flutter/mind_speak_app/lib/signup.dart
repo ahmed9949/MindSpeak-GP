@@ -60,7 +60,7 @@ class _SignUpState extends State<SignUp> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Container(
+      body: SingleChildScrollView(  // Added SingleChildScrollView
         child: Column(
           children: [
             SizedBox(

@@ -14,13 +14,15 @@ class Navigationpage extends StatefulWidget {
 class _NavigationpageState extends State<Navigationpage> {
   int myindex = 0;
   List<Widget> mypages = [
-    HomePage(),
-    SearchPage(),
+    const HomePage(),
+    const SearchPage(),
     ProfilePage(),
   ];
   @override
   Widget build(BuildContext context) {
+
     return MaterialApp(
+      
       home: Scaffold(
         body: Center(
           child: mypages[myindex],
@@ -34,7 +36,7 @@ class _NavigationpageState extends State<Navigationpage> {
             });
           },
           currentIndex: myindex,
-          items: [
+          items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.home),
               label: 'Home',

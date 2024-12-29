@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/providers/theme_provider.dart';
+import 'package:provider/provider.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -50,9 +52,19 @@ final db=FirebaseFirestore.instance;
 
   @override
   Widget build(BuildContext context) {
+            final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Search'),
+          actions: [
+          IconButton(
+            icon: Icon(themeProvider.isDarkMode ? Icons.wb_sunny : Icons.nightlight_round),
+            onPressed: () {
+              themeProvider.toggleTheme(); // Toggle the theme
+            },
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

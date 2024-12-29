@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/providers/theme_provider.dart';
+import 'package:provider/provider.dart';
 import '../Components/CustomBottomNavigationBar.dart';
 
 class ViewDoctorsPage extends StatelessWidget {
@@ -6,10 +8,20 @@ class ViewDoctorsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+            final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
+        actions: [
+          IconButton(
+            icon: Icon(themeProvider.isDarkMode ? Icons.wb_sunny : Icons.nightlight_round),
+            onPressed: () {
+              themeProvider.toggleTheme(); // Toggle the theme
+            },
+          ),
+        ],
         centerTitle: true,
-        backgroundColor: Colors.blue,
+      backgroundColor: themeProvider.isDarkMode ? Colors.black : Colors.lightBlue, // Custom color for this screen
         title: const Text(
           "View Doctors",
           style: TextStyle(color: Colors.white),
@@ -22,14 +34,14 @@ class ViewDoctorsPage extends StatelessWidget {
 }
 
 class ViewDoctors extends StatefulWidget {
-  const ViewDoctors({Key? key}) : super(key: key);
+  const ViewDoctors({super.key});
 
   @override
   State<ViewDoctors> createState() => _ViewDoctorsState();
 }
 
 class _ViewDoctorsState extends State<ViewDoctors> {
-  List<Map<String, dynamic>> _allDoctors = [
+  final List<Map<String, dynamic>> _allDoctors = [
     {"id": 1, "name": "Ahmed", "Email": "ahmed@gmail.com"},
     {"id": 2, "name": "Fares", "Email": "fares@gmail.com"},
     {"id": 3, "name": "Osos", "Email": "osos@gmail.com"},

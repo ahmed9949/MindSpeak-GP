@@ -2,13 +2,15 @@
 
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:crypto/crypto.dart'; // Import for hashing passwords
-import 'package:mind_speak_app/navigationpage.dart';
-import 'package:mind_speak_app/pages/doctor_dashboard.dart';
 import 'package:mind_speak_app/forgot_password.dart';
+import 'package:mind_speak_app/navigationpage.dart';
+import 'package:mind_speak_app/pages/DashBoard.dart';
+import 'package:mind_speak_app/pages/doctor_dashboard.dart';
+import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/signup.dart';
+import 'package:provider/provider.dart';
 
 class LogIn extends StatefulWidget {
   const LogIn({super.key});
@@ -76,7 +78,16 @@ class _LogInState extends State<LogIn> {
             context,
             MaterialPageRoute(builder: (context) => DoctorDashboard()),
           );
-        } else {
+          
+        }
+        else if (role == 'admin') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => DashBoard()),
+          );
+          
+        } 
+        else {
           throw Exception("Unknown role detected.");
         }
 
@@ -107,8 +118,19 @@ class _LogInState extends State<LogIn> {
 
   @override
   Widget build(BuildContext context) {
+        final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      appBar: AppBar(
+         actions: [
+          IconButton(
+            icon: Icon(themeProvider.isDarkMode ? Icons.wb_sunny : Icons.nightlight_round),
+            onPressed: () {
+              themeProvider.toggleTheme(); // Toggle the theme
+            },
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         child: Container(
           child: Column(
@@ -116,7 +138,7 @@ class _LogInState extends State<LogIn> {
               SizedBox(
                 width: MediaQuery.of(context).size.width,
                 child: Image.asset(
-                  "assets/car.PNG",
+                  "assets/logo.webp",
                   fit: BoxFit.cover,
                 ),
               ),
@@ -189,6 +211,19 @@ class _LogInState extends State<LogIn> {
                         ),
                       ),
                       const SizedBox(height: 20.0),
+                       GestureDetector(
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const ForgotPassword()));
+                        },
+                        child: const Text("Forgot Password?",
+                            style: TextStyle(
+                                color: Color(0xFF8c8e98),
+                                fontSize: 18.0,
+                                fontWeight: FontWeight.w500)),
+                      ),
+                      const SizedBox(
+                        height: 40.0,
+                      ),
                       const Text(
                         "or LogIn with",
                         style: TextStyle(

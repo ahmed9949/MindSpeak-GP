@@ -80,7 +80,7 @@ class _LogInState extends State<LogIn> {
         } else if (role == 'admin') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => DashBoard()),
+            MaterialPageRoute(builder: (context) => const DashBoard()),
           );
         } else {
           throw Exception("Unknown role detected.");

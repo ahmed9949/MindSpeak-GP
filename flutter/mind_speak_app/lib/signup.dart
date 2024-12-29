@@ -159,7 +159,7 @@ class _SignUpState extends State<SignUp> {
         }
         else if (role == 'admin') {
           Navigator.push(context,
-              MaterialPageRoute(builder: (context) => DashBoard()));
+              MaterialPageRoute(builder: (context) => const DashBoard()));
         }
       } on FirebaseAuthException catch (e) {
         if (e.code == 'weak-password') {

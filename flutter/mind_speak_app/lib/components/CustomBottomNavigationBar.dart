@@ -23,6 +23,8 @@ class CustomBottomNavigationBar extends StatelessWidget {
         MaterialPageRoute(builder: (context) => const ViewDoctorsPage()),
       );
     }
+
+    
   }
 
   @override

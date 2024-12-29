@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mind_speak_app/Home.dart';
 import 'package:mind_speak_app/choose_avatar_page.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/start_session.dart';

@@ -10,7 +10,7 @@ void main() async {
  runApp(
     ChangeNotifierProvider(
       create: (context) => ThemeProvider(),
-      child: MyApp(),
+      child: const MyApp(),
     ),
   );
 }
@@ -23,7 +23,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: Provider.of<ThemeProvider>(context).isDarkMode ? ThemeData.dark() : ThemeData.light(),
-      home: SplashScreen(), // SplashScreen as the initial screen
+      home: const SplashScreen(), // SplashScreen as the initial screen
     );
   }
 }

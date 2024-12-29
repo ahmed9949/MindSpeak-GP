@@ -16,7 +16,7 @@ class _NavigationpageState extends State<Navigationpage> {
   List<Widget> mypages = [
     const HomePage(),
     const SearchPage(),
-    ProfilePage(),
+    const ProfilePage(),
   ];
   @override
   Widget build(BuildContext context) {

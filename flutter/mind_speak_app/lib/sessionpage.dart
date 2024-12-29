@@ -96,7 +96,7 @@ class SessionPage extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const Home(),
+                    builder: (context) => const StartSession(),
                   ),
                 );
               },

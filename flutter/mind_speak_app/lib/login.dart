@@ -2,8 +2,9 @@
 
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:crypto/crypto.dart'; // Import for hashing passwords
+import 'package:crypto/crypto.dart';  
 import 'package:mind_speak_app/forgot_password.dart';
 import 'package:mind_speak_app/navigationpage.dart';
 import 'package:mind_speak_app/pages/doctor_dashboard.dart';

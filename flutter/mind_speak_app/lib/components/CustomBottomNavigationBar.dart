@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/login.dart';
 import 'package:mind_speak_app/pages/DashBoard.dart';
 import 'package:mind_speak_app/pages/ViewDoctorPage.dart';
-
 
 class CustomBottomNavigationBar extends StatelessWidget {
   final int currentIndex;
@@ -22,9 +22,14 @@ class CustomBottomNavigationBar extends StatelessWidget {
         context,
         MaterialPageRoute(builder: (context) => const ViewDoctorsPage()),
       );
-    }
-
+    } else if (index == 2) {
     
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LogIn()),
+        (route) => false, 
+      );
+    }
   }
 
   @override
@@ -42,11 +47,11 @@ class CustomBottomNavigationBar extends StatelessWidget {
         BottomNavigationBarItem(
           icon: Icon(Icons.person, color: Colors.white),
           label: "View Doctors",
-        ), BottomNavigationBarItem(
+        ),
+        BottomNavigationBarItem(
           icon: Icon(Icons.logout, color: Colors.white),
-          label: "View Doctors",
-           
-        )
+          label: "Logout",
+        ),
       ],
       onTap: (index) => _onItemTapped(context, index),
     );

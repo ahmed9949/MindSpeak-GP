@@ -40,6 +40,10 @@ class CustomBottomNavigationBar extends StatelessWidget {
         BottomNavigationBarItem(
           icon: Icon(Icons.person, color: Colors.white),
           label: "View Doctors",
+        ), BottomNavigationBarItem(
+          icon: Icon(Icons.logout, color: Colors.white),
+          label: "View Doctors",
+           
         )
       ],
       onTap: (index) => _onItemTapped(context, index),

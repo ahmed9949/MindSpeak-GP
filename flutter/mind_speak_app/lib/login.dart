@@ -1,9 +1,9 @@
 // ignore_for_file: use_build_context_synchronously
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mind_speak_app/forgot_password.dart';
-import 'package:mind_speak_app/homepage.dart';
 import 'package:mind_speak_app/navigationpage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:mind_speak_app/pages/DashBoard.dart';
 import 'package:mind_speak_app/pages/doctor_dashboard.dart';
 import 'package:mind_speak_app/signup.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -114,6 +114,12 @@ class _LogInState extends State<LogIn> {
           context,
           MaterialPageRoute(
               builder: (context) => DoctorDashboard()), // Therapist screen
+        );
+      }else if (role == 'admin') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+              builder: (context) => DashBoard()), // Therapist screen
         );
       } else {
         throw Exception("Unknown role"); // Handle unknown roles

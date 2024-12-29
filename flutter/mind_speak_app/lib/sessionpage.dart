@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/Home.dart';
 import 'package:mind_speak_app/choose_avatar_page.dart';
 import 'package:mind_speak_app/start_session.dart';
 
@@ -83,7 +84,7 @@ class SessionPage extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const StartSession(),
+                    builder: (context) => const Home(),
                   ),
                 );
               },

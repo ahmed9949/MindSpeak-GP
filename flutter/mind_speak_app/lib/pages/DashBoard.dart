@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mind_speak_app/components/CustomBottomNavigationBar.dart';
 
 
-
-void main() {
-  runApp(const MyApp());
-}
-
+ 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 

@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 import 'package:mind_speak_app/login.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
+import 'package:path_provider/path_provider.dart';
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -57,13 +58,20 @@ class _SignUpState extends State<SignUp> {
     }
   }
 
-  Future<String> uploadImage(File image, String folder) async {
-    String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-    Reference storageRef =
-        FirebaseStorage.instance.ref().child('$folder/$fileName');
-    UploadTask uploadTask = storageRef.putFile(image);
-    TaskSnapshot taskSnapshot = await uploadTask;
-    return await taskSnapshot.ref.getDownloadURL();
+  Future<String> saveImageLocally(File image, String folderName) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final folderPath = Directory('${directory.path}/$folderName');
+      if (!folderPath.existsSync()) {
+        folderPath.createSync(recursive: true);
+      }
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final localPath = '${folderPath.path}/$fileName';
+      final savedImage = await image.copy(localPath);
+      return savedImage.path;
+    } catch (e) {
+      throw Exception("Image save failed: $e");
+    }
   }
 
   String hashPassword(String password) {
@@ -91,7 +99,8 @@ class _SignUpState extends State<SignUp> {
           String childId = uuid.v4();
 
           if (_childImage != null) {
-            childImageUrl = await uploadImage(_childImage!, 'child_images');
+            childImageUrl =
+                await saveImageLocally(_childImage!, 'assets/child_image');
           }
 
           await FirebaseFirestore.instance
@@ -108,7 +117,7 @@ class _SignUpState extends State<SignUp> {
 
           if (_nationalProofImage != null) {
             nationalProofUrl =
-                await uploadImage(_nationalProofImage!, 'national_proofs');
+                await saveImageLocally(_nationalProofImage!, 'national_proofs');
           }
 
           await FirebaseFirestore.instance
@@ -161,10 +170,10 @@ class _SignUpState extends State<SignUp> {
                 style: TextStyle(fontSize: 18.0),
               )));
         } else {
-          print("Error: ${e.toString()}");
+          print("Error: \${e.toString()}");
         }
       } catch (e) {
-        print("Error: ${e.toString()}");
+        print("Error: \${e.toString()}");
       }
     }
   }

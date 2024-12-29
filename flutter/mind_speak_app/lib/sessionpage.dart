@@ -1,15 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/choose_avatar_page.dart';
+import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/start_session.dart';
+import 'package:provider/provider.dart';
 
 class SessionPage extends StatelessWidget {
   const SessionPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+            final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Session Page'),
+        actions: [
+          IconButton(
+            icon: Icon(themeProvider.isDarkMode ? Icons.wb_sunny : Icons.nightlight_round),
+            onPressed: () {
+              themeProvider.toggleTheme(); // Toggle the theme
+            },
+          ),
+        ],
       ),
       body: Center(
         child: Column(
@@ -22,20 +34,20 @@ class SessionPage extends StatelessWidget {
               width: 250,
               height: 300,
               decoration: BoxDecoration(
-                color: Color(0xFFFFF5E1),
+                color: const Color(0xFFFFF5E1),
                 borderRadius: BorderRadius.circular(25),
               ),
-              child: Column(
+              child: const Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Avatar Image
-                  const CircleAvatar(
+                  CircleAvatar(
                     radius: 60, // Size of avatar
                     backgroundImage: AssetImage(
                         'assets/images/superheros/american-cartoon-celebrating-independence-day_1012-159.avif'), // Replace with your image
                   ),
-                  const SizedBox(height: 10), // Spacing
-                  const Text(
+                  SizedBox(height: 10), // Spacing
+                  Text(
                     'This is your avatar',
                     style: TextStyle(
                       color: Color.fromARGB(255, 243, 163, 4),

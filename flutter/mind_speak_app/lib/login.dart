@@ -2,13 +2,14 @@
 
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:crypto/crypto.dart'; // Import for hashing passwords
 import 'package:mind_speak_app/navigationpage.dart';
+import 'package:mind_speak_app/pages/DashBoard.dart';
 import 'package:mind_speak_app/pages/doctor_dashboard.dart';
-import 'package:mind_speak_app/forgot_password.dart';
+import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/signup.dart';
+import 'package:provider/provider.dart';
 
 class LogIn extends StatefulWidget {
   const LogIn({super.key});
@@ -76,7 +77,16 @@ class _LogInState extends State<LogIn> {
             context,
             MaterialPageRoute(builder: (context) => DoctorDashboard()),
           );
-        } else {
+          
+        }
+        else if (role == 'admin') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => DashBoard()),
+          );
+          
+        } 
+        else {
           throw Exception("Unknown role detected.");
         }
 
@@ -107,8 +117,19 @@ class _LogInState extends State<LogIn> {
 
   @override
   Widget build(BuildContext context) {
+        final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      appBar: AppBar(
+         actions: [
+          IconButton(
+            icon: Icon(themeProvider.isDarkMode ? Icons.wb_sunny : Icons.nightlight_round),
+            onPressed: () {
+              themeProvider.toggleTheme(); // Toggle the theme
+            },
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         child: Container(
           child: Column(

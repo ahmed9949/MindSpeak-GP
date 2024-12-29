@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/logout.dart';
 import 'package:mind_speak_app/pages/child_reports.dart';
+import 'package:mind_speak_app/providers/theme_provider.dart';
+import 'package:provider/provider.dart';
 
 class DoctorDashboard extends StatelessWidget {
   final String doctorName = "Dr. Ahmed";
@@ -77,10 +79,20 @@ class DoctorDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+            final themeProvider = Provider.of<ThemeProvider>(context);
+
     final int numberOfPatients = children.length;
 
     return Scaffold(
       appBar: AppBar(
+        actions: [
+          IconButton(
+            icon: Icon(themeProvider.isDarkMode ? Icons.wb_sunny : Icons.nightlight_round),
+            onPressed: () {
+              themeProvider.toggleTheme(); // Toggle the theme
+            },
+          ),
+        ],
         backgroundColor: Colors.teal,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

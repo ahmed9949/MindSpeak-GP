@@ -5,11 +5,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mind_speak_app/navigationpage.dart';
+import 'package:mind_speak_app/pages/DashBoard.dart';
 import 'package:mind_speak_app/pages/doctor_dashboard.dart';
+import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:mind_speak_app/login.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
+import 'package:mind_speak_app/providers/theme_provider.dart';
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -145,6 +148,10 @@ class _SignUpState extends State<SignUp> {
           Navigator.push(context,
               MaterialPageRoute(builder: (context) => DoctorDashboard()));
         }
+        else if (role == 'admin') {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (context) => DashBoard()));
+        }
       } on FirebaseAuthException catch (e) {
         if (e.code == 'weak-password') {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -171,10 +178,18 @@ class _SignUpState extends State<SignUp> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text("Sign Up"),
-        backgroundColor: Colors.blueAccent,
+        actions: [
+          IconButton(
+            icon: Icon(themeProvider.isDarkMode ? Icons.wb_sunny : Icons.nightlight_round),
+            onPressed: () {
+              themeProvider.toggleTheme(); // Toggle the theme
+            },
+          ),
+        ],
         centerTitle: true,
       ),
       backgroundColor: Colors.white,
@@ -228,6 +243,10 @@ class _SignUpState extends State<SignUp> {
                         borderRadius: BorderRadius.circular(30)),
                   ),
                 ),
+
+                // if (role == 'admin') ...[
+                //   const SizedBox(height: 20.0),                 
+                // ],
                 if (role == 'parent') ...[
                   const SizedBox(height: 20.0),
                   TextFormField(

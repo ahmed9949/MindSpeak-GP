@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class smallcard extends StatelessWidget {
-  smallcard({required this.color, required this.text});
+  const smallcard({super.key, required this.color, required this.text});
   final Color color;
   final String text;
   @override
@@ -18,7 +18,7 @@ class smallcard extends StatelessWidget {
         child: Center(
           child: Text(
             text,
-            style: TextStyle(color: Colors.white),
+            style: const TextStyle(color: Colors.white),
           ),
         ),
       ),

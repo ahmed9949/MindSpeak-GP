@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/components/homepageCards.dart';
 import 'package:mind_speak_app/logout.dart';
+import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/sessionpage.dart';
+import 'package:provider/provider.dart';
  
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+            final themeProvider = Provider.of<ThemeProvider>(context);
+
     const title = 'Horizontal Manga';
 
     // List of data for dynamic rendering
@@ -21,7 +25,16 @@ class HomePage extends StatelessWidget {
     ];
 
     return Scaffold(
+
       appBar: AppBar(
+        actions: [
+          IconButton(
+            icon: Icon(themeProvider.isDarkMode ? Icons.wb_sunny : Icons.nightlight_round),
+            onPressed: () {
+              themeProvider.toggleTheme(); // Toggle the theme
+            },
+          ),
+        ],
         title: const Text(title),
       ),
       // Added Drawer
@@ -29,7 +42,7 @@ class HomePage extends StatelessWidget {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            const DrawerHeader(
+            DrawerHeader(
               decoration: BoxDecoration(
                 color: Colors.blue, // Drawer Header Background
               ),

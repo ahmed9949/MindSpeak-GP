@@ -5,7 +5,7 @@ class ChildReportsPage extends StatelessWidget {
   final String childName;
   final List<Map<String, dynamic>> reports;
 
-  ChildReportsPage({required this.childName, required this.reports});
+  const ChildReportsPage({super.key, required this.childName, required this.reports});
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +14,7 @@ class ChildReportsPage extends StatelessWidget {
         backgroundColor: Colors.teal,
         title: Text(
           "$childName's Reports",
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         centerTitle: true,
         elevation: 0,
@@ -27,7 +27,7 @@ class ChildReportsPage extends StatelessWidget {
             end: Alignment.bottomRight,
           ),
         ),
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: ListView.builder(
           itemCount: reports.length,
           itemBuilder: (context, index) {
@@ -45,21 +45,21 @@ class ChildReportsPage extends StatelessWidget {
                 );
               },
               child: Card(
-                margin: EdgeInsets.symmetric(vertical: 10),
+                margin: const EdgeInsets.symmetric(vertical: 10),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 6,
                 child: ListTile(
-                  contentPadding: EdgeInsets.all(16),
-                  leading: Icon(Icons.report, color: Colors.teal, size: 30),
+                  contentPadding: const EdgeInsets.all(16),
+                  leading: const Icon(Icons.report, color: Colors.teal, size: 30),
                   title: Text(
                     report['summary'],
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                   ),
                   subtitle: Text(
                     report['date'],
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
                   ),
-                  trailing: Icon(Icons.arrow_forward_ios, color: Colors.teal),
+                  trailing: const Icon(Icons.arrow_forward_ios, color: Colors.teal),
                 ),
               ),
             );

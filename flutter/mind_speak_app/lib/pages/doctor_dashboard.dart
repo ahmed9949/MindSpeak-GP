@@ -72,6 +72,8 @@ final List<Map<String, dynamic>> children = [
   },
 ];
 
+   DoctorDashboard({super.key});
+
   @override
   Widget build(BuildContext context) {
     
@@ -85,12 +87,12 @@ final List<Map<String, dynamic>> children = [
           children: [
             Text(
               "Welcome, $doctorName",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(
               "$specialization | $numberOfPatients patients",
-              style: TextStyle(fontSize: 14, color: Colors.white70),
+              style: const TextStyle(fontSize: 14, color: Colors.white70),
             ),
           ],
         ),
@@ -105,7 +107,7 @@ final List<Map<String, dynamic>> children = [
             end: Alignment.bottomRight,
           ),
         ),
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: ListView.builder(
           itemCount: children.length,
           itemBuilder: (context, index) {
@@ -123,23 +125,23 @@ final List<Map<String, dynamic>> children = [
                 );
               },
               child: Card(
-                margin: EdgeInsets.symmetric(vertical: 8),
+                margin: const EdgeInsets.symmetric(vertical: 8),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 6,
                 child: ListTile(
-                  contentPadding: EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                   leading: CircleAvatar(
                     backgroundColor: Colors.teal[200],
                     child: Text(
                       child['name'][0],
-                      style: TextStyle(fontSize: 18, color: Colors.white),
+                      style: const TextStyle(fontSize: 18, color: Colors.white),
                     ),
                   ),
                   title: Text(
                     child['name'],
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
-                  trailing: Icon(
+                  trailing: const Icon(
                     Icons.arrow_forward_ios,
                     color: Colors.teal,
                     size: 20,

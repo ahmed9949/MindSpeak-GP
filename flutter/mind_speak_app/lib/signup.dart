@@ -1,11 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
-import 'dart:io';
-import 'package:mind_speak_app/Home.dart';
+import 'package:mind_speak_app/home.dart';
 import 'package:mind_speak_app/login.dart';
 
 class SignUp extends StatefulWidget {
@@ -34,7 +34,7 @@ class _SignUpState extends State<SignUp> {
 
   final _formkey = GlobalKey<FormState>();
   final ImagePicker _picker = ImagePicker();
-  final Uuid uuid = Uuid();
+  final Uuid uuid = const Uuid();
 
   Future<void> pickChildImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
@@ -278,7 +278,22 @@ class _SignUpState extends State<SignUp> {
                     "Register",
                     style: TextStyle(fontSize: 18, color: Colors.white),
                   ),
-                )
+                ),
+                const SizedBox(height: 20.0),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => const LogIn()));
+                  },
+                  child: const Text(
+                    "Already have an account? Log In",
+                    style: TextStyle(
+                      color: Colors.blueAccent,
+                      fontSize: 16.0,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

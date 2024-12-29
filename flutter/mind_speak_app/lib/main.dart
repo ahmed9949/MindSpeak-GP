@@ -1,7 +1,7 @@
-import 'package:mind_speak_app/login.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/signup.dart';
+import 'package:mind_speak_app/login.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

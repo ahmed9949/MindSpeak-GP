@@ -1,5 +1,6 @@
- import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:mind_speak_app/components/homepageCards.dart';
+import 'package:mind_speak_app/logout.dart';
 import 'package:mind_speak_app/sessionpage.dart';
  
 class HomePage extends StatelessWidget {
@@ -22,6 +23,56 @@ class HomePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text(title),
+      ),
+      // Added Drawer
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(
+                color: Colors.blue, // Drawer Header Background
+              ),
+              child: Text(
+                'Menu',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.home), // Home Icon
+              title: const Text('Home'),
+              onTap: () {
+                Navigator.pop(context); // Close drawer
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.person), // Profile Icon
+              title: const Text('Profile'),
+              onTap: () {
+                // TODO: Navigate to Profile Page
+                Navigator.pop(context); // Close drawer
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings), // Settings Icon
+              title: const Text('Settings'),
+              onTap: () {
+                // TODO: Navigate to Settings Page
+                Navigator.pop(context); // Close drawer
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text('Logout'),
+              onTap: () {
+                logout(context); // Call the logout function
+              },
+            ),
+          ],
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0), // Padding around the Column

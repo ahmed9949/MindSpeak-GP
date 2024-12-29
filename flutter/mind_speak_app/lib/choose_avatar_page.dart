@@ -1,4 +1,4 @@
- import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:mind_speak_app/start_session.dart';
 
 class ChooseAvatarPage extends StatefulWidget {
@@ -11,16 +11,16 @@ class ChooseAvatarPage extends StatefulWidget {
 class _ChooseAvatarPageState extends State<ChooseAvatarPage> {
   // List of avatar image paths
   final List<String> avatars = [
-    'assets/superheros/american-cartoon-celebrating-independence-day_1012-159.avif',
-    'assets/superheros/cute-astronaut-super-hero-cartoon-vector-icon-illustration-science-technology-icon_138676-1997.avif',
-    'assets/superheros/download.png',
-    'assets/superheros/girl-hero-costume_1308-25840.avif',
-    'assets/superheros/hand-drawing-little-angry-hulk-vector-illustration_969863-196047.avif',
+    'assets/images/superheros/american-cartoon-celebrating-independence-day_1012-159.avif',
+    'assets/images/superheros/cute-astronaut-super-hero-cartoon-vector-icon-illustration-science-technology-icon_138676-1997.avif',
+    'assets/images/superheros/download.png',
+    'assets/images/superheros/girl-hero-costume_1308-25840.avif',
+    'assets/images/superheros/hand-drawing-little-angry-hulk-vector-illustration_969863-196047.avif',
   ];
 
   // Selected Avatar
   String selectedAvatar =
-      'assets/superheros/hand-drawing-little-angry-hulk-vector-illustration_969863-196047.avif'; // Default avatar
+      'assets/images/superheros/hand-drawing-little-angry-hulk-vector-illustration_969863-196047.avif'; // Default avatar
 
   @override
   Widget build(BuildContext context) {
@@ -133,7 +133,6 @@ class _ChooseAvatarPageState extends State<ChooseAvatarPage> {
           ),
         ],
       ),
-
-     );
+    );
   }
 }

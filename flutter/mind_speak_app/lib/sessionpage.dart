@@ -1,7 +1,7 @@
- import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:mind_speak_app/choose_avatar_page.dart';
 import 'package:mind_speak_app/start_session.dart';
- 
+
 class SessionPage extends StatelessWidget {
   const SessionPage({super.key});
 
@@ -32,7 +32,7 @@ class SessionPage extends StatelessWidget {
                   const CircleAvatar(
                     radius: 60, // Size of avatar
                     backgroundImage: AssetImage(
-                        'assets/superheros/american-cartoon-celebrating-independence-day_1012-159.avif'), // Replace with your image
+                        'assets/images/superheros/american-cartoon-celebrating-independence-day_1012-159.avif'), // Replace with your image
                   ),
                   const SizedBox(height: 10), // Spacing
                   const Text(

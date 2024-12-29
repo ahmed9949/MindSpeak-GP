@@ -4,11 +4,7 @@ import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 
 
-
-void main() {
-  runApp(const MyApp());
-}
-
+ 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 

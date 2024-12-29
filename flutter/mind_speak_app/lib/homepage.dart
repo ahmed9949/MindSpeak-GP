@@ -21,7 +21,7 @@ class HomePage extends StatelessWidget {
       {'color': Colors.blue, 'text': 'Adventure'},
       {'color': Colors.purple, 'text': 'Fantasy'},
       {'color': Colors.orange, 'text': 'Mystery'},
-      {'color': const Color.fromARGB(255, 2, 29, 3), 'text': 'Sci-Fi'},
+      {'color': const Color.fromARGB(255, 197, 207, 197), 'text': 'Sci-Fi'},
     ];
 
     return Scaffold(

@@ -1,6 +1,7 @@
 // import 'package:authenticationapp/signup.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/signup.dart';
 
 class ForgotPassword extends StatefulWidget {
   const ForgotPassword({super.key});
@@ -131,32 +132,32 @@ class _ForgotPasswordState extends State<ForgotPassword> {
                           const SizedBox(
                             height: 50.0,
                           ),
-                          const Row(
+                          Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(
+                              const Text(
                                 "Don't have an account?",
                                 style: TextStyle(
                                     fontSize: 18.0, color: Colors.white),
                               ),
-                              SizedBox(
+                              const SizedBox(
                                 width: 5.0,
                               ),
-                              // GestureDetector(
-                              //   onTap: () {
-                              //     Navigator.push(
-                              //         context,
-                              //         MaterialPageRoute(
-                              //             builder: (context) => SignUp()));
-                              //   },
-                              //   child: Text(
-                              //     "Create",
-                              //     style: TextStyle(
-                              //         color: Color.fromARGB(225, 184, 166, 6),
-                              //         fontSize: 20.0,
-                              //         fontWeight: FontWeight.w500),
-                              //   ),
-                              // )
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) => const SignUp()));
+                                },
+                                child: const Text(
+                                  "Create",
+                                  style: TextStyle(
+                                      color: Color.fromARGB(225, 184, 166, 6),
+                                      fontSize: 20.0,
+                                      fontWeight: FontWeight.w500),
+                                ),
+                              )
                             ],
                           )
                         ],

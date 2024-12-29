@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:crypto/crypto.dart'; // Import for hashing passwords
+import 'package:mind_speak_app/forgot_password.dart';
 import 'package:mind_speak_app/navigationpage.dart';
 import 'package:mind_speak_app/pages/DashBoard.dart';
 import 'package:mind_speak_app/pages/doctor_dashboard.dart';
@@ -137,7 +138,7 @@ class _LogInState extends State<LogIn> {
               SizedBox(
                 width: MediaQuery.of(context).size.width,
                 child: Image.asset(
-                  "assets/car.PNG",
+                  "assets/logo.webp",
                   fit: BoxFit.cover,
                 ),
               ),
@@ -210,6 +211,19 @@ class _LogInState extends State<LogIn> {
                         ),
                       ),
                       const SizedBox(height: 20.0),
+                       GestureDetector(
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const ForgotPassword()));
+                        },
+                        child: const Text("Forgot Password?",
+                            style: TextStyle(
+                                color: Color(0xFF8c8e98),
+                                fontSize: 18.0,
+                                fontWeight: FontWeight.w500)),
+                      ),
+                      const SizedBox(
+                        height: 40.0,
+                      ),
                       const Text(
                         "or LogIn with",
                         style: TextStyle(

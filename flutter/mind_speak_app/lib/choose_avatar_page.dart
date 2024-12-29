@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/start_session.dart';
+import 'package:provider/provider.dart';
 
 class ChooseAvatarPage extends StatefulWidget {
   const ChooseAvatarPage({super.key});
@@ -24,9 +26,19 @@ class _ChooseAvatarPageState extends State<ChooseAvatarPage> {
 
   @override
   Widget build(BuildContext context) {
+            final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Choose Your Avatar'),
+         actions: [
+          IconButton(
+            icon: Icon(themeProvider.isDarkMode ? Icons.wb_sunny : Icons.nightlight_round),
+            onPressed: () {
+              themeProvider.toggleTheme(); // Toggle the theme
+            },
+          ),
+        ],
       ),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,

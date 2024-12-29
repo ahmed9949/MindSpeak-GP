@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/pages/report_details.dart';
+import 'package:mind_speak_app/providers/theme_provider.dart';
+import 'package:provider/provider.dart';
 
 class ChildReportsPage extends StatelessWidget {
   final String childName;
@@ -9,9 +11,20 @@ class ChildReportsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+            final themeProvider = Provider.of<ThemeProvider>(context);
+
+
+    
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.teal,
+         actions: [
+          IconButton(
+            icon: Icon(themeProvider.isDarkMode ? Icons.wb_sunny : Icons.nightlight_round),
+            onPressed: () {
+              themeProvider.toggleTheme(); // Toggle the theme
+            },
+          ),
+        ],
         title: Text(
           "$childName's Reports",
           style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),

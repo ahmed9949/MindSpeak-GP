@@ -1,12 +1,11 @@
 // ignore_for_file: use_build_context_synchronously
-
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:crypto/crypto.dart';  
+import 'package:crypto/crypto.dart'; // Import for hashing passwords
 import 'package:mind_speak_app/forgot_password.dart';
 import 'package:mind_speak_app/navigationpage.dart';
+import 'package:mind_speak_app/pages/DashBoard.dart';
 import 'package:mind_speak_app/pages/doctor_dashboard.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/signup.dart';
@@ -55,45 +54,49 @@ class _LogInState extends State<LogIn> {
           .where('email', isEqualTo: email)
           .get();
 
-      // Get role from Firestore
-      String role = userDoc['role']; // Fetch role from database
+      if (userSnapshot.docs.isEmpty) {
+        throw Exception("No user found with this email.");
+      }
 
-      // Navigate based on role
-      if (role == 'parent') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (context) => const Navigationpage()), // Parent screen
-        );
-      } else if (role == 'therapist') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (context) => DoctorDashboard()), // Therapist screen
-        );
+      // Retrieve user data
+      var userData = userSnapshot.docs.first.data() as Map<String, dynamic>;
+      String storedPassword =
+          userData['password']; // Hashed password from Firestore
+      String role = userData['role']; // User role
+
+      // Compare hashed passwords
+      if (hashedEnteredPassword == storedPassword) {
+        // Navigate based on role
+        if (role == 'parent') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const Navigationpage()),
+          );
+        } else if (role == 'therapist') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => DoctorDashboard()),
+          );
+        } else if (role == 'admin') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => DashBoard()),
+          );
+        } else {
+          throw Exception("Unknown role detected.");
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          backgroundColor: Colors.green,
+          content: Text(
+            "Logged in Successfully",
+            style: TextStyle(fontSize: 18.0),
+          ),
+        ));
       } else {
-        throw Exception("Unknown role"); // Handle unknown roles
+        throw Exception("Incorrect password.");
       }
-
-      // Success message
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        backgroundColor: Colors.green,
-        content: Text(
-          "Logged in Successfully",
-          style: TextStyle(fontSize: 18.0),
-        ),
-      ));
-    } on FirebaseAuthException catch (e) {
-      // Firebase authentication errors
-      String errorMessage = 'Invalid credentials';
-      if (e.code == 'user-not-found') {
-        errorMessage = "No User Found for that Email";
-      } else if (e.code == 'wrong-password') {
-        errorMessage = "Wrong Password Provided by User";
-      } else if (e.code == 'invalid-email') {
-        errorMessage = "Invalid Email Address";
-      }
-
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: Colors.redAccent,
         content: Text(
@@ -110,13 +113,15 @@ class _LogInState extends State<LogIn> {
 
   @override
   Widget build(BuildContext context) {
-        final themeProvider = Provider.of<ThemeProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
-         actions: [
+        actions: [
           IconButton(
-            icon: Icon(themeProvider.isDarkMode ? Icons.wb_sunny : Icons.nightlight_round),
+            icon: Icon(themeProvider.isDarkMode
+                ? Icons.wb_sunny
+                : Icons.nightlight_round),
             onPressed: () {
               themeProvider.toggleTheme(); // Toggle the theme
             },
@@ -203,9 +208,13 @@ class _LogInState extends State<LogIn> {
                         ),
                       ),
                       const SizedBox(height: 20.0),
-                       GestureDetector(
+                      GestureDetector(
                         onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => const ForgotPassword()));
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      const ForgotPassword()));
                         },
                         child: const Text("Forgot Password?",
                             style: TextStyle(

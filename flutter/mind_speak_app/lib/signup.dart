@@ -4,10 +4,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
- import 'package:mind_speak_app/navigationpage.dart';
+import 'package:mind_speak_app/navigationpage.dart';
 import 'package:mind_speak_app/pages/doctor_dashboard.dart';
 import 'package:uuid/uuid.dart';
- import 'package:mind_speak_app/login.dart';
+import 'package:mind_speak_app/login.dart';
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -64,102 +66,108 @@ class _SignUpState extends State<SignUp> {
     return await taskSnapshot.ref.getDownloadURL();
   }
 
- registration() async {
-  if (_formkey.currentState!.validate()) {
-    try {
-      email = emailcontroller.text.trim();
-      password = passwordcontroller.text.trim();
-      username = usernamecontroller.text.trim();
-      childname = childNameController.text.trim();
-      nationalid = nationalIdController.text.trim();
+  String hashPassword(String password) {
+    final bytes = utf8.encode(password);
+    final hashed = sha256.convert(bytes);
+    return hashed.toString();
+  }
 
-      UserCredential userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password);
+  registration() async {
+    if (_formkey.currentState!.validate()) {
+      try {
+        email = emailcontroller.text.trim();
+        password = hashPassword(passwordcontroller.text.trim());
+        username = usernamecontroller.text.trim();
+        childname = childNameController.text.trim();
+        nationalid = nationalIdController.text.trim();
 
-      String userId = userCredential.user!.uid;
+        UserCredential userCredential = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(email: email, password: password);
 
-      if (role == 'parent') {
-        String childImageUrl = "";
-        String childId = uuid.v4();
+        String userId = userCredential.user!.uid;
 
-        if (_childImage != null) {
-          childImageUrl = await uploadImage(_childImage!, 'child_images');
+        if (role == 'parent') {
+          String childImageUrl = "";
+          String childId = uuid.v4();
+
+          if (_childImage != null) {
+            childImageUrl = await uploadImage(_childImage!, 'child_images');
+          }
+
+          await FirebaseFirestore.instance
+              .collection('parent')
+              .doc(userId)
+              .set({
+            'childid': childId,
+            'childname': childname,
+            'childpicture': childImageUrl,
+            'userid': userId
+          });
+        } else if (role == 'therapist') {
+          String nationalProofUrl = "";
+
+          if (_nationalProofImage != null) {
+            nationalProofUrl =
+                await uploadImage(_nationalProofImage!, 'national_proofs');
+          }
+
+          await FirebaseFirestore.instance
+              .collection('therapist')
+              .doc(userId)
+              .set({
+            'nationalid': nationalid,
+            'nationalproof': nationalProofUrl,
+            'status': status,
+            'therapistid': userId,
+            'userid': userId
+          });
         }
 
-        await FirebaseFirestore.instance
-            .collection('parent')
-            .doc(userId)
-            .set({
-          'childid': childId,
-          'childname': childname,
-          'childpicture': childImageUrl,
-          'userid': userId
+        await FirebaseFirestore.instance.collection('user').doc(userId).set({
+          'email': email,
+          'password': password,
+          'role': role,
+          'userid': userId,
+          'username': username
         });
-      } else if (role == 'therapist') {
-        String nationalProofUrl = "";
 
-        if (_nationalProofImage != null) {
-          nationalProofUrl =
-              await uploadImage(_nationalProofImage!, 'national_proofs');
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+          "Registered Successfully",
+          style: TextStyle(fontSize: 20.0),
+        )));
+
+        // **Navigate based on Role**
+        if (role == 'parent') {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (context) => const Navigationpage()));
+        } else if (role == 'therapist') {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (context) => DoctorDashboard()));
         }
-
-        await FirebaseFirestore.instance
-            .collection('therapist')
-            .doc(userId)
-            .set({
-          'nationalid': nationalid,
-          'nationalproof': nationalProofUrl,
-          'status': status,
-          'therapistid': userId,
-          'userid': userId
-        });
-      }
-
-      await FirebaseFirestore.instance.collection('user').doc(userId).set({
-        'email': email,
-        'password': password,
-        'role': role,
-        'userid': userId,
-        'username': username
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text(
-        "Registered Successfully",
-        style: TextStyle(fontSize: 20.0),
-      )));
-
-      // **Navigate based on Role**
-      if (role == 'parent') {
-        Navigator.push(
-            context, MaterialPageRoute(builder: (context) => const Navigationpage()));
-      } else if (role == 'therapist') {
-        Navigator.push(
-            context, MaterialPageRoute(builder: (context) =>   DoctorDashboard()));
-      }
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'weak-password') {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            backgroundColor: Colors.orangeAccent,
-            content: Text(
-              "Password Provided is too Weak",
-              style: TextStyle(fontSize: 18.0),
-            )));
-      } else if (e.code == "email-already-in-use") {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            backgroundColor: Colors.orangeAccent,
-            content: Text(
-              "Account Already exists",
-              style: TextStyle(fontSize: 18.0),
-            )));
-      } else {
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'weak-password') {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              backgroundColor: Colors.orangeAccent,
+              content: Text(
+                "Password Provided is too Weak",
+                style: TextStyle(fontSize: 18.0),
+              )));
+        } else if (e.code == "email-already-in-use") {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              backgroundColor: Colors.orangeAccent,
+              content: Text(
+                "Account Already exists",
+                style: TextStyle(fontSize: 18.0),
+              )));
+        } else {
+          print("Error: ${e.toString()}");
+        }
+      } catch (e) {
         print("Error: ${e.toString()}");
       }
-    } catch (e) {
-      print("Error: ${e.toString()}");
     }
   }
-}
 
   @override
   Widget build(BuildContext context) {

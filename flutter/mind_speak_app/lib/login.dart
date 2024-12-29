@@ -1,13 +1,14 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:mind_speak_app/forgot_password.dart';
-import 'package:mind_speak_app/homepage.dart';
-import 'package:mind_speak_app/navigationpage.dart';
-import 'package:mind_speak_app/pages/doctor_dashboard.dart';
-import 'package:mind_speak_app/signup.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:crypto/crypto.dart'; // Import for hashing passwords
+import 'package:mind_speak_app/navigationpage.dart';
+import 'package:mind_speak_app/pages/doctor_dashboard.dart';
+import 'package:mind_speak_app/forgot_password.dart';
+import 'package:mind_speak_app/signup.dart';
 
 class LogIn extends StatefulWidget {
   const LogIn({super.key});
@@ -18,145 +19,88 @@ class LogIn extends StatefulWidget {
 
 class _LogInState extends State<LogIn> {
   String email = "", password = "";
-  bool isLoading = false; // For loading indicator
+  bool isLoading = false;
 
   TextEditingController mailcontroller = TextEditingController();
   TextEditingController passwordcontroller = TextEditingController();
 
   final _formkey = GlobalKey<FormState>();
 
-//   userLogin() async {
-//   if (!_formkey.currentState!.validate()) {
-//     // If the form is not valid, do not proceed.
-//     return;
-//   }
-
-//   setState(() {
-//     email = mailcontroller.text.trim(); // Ensure to trim inputs
-//     password = passwordcontroller.text.trim();
-//   });
-
-//   try {
-//     await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
-//     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-//       backgroundColor: Colors.green,
-//       content: Text(
-//         "Logged in Successfully",
-//         style: TextStyle(fontSize: 18.0),
-//       )
-//     ));
-//     Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const Navigationpage())); // Consider using pushReplacement to avoid back navigation to login screen.
-//   } on FirebaseAuthException catch (e) {
-//     String errorMessage = 'Username or password is Wrong';
-//     if (e.code == 'user-not-found') {
-//       errorMessage = "No User Found for that Email";
-//     } else if (e.code == 'wrong-password') {
-//       errorMessage = "Wrong Password Provided by User";
-//     } else if (e.code == 'invalid-email') {
-//       errorMessage = "Email address is invalid";
-//     }
-
-//     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-//       backgroundColor: Colors.orangeAccent,
-//       content: Text(
-//         errorMessage,
-//         style: const TextStyle(fontSize: 18.0),
-//       )
-//     ));
-//   } catch (e) {
-//     // Catch other exceptions that are not FirebaseAuthException
-//     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-//       backgroundColor: Colors.redAccent,
-//       content: Text(
-//         "Failed to log in",
-//         style: TextStyle(fontSize: 18.0),
-//       )
-//     ));
-//   }
-// }
+  // **Hashing Function**
+  String hashPassword(String password) {
+    final bytes = utf8.encode(password);
+    final hashed = sha256.convert(bytes);
+    return hashed.toString();
+  }
 
   Future<void> userLogin() async {
-    // Validate form inputs
     if (!_formkey.currentState!.validate()) return;
 
     setState(() {
-      isLoading = true; // Show loading indicator
+      isLoading = true;
     });
 
     try {
       // Trim input values
       email = mailcontroller.text.trim();
-      password = passwordcontroller.text.trim();
-
-      // Firebase authentication
-      UserCredential userCredential = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(email: email, password: password);
+      String enteredPassword = passwordcontroller.text.trim();
+      String hashedEnteredPassword =
+          hashPassword(enteredPassword); // Hash input password
 
       // Fetch user data from Firestore
-      User? user = userCredential.user;
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+      QuerySnapshot userSnapshot = await FirebaseFirestore.instance
           .collection('user')
-          .doc(user!.uid)
+          .where('email', isEqualTo: email)
           .get();
 
-      // Get role from Firestore
-      String role = userDoc['role']; // Fetch role from database
+      if (userSnapshot.docs.isEmpty) {
+        throw Exception("No user found with this email.");
+      }
 
-      // Navigate based on role
-      if (role == 'parent') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (context) => const Navigationpage()), // Parent screen
-        );
-      } else if (role == 'therapist') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (context) => DoctorDashboard()), // Therapist screen
-        );
+      // Retrieve user data
+      var userData = userSnapshot.docs.first.data() as Map<String, dynamic>;
+      String storedPassword =
+          userData['password']; // Hashed password from Firestore
+      String role = userData['role']; // User role
+
+      // Compare hashed passwords
+      if (hashedEnteredPassword == storedPassword) {
+        // Navigate based on role
+        if (role == 'parent') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const Navigationpage()),
+          );
+        } else if (role == 'therapist') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => DoctorDashboard()),
+          );
+        } else {
+          throw Exception("Unknown role detected.");
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          backgroundColor: Colors.green,
+          content: Text(
+            "Logged in Successfully",
+            style: TextStyle(fontSize: 18.0),
+          ),
+        ));
       } else {
-        throw Exception("Unknown role"); // Handle unknown roles
+        throw Exception("Incorrect password.");
       }
-
-      // Success message
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        backgroundColor: Colors.green,
-        content: Text(
-          "Logged in Successfully",
-          style: TextStyle(fontSize: 18.0),
-        ),
-      ));
-    } on FirebaseAuthException catch (e) {
-      // Firebase authentication errors
-      String errorMessage = 'Invalid credentials';
-      if (e.code == 'user-not-found') {
-        errorMessage = "No User Found for that Email";
-      } else if (e.code == 'wrong-password') {
-        errorMessage = "Wrong Password Provided by User";
-      } else if (e.code == 'invalid-email') {
-        errorMessage = "Invalid Email Address";
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        backgroundColor: Colors.orangeAccent,
-        content: Text(
-          errorMessage,
-          style: const TextStyle(fontSize: 18.0),
-        ),
-      ));
     } catch (e) {
-      // Other errors
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: Colors.redAccent,
         content: Text(
-          "Failed to log in",
-          style: TextStyle(fontSize: 18.0),
+          e.toString(),
+          style: const TextStyle(fontSize: 18.0),
         ),
       ));
     } finally {
       setState(() {
-        isLoading = false; // Hide loading indicator
+        isLoading = false;
       });
     }
   }
@@ -166,19 +110,17 @@ class _LogInState extends State<LogIn> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
-        // Added SingleChildScrollView
         child: Container(
           child: Column(
             children: [
               SizedBox(
-                  width: MediaQuery.of(context).size.width,
-                  child: Image.asset(
-                    "assets/car.PNG",
-                    fit: BoxFit.cover,
-                  )),
-              const SizedBox(
-                height: 30.0,
+                width: MediaQuery.of(context).size.width,
+                child: Image.asset(
+                  "assets/car.PNG",
+                  fit: BoxFit.cover,
+                ),
               ),
+              const SizedBox(height: 30.0),
               Padding(
                 padding: const EdgeInsets.only(left: 20.0, right: 20.0),
                 child: Form(
@@ -192,12 +134,8 @@ class _LogInState extends State<LogIn> {
                             color: const Color(0xFFedf0f8),
                             borderRadius: BorderRadius.circular(30)),
                         child: TextFormField(
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please Enter E-mail';
-                            }
-                            return null;
-                          },
+                          validator: (value) =>
+                              value!.isEmpty ? 'Please enter E-mail' : null,
                           controller: mailcontroller,
                           decoration: const InputDecoration(
                               border: InputBorder.none,
@@ -206,9 +144,7 @@ class _LogInState extends State<LogIn> {
                                   color: Color(0xFFb2b7bf), fontSize: 18.0)),
                         ),
                       ),
-                      const SizedBox(
-                        height: 30.0,
-                      ),
+                      const SizedBox(height: 30.0),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             vertical: 2.0, horizontal: 30.0),
@@ -217,12 +153,8 @@ class _LogInState extends State<LogIn> {
                             borderRadius: BorderRadius.circular(30)),
                         child: TextFormField(
                           controller: passwordcontroller,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please Enter Password';
-                            }
-                            return null;
-                          },
+                          validator: (value) =>
+                              value!.isEmpty ? 'Please enter Password' : null,
                           decoration: const InputDecoration(
                               border: InputBorder.none,
                               hintText: "Password",
@@ -231,55 +163,32 @@ class _LogInState extends State<LogIn> {
                           obscureText: true,
                         ),
                       ),
-                      const SizedBox(
-                        height: 30.0,
-                      ),
+                      const SizedBox(height: 30.0),
                       GestureDetector(
                         onTap: () {
                           if (_formkey.currentState!.validate()) {
-                            setState(() {
-                              email = mailcontroller.text;
-                              password = passwordcontroller.text;
-                            });
                             userLogin();
                           }
                         },
                         child: Container(
-                            width: MediaQuery.of(context).size.width,
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 13.0, horizontal: 30.0),
-                            decoration: BoxDecoration(
-                                color: const Color(0xFF273671),
-                                borderRadius: BorderRadius.circular(30)),
-                            child: const Center(
-                                child: Text(
+                          width: MediaQuery.of(context).size.width,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 13.0, horizontal: 30.0),
+                          decoration: BoxDecoration(
+                              color: const Color(0xFF273671),
+                              borderRadius: BorderRadius.circular(30)),
+                          child: const Center(
+                            child: Text(
                               "Sign In",
                               style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 22.0,
                                   fontWeight: FontWeight.w500),
-                            ))),
+                            ),
+                          ),
+                        ),
                       ),
-                      const SizedBox(
-                        height: 20.0,
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) =>
-                                      const ForgotPassword()));
-                        },
-                        child: const Text("Forgot Password?",
-                            style: TextStyle(
-                                color: Color(0xFF8c8e98),
-                                fontSize: 18.0,
-                                fontWeight: FontWeight.w500)),
-                      ),
-                      const SizedBox(
-                        height: 40.0,
-                      ),
+                      const SizedBox(height: 20.0),
                       const Text(
                         "or LogIn with",
                         style: TextStyle(
@@ -287,9 +196,7 @@ class _LogInState extends State<LogIn> {
                             fontSize: 22.0,
                             fontWeight: FontWeight.w500),
                       ),
-                      const SizedBox(
-                        height: 30.0,
-                      ),
+                      const SizedBox(height: 30.0),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -310,9 +217,7 @@ class _LogInState extends State<LogIn> {
                           ),
                         ],
                       ),
-                      const SizedBox(
-                        height: 40.0,
-                      ),
+                      const SizedBox(height: 40.0),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -340,7 +245,7 @@ class _LogInState extends State<LogIn> {
                             ),
                           ),
                         ],
-                      )
+                      ),
                     ],
                   ),
                 ),

@@ -1,11 +1,10 @@
 // ignore_for_file: use_build_context_synchronously
-
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:crypto/crypto.dart'; // Import for hashing passwords
-import 'package:mind_speak_app/pages/forgot_password.dart';
-import 'package:mind_speak_app/components/navigationpage.dart';
+import 'package:mind_speak_app/forgot_password.dart';
+import 'package:mind_speak_app/navigationpage.dart';
 import 'package:mind_speak_app/pages/DashBoard.dart';
 import 'package:mind_speak_app/pages/doctor_dashboard.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
@@ -55,37 +54,25 @@ class _LogInState extends State<LogIn> {
           .where('email', isEqualTo: email)
           .get();
 
-      if (userSnapshot.docs.isEmpty) {
-        throw Exception("No user found with this email.");
+      // Get role from Firestore
+      String role = userDoc['role']; // Fetch role from database
+
+      // Navigate based on role
+      if (role == 'parent') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+              builder: (context) => const Navigationpage()), // Parent screen
+        );
+      } else if (role == 'therapist') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+              builder: (context) => DoctorDashboard()), // Therapist screen
+        );
+      } else {
+        throw Exception("Unknown role"); // Handle unknown roles
       }
-
-      // Retrieve user data
-      var userData = userSnapshot.docs.first.data() as Map<String, dynamic>;
-      String storedPassword =
-          userData['password']; // Hashed password from Firestore
-      String role = userData['role']; // User role
-
-      // Compare hashed passwords
-      if (hashedEnteredPassword == storedPassword) {
-        // Navigate based on role
-        if (role == 'parent') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const Navigationpage()),
-          );
-        } else if (role == 'therapist') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => DoctorDashboard()),
-          );
-        } else if (role == 'admin') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => DashBoard()),
-          );
-        } else {
-          throw Exception("Unknown role detected.");
-        }
 
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           backgroundColor: Colors.green,
@@ -114,7 +101,8 @@ class _LogInState extends State<LogIn> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
+        final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
         actions: [

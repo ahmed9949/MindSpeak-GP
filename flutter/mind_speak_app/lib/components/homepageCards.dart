@@ -31,23 +31,23 @@ class BiggerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return  Container(
-              width: double.infinity, // Take full width
-              height: 200, // Bigger height
-              decoration: BoxDecoration(
-                color: Colors.black,
-                borderRadius: BorderRadius.circular(25),
-              ),
-              child: const Center(
-                child: Text(
-                  'Big Card',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24, // Bigger font size
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            );
+    return Container(
+      width: double.infinity, // Take full width
+      height: 200, // Bigger height
+      decoration: BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(25),
+      ),
+      child: const Center(
+        child: Text(
+          'Big Card',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 24, // Bigger font size
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
   }
 }

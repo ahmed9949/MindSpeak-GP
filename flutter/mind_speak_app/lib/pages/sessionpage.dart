@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mind_speak_app/Home.dart';
-import 'package:mind_speak_app/choose_avatar_page.dart';
+import 'package:mind_speak_app/pages/choose_avatar_page.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
-import 'package:mind_speak_app/start_session.dart';
+import 'package:mind_speak_app/pages/start_session.dart';
 import 'package:provider/provider.dart';
 
 class SessionPage extends StatelessWidget {
@@ -10,14 +9,16 @@ class SessionPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-            final themeProvider = Provider.of<ThemeProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Session Page'),
         actions: [
           IconButton(
-            icon: Icon(themeProvider.isDarkMode ? Icons.wb_sunny : Icons.nightlight_round),
+            icon: Icon(themeProvider.isDarkMode
+                ? Icons.wb_sunny
+                : Icons.nightlight_round),
             onPressed: () {
               themeProvider.toggleTheme(); // Toggle the theme
             },

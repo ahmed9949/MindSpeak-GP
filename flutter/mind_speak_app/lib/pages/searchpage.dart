@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
@@ -11,10 +10,6 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
-  // List of names
-final db=FirebaseFirestore.instance;
-
-
   final List<String> names = [
     'osama',
     'fares',
@@ -23,28 +18,29 @@ final db=FirebaseFirestore.instance;
     'ahmed osama',
     'ahmed hossam',
     'mohammed hossam',
+    // 'manga',
+    // 'bate5',
+    // 'frawl2',
+    // 'fifa',
   ];
 
-   List<String> NameAfterFilter = [];
+  List<String> NameAfterFilter = [];
 
-  // Search controller
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    // Initially show all names
     NameAfterFilter = names;
   }
 
-   void _filterNames(String query) {
+  void _filterNames(String query) {
     setState(() {
       if (query.isEmpty) {
-        NameAfterFilter = names;  
+        NameAfterFilter = names;
       } else {
         NameAfterFilter = names
-            .where((name) =>
-                name.toLowerCase().contains(query.toLowerCase()))  
+            .where((name) => name.toLowerCase().contains(query.toLowerCase()))
             .toList();
       }
     });
@@ -52,16 +48,18 @@ final db=FirebaseFirestore.instance;
 
   @override
   Widget build(BuildContext context) {
-            final themeProvider = Provider.of<ThemeProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Search'),
-          actions: [
+        title: const Text('Search for your dr name'),
+        actions: [
           IconButton(
-            icon: Icon(themeProvider.isDarkMode ? Icons.wb_sunny : Icons.nightlight_round),
+            icon: Icon(themeProvider.isDarkMode
+                ? Icons.wb_sunny
+                : Icons.nightlight_round),
             onPressed: () {
-              themeProvider.toggleTheme(); // Toggle the theme
+              themeProvider.toggleTheme();
             },
           ),
         ],
@@ -70,7 +68,6 @@ final db=FirebaseFirestore.instance;
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Search Text Field
             TextField(
               controller: _searchController,
               decoration: InputDecoration(
@@ -81,14 +78,10 @@ final db=FirebaseFirestore.instance;
                 ),
               ),
               onChanged: (query) {
-                _filterNames(query); 
-                // Filter names as user types
+                _filterNames(query);
               },
             ),
-
             const SizedBox(height: 20),
-
-            // Display Filtered Names
             Expanded(
               child: ListView.builder(
                 itemCount: NameAfterFilter.length,
@@ -101,7 +94,7 @@ final db=FirebaseFirestore.instance;
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      NameAfterFilter[index], // Display filtered name
+                      NameAfterFilter[index],
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -114,8 +107,6 @@ final db=FirebaseFirestore.instance;
           ],
         ),
       ),
-
-  
     );
   }
 }

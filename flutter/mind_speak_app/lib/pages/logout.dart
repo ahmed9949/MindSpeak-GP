@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:mind_speak_app/login.dart';
+import 'package:mind_speak_app/pages/login.dart';
  
 Future<void> logout(BuildContext context) async {
   try {

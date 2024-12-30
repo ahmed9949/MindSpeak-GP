@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:mind_speak_app/logout.dart';
-import 'package:mind_speak_app/pages/child_reports.dart';
+import 'package:mind_speak_app/components/drawer.dart';
+ import 'package:mind_speak_app/pages/child_reports.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -79,7 +79,7 @@ class DoctorDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-            final themeProvider = Provider.of<ThemeProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
     final int numberOfPatients = children.length;
 
@@ -87,7 +87,9 @@ class DoctorDashboard extends StatelessWidget {
       appBar: AppBar(
         actions: [
           IconButton(
-            icon: Icon(themeProvider.isDarkMode ? Icons.wb_sunny : Icons.nightlight_round),
+            icon: Icon(themeProvider.isDarkMode
+                ? Icons.wb_sunny
+                : Icons.nightlight_round),
             onPressed: () {
               themeProvider.toggleTheme(); // Toggle the theme
             },
@@ -114,55 +116,56 @@ class DoctorDashboard extends StatelessWidget {
         centerTitle: true,
         elevation: 0,
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.teal, // Drawer Header Background
-              ),
-              child: Text(
-                'Menu',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                ),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home), // Home Icon
-              title: const Text('Home'),
-              onTap: () {
-                Navigator.pop(context); // Close drawer
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.person), // Profile Icon
-              title: const Text('Profile'),
-              onTap: () {
-                // TODO: Navigate to Profile Page
-                Navigator.pop(context); // Close drawer
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings), // Settings Icon
-              title: const Text('Settings'),
-              onTap: () {
-                // TODO: Navigate to Settings Page
-                Navigator.pop(context); // Close drawer
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Logout'),
-              onTap: () {
-                logout(context); // Call the logout function
-              },
-            ),
-          ],
-        ),
-      ),
+      // drawer: Drawer(
+      //   child: ListView(
+      //     padding: EdgeInsets.zero,
+      //     children: [
+      //       const DrawerHeader(
+      //         decoration: BoxDecoration(
+      //           color: Colors.teal, // Drawer Header Background
+      //         ),
+      //         child: Text(
+      //           'Menu',
+      //           style: TextStyle(
+      //             color: Colors.white,
+      //             fontSize: 24,
+      //           ),
+      //         ),
+      //       ),
+      //       ListTile(
+      //         leading: const Icon(Icons.home), // Home Icon
+      //         title: const Text('Home'),
+      //         onTap: () {
+      //           Navigator.pop(context); // Close drawer
+      //         },
+      //       ),
+      //       ListTile(
+      //         leading: const Icon(Icons.person), // Profile Icon
+      //         title: const Text('Profile'),
+      //         onTap: () {
+      //           // TODO: Navigate to Profile Page
+      //           Navigator.pop(context); // Close drawer
+      //         },
+      //       ),
+      //       ListTile(
+      //         leading: const Icon(Icons.settings), // Settings Icon
+      //         title: const Text('Settings'),
+      //         onTap: () {
+      //           // TODO: Navigate to Settings Page
+      //           Navigator.pop(context); // Close drawer
+      //         },
+      //       ),
+      //       ListTile(
+      //         leading: const Icon(Icons.logout),
+      //         title: const Text('Logout'),
+      //         onTap: () {
+      //           logout(context); // Call the logout function
+      //         },
+      //       ),
+      //     ],
+      //   ),
+      // ),
+      drawer: NavigationDrawe(),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
-import 'package:mind_speak_app/start_session.dart';
+import 'package:mind_speak_app/pages/start_session.dart';
 import 'package:provider/provider.dart';
 
 class ChooseAvatarPage extends StatefulWidget {
@@ -11,7 +11,6 @@ class ChooseAvatarPage extends StatefulWidget {
 }
 
 class _ChooseAvatarPageState extends State<ChooseAvatarPage> {
-  // List of avatar image paths
   final List<String> avatars = [
     'assets/images/superheros/american-cartoon-celebrating-independence-day_1012-159.avif',
     'assets/images/superheros/cute-astronaut-super-hero-cartoon-vector-icon-illustration-science-technology-icon_138676-1997.avif',
@@ -20,22 +19,23 @@ class _ChooseAvatarPageState extends State<ChooseAvatarPage> {
     'assets/images/superheros/hand-drawing-little-angry-hulk-vector-illustration_969863-196047.avif',
   ];
 
-  // Selected Avatar
   String selectedAvatar =
-      'assets/images/superheros/hand-drawing-little-angry-hulk-vector-illustration_969863-196047.avif'; // Default avatar
+      'assets/images/superheros/hand-drawing-little-angry-hulk-vector-illustration_969863-196047.avif';
 
   @override
   Widget build(BuildContext context) {
-            final themeProvider = Provider.of<ThemeProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Choose Your Avatar'),
-         actions: [
+        actions: [
           IconButton(
-            icon: Icon(themeProvider.isDarkMode ? Icons.wb_sunny : Icons.nightlight_round),
+            icon: Icon(themeProvider.isDarkMode
+                ? Icons.wb_sunny
+                : Icons.nightlight_round),
             onPressed: () {
-              themeProvider.toggleTheme(); // Toggle the theme
+              themeProvider.toggleTheme();
             },
           ),
         ],
@@ -43,29 +43,25 @@ class _ChooseAvatarPageState extends State<ChooseAvatarPage> {
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Display Selected Avatar in a Bigger Card
           Container(
-            width: 300, // Wider card
-            height: 350, // Taller card
+            width: 300,
+            height: 350,
             decoration: BoxDecoration(
-              color: const Color(
-                  0xFFFFF5E1), // Child-friendly pastel yellow background
+              color: const Color(0xFFFFF5E1),
               borderRadius: BorderRadius.circular(25),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Larger Avatar Image
                 CircleAvatar(
-                  radius: 100, // Increased radius for larger size
-                  backgroundImage:
-                      AssetImage(selectedAvatar), // Display selected avatar
+                  radius: 100,
+                  backgroundImage: AssetImage(selectedAvatar),
                 ),
                 const SizedBox(height: 10),
                 const Text(
                   'Your Selected Avatar',
                   style: TextStyle(
-                    color: Colors.black, // Text color for readability
+                    color: Colors.black,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -76,11 +72,10 @@ class _ChooseAvatarPageState extends State<ChooseAvatarPage> {
 
           const SizedBox(height: 20),
 
-          // Horizontal Scrollable Slider for Avatars
           SizedBox(
-            height: 120, // Height for the slider
+            height: 120,
             child: ListView.builder(
-              scrollDirection: Axis.horizontal, // Horizontal scroll
+              scrollDirection: Axis.horizontal,
               itemCount: avatars.length,
               itemBuilder: (context, index) {
                 final avatar = avatars[index];
@@ -88,7 +83,7 @@ class _ChooseAvatarPageState extends State<ChooseAvatarPage> {
                 return GestureDetector(
                   onTap: () {
                     setState(() {
-                      selectedAvatar = avatar; // Update selected avatar
+                      selectedAvatar = avatar;
                     });
                   },
                   child: Container(
@@ -100,7 +95,7 @@ class _ChooseAvatarPageState extends State<ChooseAvatarPage> {
                       borderRadius: BorderRadius.circular(15),
                       border: Border.all(
                         color: selectedAvatar == avatar
-                            ? Colors.blue // Highlight selected card
+                            ? Colors.blue
                             : Colors.transparent,
                         width: 3,
                       ),

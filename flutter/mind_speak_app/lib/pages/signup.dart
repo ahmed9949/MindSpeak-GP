@@ -29,7 +29,7 @@ class _SignUpState extends State<SignUp> {
       childpicture = "",
       nationalid = "",
       nationalproof = "";
-  bool status = true;
+  bool status = false;
   File? _childImage;
   File? _nationalProofImage;
 
@@ -154,10 +154,15 @@ class _SignUpState extends State<SignUp> {
           Navigator.push(context,
               MaterialPageRoute(builder: (context) => const Navigationpage()));
         } else if (role == 'therapist') {
-          Navigator.push(context,
-              MaterialPageRoute(builder: (context) => DoctorDashboard()));
-        }
-        else if (role == 'admin') {
+          Navigator.push(
+              context, MaterialPageRoute(builder: (context) => const LogIn()));
+
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                "Your account is pending approval. Please wait until the admin approves your request."),
+            backgroundColor: Colors.orangeAccent,
+          ));
+        } else if (role == 'admin') {
           Navigator.push(context,
               MaterialPageRoute(builder: (context) => const DashBoard()));
         }
@@ -193,7 +198,9 @@ class _SignUpState extends State<SignUp> {
         title: const Text("Sign Up"),
         actions: [
           IconButton(
-            icon: Icon(themeProvider.isDarkMode ? Icons.wb_sunny : Icons.nightlight_round),
+            icon: Icon(themeProvider.isDarkMode
+                ? Icons.wb_sunny
+                : Icons.nightlight_round),
             onPressed: () {
               themeProvider.toggleTheme(); // Toggle the theme
             },
@@ -254,7 +261,7 @@ class _SignUpState extends State<SignUp> {
                 ),
 
                 // if (role == 'admin') ...[
-                //   const SizedBox(height: 20.0),                 
+                //   const SizedBox(height: 20.0),
                 // ],
                 if (role == 'parent') ...[
                   const SizedBox(height: 20.0),

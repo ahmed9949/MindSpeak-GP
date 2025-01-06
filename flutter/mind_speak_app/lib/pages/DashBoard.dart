@@ -33,7 +33,7 @@ class _DashBoardState extends State<DashBoard> {
   bool showTherapistCount = false;
 
   final DatabaseMethods databaseMethods = DatabaseMethods();
-  List<Map<String, String>> users = [];
+  List<Map<String, dynamic>> therapists = [];
 
   int currentPage = 0;
   int itemsPerPage = 5;
@@ -42,25 +42,118 @@ class _DashBoardState extends State<DashBoard> {
   void initState() {
     super.initState();
     fetchCounts();
+    fetchTherapistRequests();
   }
 
   Future<void> fetchCounts() async {
     try {
       int users = await databaseMethods.getUsersCount();
-      int therapists = await databaseMethods.getTherapistsCount();
+      int therapistsCount = await databaseMethods.getTherapistsCount();
       setState(() {
         usersCount = users;
-        therapistCount = therapists;
+        therapistCount = therapistsCount;
       });
     } catch (e) {
       print('Error fetching counts: $e');
     }
   }
 
+  Future<void> fetchTherapistRequests() async {
+    try {
+      QuerySnapshot therapistSnapshot = await FirebaseFirestore.instance
+          .collection('therapist')
+          .where('status', isEqualTo: false)
+          .get();
+
+      List<Map<String, dynamic>> tempTherapists = [];
+
+      for (var therapistDoc in therapistSnapshot.docs) {
+        var therapistData = therapistDoc.data() as Map<String, dynamic>;
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('user')
+            .doc(therapistData['userid'])
+            .get();
+
+        if (userDoc.exists) {
+          var userData = userDoc.data() as Map<String, dynamic>;
+
+          tempTherapists.add({
+            'username': userData['username'] ?? 'N/A',
+            'email': userData['email'] ?? 'N/A',
+            'nationalid': therapistData['nationalid'] ?? 'N/A',
+            'userid': therapistDoc.id
+          });
+        }
+      }
+
+      setState(() {
+        therapists = tempTherapists;
+      });
+    } catch (e) {
+      print('Error fetching therapist requests: $e');
+    }
+  }
+
+  Future<void> approveTherapist(String therapistId) async {
+    try {
+      // Update status in therapist collection
+      await FirebaseFirestore.instance
+          .collection('therapist')
+          .doc(therapistId)
+          .update({'status': true});
+
+      // Update status in user collection
+      await FirebaseFirestore.instance
+          .collection('user')
+          .doc(therapistId)
+          .update({'status': true});
+
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Therapist approved successfully!'),
+        backgroundColor: Colors.green,
+      ));
+
+      setState(() {
+        therapists
+            .removeWhere((therapist) => therapist['userid'] == therapistId);
+      });
+    } catch (e) {
+      print('Error approving therapist: $e');
+    }
+  }
+
+  Future<void> rejectTherapist(String therapistId) async {
+    try {
+      // Delete therapist document
+      await FirebaseFirestore.instance
+          .collection('therapist')
+          .doc(therapistId)
+          .delete();
+
+      // Delete associated user document
+      await FirebaseFirestore.instance
+          .collection('user')
+          .doc(therapistId)
+          .delete();
+
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Therapist rejected and removed!'),
+        backgroundColor: Colors.red,
+      ));
+
+      setState(() {
+        therapists
+            .removeWhere((therapist) => therapist['userid'] == therapistId);
+      });
+    } catch (e) {
+      print('Error rejecting therapist: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-    int totalPages = (users.length / itemsPerPage).ceil();
+    int totalPages = (therapists.length / itemsPerPage).ceil();
 
     return Scaffold(
       appBar: AppBar(
@@ -170,69 +263,35 @@ class _DashBoardState extends State<DashBoard> {
                   columns: const [
                     DataColumn(label: Text('Name')),
                     DataColumn(label: Text('Email')),
-                    DataColumn(label: Text('Mobile')),
                     DataColumn(label: Text('National ID')),
                     DataColumn(label: Text('Actions')),
                   ],
-                  rows: users
+                  rows: therapists
                       .skip(currentPage * itemsPerPage)
                       .take(itemsPerPage)
-                      .map((user) => DataRow(cells: [
-                            DataCell(Text(user['name']!)),
-                            DataCell(Text(user['email']!)),
-                            DataCell(Text(user['phone']!)),
-                            DataCell(Text(user['nationalId']!)),
+                      .map((therapist) => DataRow(cells: [
+                            DataCell(Text(therapist['username'])),
+                            DataCell(Text(therapist['email'])),
+                            DataCell(Text(therapist['nationalid'])),
                             DataCell(Row(
                               children: [
                                 IconButton(
                                   icon: const Icon(Icons.check,
                                       color: Colors.green),
-                                  onPressed: () {
-                                    setState(() {
-                                      users.remove(user);
-                                    });
-                                  },
+                                  onPressed: () =>
+                                      approveTherapist(therapist['userid']),
                                 ),
                                 IconButton(
                                   icon: const Icon(Icons.close,
                                       color: Colors.red),
-                                  onPressed: () {
-                                    setState(() {
-                                      users.remove(user);
-                                    });
-                                  },
+                                  onPressed: () =>
+                                      rejectTherapist(therapist['userid']),
                                 ),
                               ],
                             ))
                           ]))
                       .toList(),
                 ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: currentPage > 0
-                        ? () {
-                            setState(() {
-                              currentPage--;
-                            });
-                          }
-                        : null,
-                  ),
-                  Text('${currentPage + 1} / $totalPages'),
-                  IconButton(
-                    icon: const Icon(Icons.arrow_forward),
-                    onPressed: currentPage < totalPages - 1
-                        ? () {
-                            setState(() {
-                              currentPage++;
-                            });
-                          }
-                        : null,
-                  ),
-                ],
               ),
             ],
           ),

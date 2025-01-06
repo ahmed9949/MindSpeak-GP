@@ -43,13 +43,10 @@ class _LogInState extends State<LogIn> {
     });
 
     try {
-      // Trim input values
       email = mailcontroller.text.trim();
       String enteredPassword = passwordcontroller.text.trim();
-      String hashedEnteredPassword =
-          hashPassword(enteredPassword); // Hash input password
+      String hashedEnteredPassword = hashPassword(enteredPassword);
 
-      // Fetch user data from Firestore
       QuerySnapshot userSnapshot = await FirebaseFirestore.instance
           .collection('user')
           .where('email', isEqualTo: email)
@@ -59,25 +56,26 @@ class _LogInState extends State<LogIn> {
         throw Exception("No user found with this email.");
       }
 
-      // Retrieve user data
       var userData = userSnapshot.docs.first.data() as Map<String, dynamic>;
-      String storedPassword =
-          userData['password']; // Hashed password from Firestore
-      String role = userData['role']; // User role
+      String storedPassword = userData['password'];
+      String role = userData['role'];
+      bool isApproved = userData['status'] ?? false;
 
-      // Compare hashed passwords
       if (hashedEnteredPassword == storedPassword) {
-        // Navigate based on role
         if (role == 'parent') {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const Navigationpage()),
           );
         } else if (role == 'therapist') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => DoctorDashboard()),
-          );
+          if (isApproved) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => DoctorDashboard()),
+            );
+          } else {
+            throw Exception("Your account is not yet approved by the admin.");
+          }
         } else if (role == 'admin') {
           Navigator.pushReplacement(
             context,
@@ -223,17 +221,7 @@ class _LogInState extends State<LogIn> {
                                 fontSize: 18.0,
                                 fontWeight: FontWeight.w500)),
                       ),
-                      const SizedBox(
-                        height: 40.0,
-                      ),
-                      const Text(
-                        "or LogIn with",
-                        style: TextStyle(
-                            color: Color(0xFF273671),
-                            fontSize: 22.0,
-                            fontWeight: FontWeight.w500),
-                      ),
-                      const SizedBox(height: 30.0),
+                      const SizedBox(height: 40.0),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [

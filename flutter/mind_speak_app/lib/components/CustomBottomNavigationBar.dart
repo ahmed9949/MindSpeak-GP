@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:mind_speak_app/login.dart';
+
 import 'package:mind_speak_app/pages/DashBoard.dart';
 import 'package:mind_speak_app/pages/ViewDoctorPage.dart';
+import 'package:mind_speak_app/pages/login.dart';
 
 class CustomBottomNavigationBar extends StatelessWidget {
   final int currentIndex;

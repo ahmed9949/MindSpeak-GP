@@ -28,7 +28,7 @@ class ViewDoctorsPage extends StatelessWidget {
             ? Colors.black
             : Colors.lightBlue, // Custom color for this screen
         title: const Text(
-          "View Doctors",
+          "View Therapists",
           style: TextStyle(color: Colors.white),
         ),
       ),

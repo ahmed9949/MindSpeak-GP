@@ -24,11 +24,10 @@ class CustomBottomNavigationBar extends StatelessWidget {
         MaterialPageRoute(builder: (context) => const ViewDoctorsPage()),
       );
     } else if (index == 2) {
-    
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const LogIn()),
-        (route) => false, 
+        (route) => false,
       );
     }
   }
@@ -47,7 +46,7 @@ class CustomBottomNavigationBar extends StatelessWidget {
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.person, color: Colors.white),
-          label: "View Doctors",
+          label: "View Therapist",
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.logout, color: Colors.white),

@@ -133,22 +133,30 @@ class _ViewDoctorsState extends State<ViewDoctors> {
   Widget build(BuildContext context) {
     return _isLoading
         ? const Center(child: CircularProgressIndicator())
-        : Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: Column(
-              children: [
-                const SizedBox(height: 20),
-                TextField(
-                  onChanged: (value) => _runFilter(value),
-                  decoration: const InputDecoration(
-                    labelText: 'Search',
-                    suffixIcon: Icon(Icons.search),
+        : Scaffold(
+            resizeToAvoidBottomInset:
+                true, // Adjusts layout when the keyboard is open
+            body: SingleChildScrollView(
+              // Ensures the content is scrollable to prevent overflow
+              padding: const EdgeInsets.all(10.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 20),
+                  TextField(
+                    onChanged: (value) => _runFilter(value),
+                    decoration: const InputDecoration(
+                      labelText: 'Search',
+                      suffixIcon: Icon(Icons.search),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                Expanded(
-                  child: _foundTherapist.isNotEmpty
+                  const SizedBox(height: 20),
+                  _foundTherapist.isNotEmpty
                       ? ListView.builder(
+                          shrinkWrap:
+                              true, // Ensures the ListView only takes necessary space
+                          physics:
+                              const NeverScrollableScrollPhysics(), // Disables ListView's scroll to let SingleChildScrollView handle it
                           itemCount: _foundTherapist.length,
                           itemBuilder: (context, index) => Card(
                             key: ValueKey(_foundTherapist[index]["id"]),
@@ -187,8 +195,8 @@ class _ViewDoctorsState extends State<ViewDoctors> {
                             style: TextStyle(fontSize: 20),
                           ),
                         ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
   }

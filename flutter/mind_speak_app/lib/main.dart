@@ -4,6 +4,7 @@ import 'package:mind_speak_app/pages/login.dart';
 import 'package:mind_speak_app/pages/splashscreen.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
+
 // ahmed test
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,9 +24,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: Provider.of<ThemeProvider>(context).isDarkMode
-          ? ThemeData.dark()
-          : ThemeData.light(),
+
       home: const SplashScreen(), // SplashScreen as the initial screen
     );
   }
@@ -55,18 +54,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     return Scaffold(
-      appBar: AppBar(
-        actions: [
-          IconButton(
-            icon: Icon(themeProvider.isDarkMode
-                ? Icons.wb_sunny
-                : Icons.nightlight_round),
-            onPressed: () {
-              themeProvider.toggleTheme(); // Toggle the theme
-            },
-          ),
-        ],
-      ),
+   
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(

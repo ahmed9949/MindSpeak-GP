@@ -24,11 +24,8 @@ class SignUp extends StatefulWidget {
 
 class _SignUpState extends State<SignUp> {
   String email = "", password = "", username = "", role = "parent";
-  String childid = "",
-      childname = "",
-      childpicture = "",
-      nationalid = "",
-      nationalproof = "";
+  String childname = "", nationalid = "", childInterest = "";
+  int childAge = 0;
   bool status = false;
   File? _childImage;
   File? _nationalProofImage;
@@ -37,6 +34,8 @@ class _SignUpState extends State<SignUp> {
   TextEditingController emailcontroller = TextEditingController();
   TextEditingController passwordcontroller = TextEditingController();
   TextEditingController childNameController = TextEditingController();
+  TextEditingController childAgeController = TextEditingController();
+  TextEditingController childInterestController = TextEditingController();
   TextEditingController nationalIdController = TextEditingController();
 
   final _formkey = GlobalKey<FormState>();
@@ -100,6 +99,9 @@ class _SignUpState extends State<SignUp> {
         if (role == 'parent') {
           String childImageUrl = "";
           String childId = uuid.v4();
+          childname = childNameController.text.trim();
+          childAge = int.parse(childAgeController.text.trim());
+          childInterest = childInterestController.text.trim();
 
           if (_childImage != null) {
             childImageUrl =
@@ -107,13 +109,19 @@ class _SignUpState extends State<SignUp> {
           }
 
           await FirebaseFirestore.instance
-              .collection('parent')
-              .doc(userId)
+              .collection('child')
+              .doc(childId)
               .set({
-            'childid': childId,
-            'childname': childname,
-            'childpicture': childImageUrl,
-            'userid': userId
+            'childId': childId,
+            'name': childname,
+            'age': childAge,
+            'childInterest': childInterest,
+            'childPhoto': childImageUrl,
+            'userId': userId,
+            'therapistId':
+                '', // hena el therpist id haykoon fady la8yet may3mel keda fel home el child ya assign dr
+            'assigned':
+                false, // flag false la8yet maykoon ma3h dr yakoon ba true
           });
         } else if (role == 'therapist') {
           String nationalProofUrl = "";
@@ -273,6 +281,35 @@ class _SignUpState extends State<SignUp> {
                             borderRadius: BorderRadius.circular(30))),
                     validator: (value) =>
                         value!.isEmpty ? 'Enter Child Name' : null,
+                  ),
+                  const SizedBox(height: 20.0),
+                  TextFormField(
+                    controller: childAgeController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                        labelText: "Child Age",
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(30))),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Enter Child Age';
+                      }
+                      int? age = int.tryParse(value);
+                      if (age == null || age < 3 || age > 12) {
+                        return 'Age must be between 3 and 12';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20.0),
+                  TextFormField(
+                    controller: childInterestController,
+                    decoration: InputDecoration(
+                        labelText: "Child Interest",
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(30))),
+                    validator: (value) =>
+                        value!.isEmpty ? 'Enter Child Interest' : null,
                   ),
                   const SizedBox(height: 20.0),
                   const Text("Child Image"),

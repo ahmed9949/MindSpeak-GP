@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -62,6 +63,32 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> addChild(Map<String, dynamic> childData) async {
+    try {
+      String childId = const Uuid().v4(); // Generate unique child ID
+      await FirebaseFirestore.instance.collection('child').doc(childId).set({
+        ...childData,
+        'childId': childId,
+        'userId': parentId,
+        'assigned': false, // Default assigned status is false
+        'therapistId': '', // No therapist assigned initially
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Child added successfully!'),
+        backgroundColor: Colors.green,
+      ));
+
+      fetchParentAndChildData(); // Refresh data
+    } catch (e) {
+      print('Error adding child: $e');
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Error adding child'),
+        backgroundColor: Colors.red,
+      ));
+    }
+  }
+
   Future<void> updateChild(
       String childId, Map<String, dynamic> updatedData) async {
     try {
@@ -112,6 +139,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: const Text('Profile Page'),
         actions: [
@@ -203,6 +231,71 @@ class _ProfilePageState extends State<ProfilePage> {
                 ],
               ),
             ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddChildDialog,
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  void _showAddChildDialog() {
+    TextEditingController nameController = TextEditingController();
+    TextEditingController ageController = TextEditingController();
+    TextEditingController interestController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Add Child'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Name'),
+                ),
+                TextField(
+                  controller: ageController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Age'),
+                ),
+                TextField(
+                  controller: interestController,
+                  decoration: const InputDecoration(labelText: 'Interest'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                int age = int.tryParse(ageController.text) ?? -1;
+                if (age < 3 || age > 12) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Age must be between 3 and 12'),
+                    backgroundColor: Colors.red,
+                  ));
+                  return;
+                }
+                addChild({
+                  'name': nameController.text.trim(),
+                  'age': age,
+                  'childInterest': interestController.text.trim(),
+                  'childPhoto': '', // Default empty photo
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -219,23 +312,25 @@ class _ProfilePageState extends State<ProfilePage> {
       builder: (context) {
         return AlertDialog(
           title: const Text('Update Child'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Name'),
-              ),
-              TextField(
-                controller: ageController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Age'),
-              ),
-              TextField(
-                controller: interestController,
-                decoration: const InputDecoration(labelText: 'Interest'),
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Name'),
+                ),
+                TextField(
+                  controller: ageController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Age'),
+                ),
+                TextField(
+                  controller: interestController,
+                  decoration: const InputDecoration(labelText: 'Interest'),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(

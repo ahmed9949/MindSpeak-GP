@@ -153,8 +153,7 @@ class _DashBoardState extends State<DashBoard> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-    int totalPages = (therapists.length / itemsPerPage).ceil();
-
+ 
     return Scaffold(
       appBar: AppBar(
         actions: [

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:mind_speak_app/pages/login.dart';
-import 'package:mind_speak_app/pages/splashscreen.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -24,7 +23,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-
+      theme: Provider.of<ThemeProvider>(context).isDarkMode
+          ? ThemeData.dark()
+          : ThemeData.light(),
       home: const SplashScreen(), // SplashScreen as the initial screen
     );
   }
@@ -52,9 +53,19 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    return Scaffold(
-   
+     return Scaffold(
+      // appBar: AppBar(
+      //   actions: [
+      //     IconButton(
+      //       icon: Icon(themeProvider.isDarkMode
+      //           ? Icons.wb_sunny
+      //           : Icons.nightlight_round),
+      //       onPressed: () {
+      //         themeProvider.toggleTheme(); // Toggle the theme
+      //       },
+      //     ),
+      //   ],
+      // ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(

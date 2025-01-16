@@ -1,3 +1,4 @@
 {
-  "cmake.sourceDirectory": "D:/github/MindSpeak-GP/flutter/mind_speak_app/windows/runner"
+  "cmake.sourceDirectory": "D:/github/MindSpeak-GP/flutter/mind_speak_app/windows/runner",
+  "java.configuration.updateBuildConfiguration": "interactive"
 }

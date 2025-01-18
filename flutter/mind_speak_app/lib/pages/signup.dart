@@ -11,6 +11,7 @@ import 'package:mind_speak_app/pages/login.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import 'package:mind_speak_app/providers/theme_provider.dart';
+import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:path_provider/path_provider.dart';
 
 class SignUp extends StatefulWidget {
@@ -23,6 +24,7 @@ class SignUp extends StatefulWidget {
 class _SignUpState extends State<SignUp> {
   String email = "", password = "", username = "", role = "parent";
   String childname = "", nationalid = "", childInterest = "";
+  String bio = "";
   int childAge = 0;
   bool status = false;
   File? _childImage;
@@ -35,6 +37,7 @@ class _SignUpState extends State<SignUp> {
   TextEditingController childAgeController = TextEditingController();
   TextEditingController childInterestController = TextEditingController();
   TextEditingController nationalIdController = TextEditingController();
+  TextEditingController bioController = TextEditingController();
 
   final _formkey = GlobalKey<FormState>();
   final ImagePicker _picker = ImagePicker();
@@ -87,6 +90,7 @@ class _SignUpState extends State<SignUp> {
         password = hashPassword(passwordcontroller.text.trim());
         username = usernamecontroller.text.trim();
         childname = childNameController.text.trim();
+        bio = bioController.text.trim();
         nationalid = nationalIdController.text.trim();
 
         UserCredential userCredential = await FirebaseAuth.instance
@@ -116,10 +120,8 @@ class _SignUpState extends State<SignUp> {
             'childInterest': childInterest,
             'childPhoto': childImageUrl,
             'userId': userId,
-            'therapistId':
-                '', // hena el therpist id haykoon fady la8yet may3mel keda fel home el child ya assign dr
-            'assigned':
-                false, // flag false la8yet maykoon ma3h dr yakoon ba true
+            'therapistId': '',
+            'assigned': false,
           });
         } else if (role == 'therapist') {
           String nationalProofUrl = "";
@@ -133,6 +135,7 @@ class _SignUpState extends State<SignUp> {
               .collection('therapist')
               .doc(userId)
               .set({
+            'bio': bio,
             'nationalid': nationalid,
             'nationalproof': nationalProofUrl,
             'status': status,
@@ -148,6 +151,11 @@ class _SignUpState extends State<SignUp> {
           'userid': userId,
           'username': username
         });
+
+        // Save session data using SessionProvider
+        final sessionProvider =
+            Provider.of<SessionProvider>(context, listen: false);
+        await sessionProvider.saveSession(userId, role);
 
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text(
@@ -265,10 +273,6 @@ class _SignUpState extends State<SignUp> {
                         borderRadius: BorderRadius.circular(30)),
                   ),
                 ),
-
-                // if (role == 'admin') ...[
-                //   const SizedBox(height: 20.0),
-                // ],
                 if (role == 'parent') ...[
                   const SizedBox(height: 20.0),
                   TextFormField(
@@ -324,6 +328,18 @@ class _SignUpState extends State<SignUp> {
                   ),
                 ],
                 if (role == 'therapist') ...[
+                  const SizedBox(height: 20.0),
+                  TextFormField(
+                    controller: bioController,
+                    decoration: InputDecoration(
+                      labelText: "Bio",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    validator: (value) =>
+                        value!.isEmpty ? 'Enter a short bio' : null,
+                  ),
                   const SizedBox(height: 20.0),
                   TextFormField(
                     controller: nationalIdController,

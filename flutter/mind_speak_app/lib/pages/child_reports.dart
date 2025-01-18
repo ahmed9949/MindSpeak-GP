@@ -41,7 +41,7 @@ class ChildReportsPage extends StatelessWidget {
         ),
         padding: const EdgeInsets.all(16.0),
         child: reports.isEmpty?
-        Center(
+        const Center(
           child: Text(
             "No reports to display",
             style: TextStyle(fontSize: 22, color: Colors.grey, fontWeight: FontWeight.bold),

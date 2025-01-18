@@ -75,7 +75,7 @@ class HomePage extends StatelessWidget {
             //     ),
             //   ),
             // ),
-            BiggerCard(),
+            const BiggerCard(),
             const SizedBox(height: 20),
 
             ElevatedButton(

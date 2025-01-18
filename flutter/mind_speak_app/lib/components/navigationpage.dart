@@ -17,7 +17,7 @@ class _NavigationpageState extends State<Navigationpage> {
   List<Widget> mypages = [
     const HomePage(),
     const SearchPage(),
-    ProfilePage(),
+    const ProfilePage(),
   ];
 
   @override
@@ -27,8 +27,8 @@ class _NavigationpageState extends State<Navigationpage> {
 
     return Scaffold(
       body: IndexedStack(
-        children: mypages,
         index: myindex,
+        children: mypages,
       ),
       bottomNavigationBar: Theme(
         // Apply theme to BottomNavigationBar

@@ -73,13 +73,13 @@ class _ProfilePageState extends State<ProfilePage> {
         return;
       }
 
-      String childId = const Uuid().v4(); 
+      String childId = const Uuid().v4();
       await FirebaseFirestore.instance.collection('child').doc(childId).set({
         ...childData,
         'childId': childId,
         'userId': parentId,
         'assigned': false,
-        'therapistId': '', 
+        'therapistId': '',
       });
 
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -87,7 +87,7 @@ class _ProfilePageState extends State<ProfilePage> {
         backgroundColor: Colors.green,
       ));
 
-      fetchParentAndChildData(); 
+      fetchParentAndChildData();
     } catch (e) {
       print('Error adding child: $e');
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -156,7 +156,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ? Icons.wb_sunny
                 : Icons.nightlight_round),
             onPressed: () {
-              themeProvider.toggleTheme(); 
+              themeProvider.toggleTheme();
             },
           ),
         ],

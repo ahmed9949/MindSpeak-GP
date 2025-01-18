@@ -9,7 +9,7 @@ class ReportDetailsPage extends StatelessWidget {
   final String progress;
   final String recommendation;
 
-  ReportDetailsPage({super.key, required this.sessionId, required this.analysis, required this.progress, required this.recommendation});
+  const ReportDetailsPage({super.key, required this.sessionId, required this.analysis, required this.progress, required this.recommendation});
 
   @override
   Widget build(BuildContext context) {

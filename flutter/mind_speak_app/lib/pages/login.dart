@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:crypto/crypto.dart'; // Import for hashing passwords
 import 'package:mind_speak_app/components/navigationpage.dart';
 import 'package:mind_speak_app/pages/DashBoard.dart';
+import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/doctor_dashboard.dart';
 import 'package:mind_speak_app/pages/forgot_password.dart';
 import 'package:mind_speak_app/pages/signup.dart';
@@ -70,13 +71,13 @@ class _LogInState extends State<LogIn> {
         if (role == 'parent') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const Navigationpage()),
+            MaterialPageRoute(builder: (context) => carsform()),
           );
         } else if (role == 'therapist') {
           if (isApproved) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => DoctorDashboard()),
+              MaterialPageRoute(builder: (context) => const DoctorDashboard()),
             );
           } else {
             throw Exception("Your account is not yet approved by the admin.");
@@ -84,7 +85,7 @@ class _LogInState extends State<LogIn> {
         } else if (role == 'admin') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => DashBoard()),
+            MaterialPageRoute(builder: (context) => const DashBoard()),
           );
         } else {
           throw Exception("Unknown role detected.");

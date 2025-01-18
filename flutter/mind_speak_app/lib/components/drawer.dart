@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/pages/homepage.dart';
 import 'package:mind_speak_app/pages/logout.dart';
+import 'package:mind_speak_app/pages/predict.dart';
 import 'package:mind_speak_app/pages/profilepage.dart';
 
 class NavigationDrawe extends StatelessWidget {
+  const NavigationDrawe({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
         children: <Widget>[
-          DrawerHeader(
+          const DrawerHeader(
             decoration: BoxDecoration(
               color: Colors.blue,
             ),
@@ -24,8 +28,10 @@ class NavigationDrawe extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.home),
             title: const Text('Home'),
-            onTap: () {
+           onTap: () {
               Navigator.pop(context);
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => const HomePage()));
             },
           ),
           ListTile(
@@ -34,7 +40,7 @@ class NavigationDrawe extends StatelessWidget {
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => ProfilePage()));
+                  MaterialPageRoute(builder: (context) => const ProfilePage()));
             },
           ),
           ListTile(
@@ -42,6 +48,15 @@ class NavigationDrawe extends StatelessWidget {
             title: const Text('Settings'),
             onTap: () {
               Navigator.pop(context);
+            },
+          ),
+           ListTile(
+            leading: const Icon(Icons.mobile_screen_share),
+            title: const Text('Prediction'),
+           onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => const Predict()));
             },
           ),
           ListTile(

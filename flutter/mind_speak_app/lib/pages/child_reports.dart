@@ -11,10 +11,8 @@ class ChildReportsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-            final themeProvider = Provider.of<ThemeProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
-
-    
     return Scaffold(
       appBar: AppBar(
          actions: [
@@ -25,9 +23,10 @@ class ChildReportsPage extends StatelessWidget {
             },
           ),
         ],
+        backgroundColor: Colors.teal,
         title: Text(
           "$childName's Reports",
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          style: const TextStyle(fontWeight: FontWeight.bold, color: Color.fromARGB(255, 255, 255, 255)),
         ),
         centerTitle: true,
         elevation: 0,
@@ -41,7 +40,14 @@ class ChildReportsPage extends StatelessWidget {
           ),
         ),
         padding: const EdgeInsets.all(16.0),
-        child: ListView.builder(
+        child: reports.isEmpty?
+        Center(
+          child: Text(
+            "No reports to display",
+            style: TextStyle(fontSize: 22, color: Colors.grey, fontWeight: FontWeight.bold),
+            ),
+            )
+          : ListView.builder(
           itemCount: reports.length,
           itemBuilder: (context, index) {
             final report = reports[index];
@@ -51,8 +57,10 @@ class ChildReportsPage extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => ReportDetailsPage(
-                      reportSummary: report['summary'],
-                      reportDate: report['date'],
+                      sessionId: report['sessionId'],
+                      analysis: report['analysis'],
+                      progress: report['progress'],
+                      recommendation: report['recommendation'],
                     ),
                   ),
                 );
@@ -65,11 +73,11 @@ class ChildReportsPage extends StatelessWidget {
                   contentPadding: const EdgeInsets.all(16),
                   leading: const Icon(Icons.report, color: Colors.teal, size: 30),
                   title: Text(
-                    report['summary'],
+                    report['sessionId'],
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                   ),
                   subtitle: Text(
-                    report['date'],
+                    report['analysis'],
                     style: const TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                   trailing: const Icon(Icons.arrow_forward_ios, color: Colors.teal),

@@ -1,87 +1,68 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/components/drawer.dart';
- import 'package:mind_speak_app/pages/child_reports.dart';
+import 'package:mind_speak_app/pages/child_reports.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
+import 'package:mind_speak_app/service/database.dart';
 import 'package:provider/provider.dart';
 
-class DoctorDashboard extends StatelessWidget {
+class DoctorDashboard extends StatefulWidget {
+  const DoctorDashboard({super.key});
+
+  @override
+  _DoctorDashboardState createState() => _DoctorDashboardState();
+}
+
+class _DoctorDashboardState extends State<DoctorDashboard> {
   final String doctorName = "Dr. Ahmed";
   final String specialization = "Pediatric Autism Specialist";
+  final DatabaseMethods _databaseMethods = DatabaseMethods();
 
-  final List<Map<String, dynamic>> children = [
-    {
-      "id": 1,
-      "name": "Ali",
-      "reports": [
-        {"id": 101, "date": "2024-12-20", "summary": "Routine Checkup"},
-        {"id": 102, "date": "2024-12-15", "summary": "Therapy Session"}
-      ]
-    },
-    {
-      "id": 2,
-      "name": "Sara",
-      "reports": [
-        {"id": 201, "date": "2024-12-18", "summary": "Progress Assessment"},
-        {"id": 202, "date": "2024-12-10", "summary": "Behavioral Therapy"}
-      ]
-    },
-    {
-      "id": 3,
-      "name": "Hassan",
-      "reports": [
-        {"id": 301, "date": "2024-12-22", "summary": "Diet Consultation"},
-        {"id": 302, "date": "2024-12-19", "summary": "Routine Therapy"}
-      ]
-    },
-    {
-      "id": 4,
-      "name": "Leila",
-      "reports": [
-        {"id": 401, "date": "2024-12-21", "summary": "Speech Assessment"},
-        {"id": 402, "date": "2024-12-16", "summary": "Behavioral Therapy"}
-      ]
-    },
-    {
-      "id": 5,
-      "name": "Nada",
-      "reports": [
-        {"id": 501, "date": "2024-12-25", "summary": "Therapy Progress Review"},
-        {"id": 502, "date": "2024-12-11", "summary": "Follow-up Check"}
-      ]
-    },
-    {
-      "id": 6,
-      "name": "Omar",
-      "reports": [
-        {"id": 601, "date": "2024-5-3", "summary": "Routine Therapy"},
-        {"id": 602, "date": "2024-7-5", "summary": "Speech Assessment"}
-      ]
-    },
-    {
-      "id": 7,
-      "name": "Mariam",
-      "reports": [
-        {"id": 701, "date": "2024-12-10", "summary": "Speech Therapy"},
-        {"id": 702, "date": "2024-12-02", "summary": "Routine Checkup"}
-      ]
-    },
-    {
-      "id": 8,
-      "name": "Amir",
-      "reports": [
-        {"id": 801, "date": "2024-12-15", "summary": "Progress Review"},
-        {"id": 802, "date": "2024-12-01", "summary": "Therapy Consultation"}
-      ]
-    },
-  ];
+  List<Map<String, dynamic>> children = [];
+  List<Map<String, dynamic>> reports = [];
+  bool isLoading = true;
 
-  DoctorDashboard({super.key});
+  @override
+  void initState() {
+    super.initState();
+    fetchChildren();
+  }
+
+  Future<void> fetchChildren() async {
+    try {
+      List<Map<String, dynamic>> fetchedChildren =
+          await _databaseMethods.getAllChildren();
+      setState(() {
+        children = fetchedChildren;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching children: $e')),
+      );
+    }
+  }
+
+  //De func 3ashan ageb el reports bat3t el child b el id bta3O
+  Future<void> fetchReport(String childId) async {
+    try {
+      List<Map<String, dynamic>> fetchedReports =
+          await _databaseMethods.fetchReportsForChild(childId);
+      setState(() {
+        reports = fetchedReports;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching reports: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-
-    final int numberOfPatients = children.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -91,7 +72,7 @@ class DoctorDashboard extends StatelessWidget {
                 ? Icons.wb_sunny
                 : Icons.nightlight_round),
             onPressed: () {
-              themeProvider.toggleTheme(); // Toggle the theme
+              themeProvider.toggleTheme();
             },
           ),
         ],
@@ -108,7 +89,7 @@ class DoctorDashboard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              "$specialization | $numberOfPatients patients",
+              "$specialization | ${children.length} patients",
               style: const TextStyle(fontSize: 14, color: Colors.white70),
             ),
           ],
@@ -116,112 +97,79 @@ class DoctorDashboard extends StatelessWidget {
         centerTitle: true,
         elevation: 0,
       ),
-      // drawer: Drawer(
-      //   child: ListView(
-      //     padding: EdgeInsets.zero,
-      //     children: [
-      //       const DrawerHeader(
-      //         decoration: BoxDecoration(
-      //           color: Colors.teal, // Drawer Header Background
-      //         ),
-      //         child: Text(
-      //           'Menu',
-      //           style: TextStyle(
-      //             color: Colors.white,
-      //             fontSize: 24,
-      //           ),
-      //         ),
-      //       ),
-      //       ListTile(
-      //         leading: const Icon(Icons.home), // Home Icon
-      //         title: const Text('Home'),
-      //         onTap: () {
-      //           Navigator.pop(context); // Close drawer
-      //         },
-      //       ),
-      //       ListTile(
-      //         leading: const Icon(Icons.person), // Profile Icon
-      //         title: const Text('Profile'),
-      //         onTap: () {
-      //           // TODO: Navigate to Profile Page
-      //           Navigator.pop(context); // Close drawer
-      //         },
-      //       ),
-      //       ListTile(
-      //         leading: const Icon(Icons.settings), // Settings Icon
-      //         title: const Text('Settings'),
-      //         onTap: () {
-      //           // TODO: Navigate to Settings Page
-      //           Navigator.pop(context); // Close drawer
-      //         },
-      //       ),
-      //       ListTile(
-      //         leading: const Icon(Icons.logout),
-      //         title: const Text('Logout'),
-      //         onTap: () {
-      //           logout(context); // Call the logout function
-      //         },
-      //       ),
-      //     ],
-      //   ),
-      // ),
       drawer: NavigationDrawe(),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.teal[50]!, Colors.teal[100]!],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        padding: const EdgeInsets.all(16.0),
-        child: ListView.builder(
-          itemCount: children.length,
-          itemBuilder: (context, index) {
-            final child = children[index];
-            return InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ChildReportsPage(
-                      childName: child['name'],
-                      reports: child['reports'],
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : children.isEmpty
+              ? const Center(child: Text("No children found"))
+              : Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.teal[50]!, Colors.teal[100]!],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
                   ),
-                );
-              },
-              child: Card(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-                elevation: 6,
-                child: ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.teal[200],
-                    child: Text(
-                      child['name'][0],
-                      style: const TextStyle(fontSize: 18, color: Colors.white),
-                    ),
-                  ),
-                  title: Text(
-                    child['name'],
-                    style: const TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                  trailing: const Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.teal,
-                    size: 20,
+                  padding: const EdgeInsets.all(16.0),
+                  child: ListView.builder(
+                    itemCount: children.length,
+                    itemBuilder: (context, index) {
+                      final child = children[index];
+                      return InkWell(
+                        onTap: () async {
+                          try {
+                            final childId = child['childId']; 
+                            await fetchReport(childId);
+
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ChildReportsPage(
+                                  childName: child[
+                                      'name'], 
+                                  reports: reports,
+                                ),
+                              ),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text('Error fetching reports: $e')),
+                            );
+                          }
+                        },
+                        child: Card(
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
+                          elevation: 6,
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                                vertical: 20, horizontal: 16),
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.teal[200],
+                              child: Text(
+                                child['name'][0],
+                                style: const TextStyle(
+                                    fontSize: 18, color: Colors.white),
+                              ),
+                            ),
+                            title: Text(
+                              child['name'],
+                              style: const TextStyle(
+                                  fontSize: 22, fontWeight: FontWeight.bold),
+                            ),
+                            trailing: const Icon(
+                              Icons.arrow_forward_ios,
+                              color: Colors.teal,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
-              ),
-            );
-          },
-        ),
-      ),
     );
   }
 }

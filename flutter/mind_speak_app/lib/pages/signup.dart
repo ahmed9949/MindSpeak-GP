@@ -23,6 +23,7 @@ class SignUp extends StatefulWidget {
 class _SignUpState extends State<SignUp> {
   String email = "", password = "", username = "", role = "parent";
   String childname = "", nationalid = "", childInterest = "";
+  String bio = "";
   int childAge = 0;
   bool status = false;
   File? _childImage;
@@ -35,6 +36,7 @@ class _SignUpState extends State<SignUp> {
   TextEditingController childAgeController = TextEditingController();
   TextEditingController childInterestController = TextEditingController();
   TextEditingController nationalIdController = TextEditingController();
+  TextEditingController bioController = TextEditingController();
 
   final _formkey = GlobalKey<FormState>();
   final ImagePicker _picker = ImagePicker();
@@ -87,6 +89,7 @@ class _SignUpState extends State<SignUp> {
         password = hashPassword(passwordcontroller.text.trim());
         username = usernamecontroller.text.trim();
         childname = childNameController.text.trim();
+        bio = bioController.text.trim();
         nationalid = nationalIdController.text.trim();
 
         UserCredential userCredential = await FirebaseAuth.instance
@@ -133,6 +136,7 @@ class _SignUpState extends State<SignUp> {
               .collection('therapist')
               .doc(userId)
               .set({
+            'bio': bio,
             'nationalid': nationalid,
             'nationalproof': nationalProofUrl,
             'status': status,
@@ -324,6 +328,18 @@ class _SignUpState extends State<SignUp> {
                   ),
                 ],
                 if (role == 'therapist') ...[
+                  const SizedBox(height: 20.0),
+                  TextFormField(
+                    controller: bioController,
+                    decoration: InputDecoration(
+                      labelText: "Bio",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    validator: (value) =>
+                        value!.isEmpty ? 'Enter a short bio' : null,
+                  ),
                   const SizedBox(height: 20.0),
                   TextFormField(
                     controller: nationalIdController,

@@ -56,7 +56,6 @@ class _ViewDoctorsState extends State<ViewDoctors> {
     fetchApprovedTherapist();
   }
 
-  // hena 3ashn get all therapist el approved fel system
   Future<void> fetchApprovedTherapist() async {
     try {
       // Fetch all approved therapists
@@ -66,19 +65,39 @@ class _ViewDoctorsState extends State<ViewDoctors> {
           .get();
 
       // Get all user IDs from the fetched therapists
-      List<String> userIds =
-          therapistSnapshot.docs.map((doc) => doc['userid'] as String).toList();
+      List<String> userIds = therapistSnapshot.docs
+          .map((doc) => doc['userid'] as String)
+          .where((id) => id != null && id.isNotEmpty)
+          .toList();
 
-      // Fetch all user documents in a single batch call
-      QuerySnapshot userSnapshot = await FirebaseFirestore.instance
-          .collection('user')
-          .where(FieldPath.documentId, whereIn: userIds)
-          .get();
+      if (userIds.isEmpty) {
+        print("No approved therapists found.");
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Split userIds into batches to handle Firestore's limit of 10 items in 'whereIn'
+      List<List<String>> batches = [];
+      const batchSize = 10;
+      for (int i = 0; i < userIds.length; i += batchSize) {
+        batches.add(userIds.sublist(i,
+            i + batchSize > userIds.length ? userIds.length : i + batchSize));
+      }
+
+      List<DocumentSnapshot> allDocs = [];
+      for (var batch in batches) {
+        QuerySnapshot userSnapshot = await FirebaseFirestore.instance
+            .collection('user')
+            .where(FieldPath.documentId, whereIn: batch)
+            .get();
+        allDocs.addAll(userSnapshot.docs);
+      }
 
       // Create a map of userId to user data for quick lookup
       Map<String, Map<String, dynamic>> userMap = {
-        for (var doc in userSnapshot.docs)
-          doc.id: doc.data() as Map<String, dynamic>
+        for (var doc in allDocs) doc.id: doc.data() as Map<String, dynamic>
       };
 
       // Combine therapist data with user data
@@ -101,8 +120,9 @@ class _ViewDoctorsState extends State<ViewDoctors> {
         _foundTherapist = loadedTherapists;
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (e, stacktrace) {
       print('Error fetching therapists: $e');
+      print('Stacktrace: $stacktrace');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Error fetching therapists: $e'),
         backgroundColor: Colors.red,

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:mind_speak_app/components/CustomBottomNavigationBar.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/service/database.dart';
-
 import 'package:provider/provider.dart';
 
 class MyApp extends StatelessWidget {
@@ -35,8 +34,9 @@ class _DashBoardState extends State<DashBoard> {
   final DatabaseMethods databaseMethods = DatabaseMethods();
   List<Map<String, dynamic>> therapists = [];
 
-  int currentPage = 0;
+  int currentPage = 1;
   int itemsPerPage = 5;
+  int totalPages = 1;
 
   @override
   void initState() {
@@ -88,6 +88,9 @@ class _DashBoardState extends State<DashBoard> {
 
       setState(() {
         therapists = tempTherapists;
+        totalPages = (therapists.length / itemsPerPage).ceil();
+        if (currentPage > totalPages)
+          currentPage = totalPages > 0 ? totalPages : 1;
       });
     } catch (e) {
       print('Error fetching therapist requests: $e');
@@ -96,13 +99,11 @@ class _DashBoardState extends State<DashBoard> {
 
   Future<void> approveTherapist(String therapistId) async {
     try {
-      // Update status in therapist collection
       await FirebaseFirestore.instance
           .collection('therapist')
           .doc(therapistId)
           .update({'status': true});
 
-      // Update status in user collection
       await FirebaseFirestore.instance
           .collection('user')
           .doc(therapistId)
@@ -116,6 +117,9 @@ class _DashBoardState extends State<DashBoard> {
       setState(() {
         therapists
             .removeWhere((therapist) => therapist['userid'] == therapistId);
+        totalPages = (therapists.length / itemsPerPage).ceil();
+        if (currentPage > totalPages)
+          currentPage = totalPages > 0 ? totalPages : 1;
       });
     } catch (e) {
       print('Error approving therapist: $e');
@@ -124,13 +128,11 @@ class _DashBoardState extends State<DashBoard> {
 
   Future<void> rejectTherapist(String therapistId) async {
     try {
-      // Delete therapist document
       await FirebaseFirestore.instance
           .collection('therapist')
           .doc(therapistId)
           .delete();
 
-      // Delete associated user document
       await FirebaseFirestore.instance
           .collection('user')
           .doc(therapistId)
@@ -144,16 +146,35 @@ class _DashBoardState extends State<DashBoard> {
       setState(() {
         therapists
             .removeWhere((therapist) => therapist['userid'] == therapistId);
+        totalPages = (therapists.length / itemsPerPage).ceil();
+        if (currentPage > totalPages)
+          currentPage = totalPages > 0 ? totalPages : 1;
       });
     } catch (e) {
       print('Error rejecting therapist: $e');
     }
   }
 
+  void nextPage() {
+    if (currentPage < totalPages) {
+      setState(() {
+        currentPage++;
+      });
+    }
+  }
+
+  void previousPage() {
+    if (currentPage > 1) {
+      setState(() {
+        currentPage--;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
- 
+
     return Scaffold(
       appBar: AppBar(
         actions: [
@@ -258,39 +279,68 @@ class _DashBoardState extends State<DashBoard> {
               const SizedBox(height: 20),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columns: const [
-                    DataColumn(label: Text('Name')),
-                    DataColumn(label: Text('Email')),
-                    DataColumn(label: Text('National ID')),
-                    DataColumn(label: Text('Actions')),
-                  ],
-                  rows: therapists
-                      .skip(currentPage * itemsPerPage)
-                      .take(itemsPerPage)
-                      .map((therapist) => DataRow(cells: [
-                            DataCell(Text(therapist['username'])),
-                            DataCell(Text(therapist['email'])),
-                            DataCell(Text(therapist['nationalid'])),
-                            DataCell(Row(
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.check,
-                                      color: Colors.green),
-                                  onPressed: () =>
-                                      approveTherapist(therapist['userid']),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.close,
-                                      color: Colors.red),
-                                  onPressed: () =>
-                                      rejectTherapist(therapist['userid']),
-                                ),
-                              ],
-                            ))
-                          ]))
-                      .toList(),
-                ),
+                child: therapists.isNotEmpty
+                    ? DataTable(
+                        columns: const [
+                          DataColumn(label: Text('Name')),
+                          DataColumn(label: Text('Email')),
+                          DataColumn(label: Text('National ID')),
+                          DataColumn(label: Text('Actions')),
+                        ],
+                        rows: therapists
+                            .skip((currentPage - 1) * itemsPerPage)
+                            .take(itemsPerPage)
+                            .map((therapist) => DataRow(cells: [
+                                  DataCell(Text(therapist['username'])),
+                                  DataCell(Text(therapist['email'])),
+                                  DataCell(Text(therapist['nationalid'])),
+                                  DataCell(Row(
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.check,
+                                            color: Colors.green),
+                                        onPressed: () => approveTherapist(
+                                            therapist['userid']),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.close,
+                                            color: Colors.red),
+                                        onPressed: () => rejectTherapist(
+                                            therapist['userid']),
+                                      ),
+                                    ],
+                                  ))
+                                ]))
+                            .toList(),
+                      )
+                    : const Center(
+                        child: Text('No therapist requests available'),
+                      ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: previousPage,
+                    child: const Text(
+                      'Previous',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                  Text(
+                    '$currentPage of $totalPages',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  TextButton(
+                    onPressed: nextPage,
+                    child: const Text(
+                      'Next',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

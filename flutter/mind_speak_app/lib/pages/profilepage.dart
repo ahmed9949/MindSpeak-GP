@@ -65,13 +65,21 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> addChild(Map<String, dynamic> childData) async {
     try {
-      String childId = const Uuid().v4(); // Generate unique child ID
+      if (childrenData.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('You can only add one child.'),
+          backgroundColor: Colors.orange,
+        ));
+        return;
+      }
+
+      String childId = const Uuid().v4(); 
       await FirebaseFirestore.instance.collection('child').doc(childId).set({
         ...childData,
         'childId': childId,
         'userId': parentId,
-        'assigned': false, // Default assigned status is false
-        'therapistId': '', // No therapist assigned initially
+        'assigned': false,
+        'therapistId': '', 
       });
 
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -79,7 +87,7 @@ class _ProfilePageState extends State<ProfilePage> {
         backgroundColor: Colors.green,
       ));
 
-      fetchParentAndChildData(); // Refresh data
+      fetchParentAndChildData(); 
     } catch (e) {
       print('Error adding child: $e');
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -148,7 +156,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ? Icons.wb_sunny
                 : Icons.nightlight_round),
             onPressed: () {
-              themeProvider.toggleTheme(); // Toggle the theme
+              themeProvider.toggleTheme(); 
             },
           ),
         ],
@@ -231,10 +239,12 @@ class _ProfilePageState extends State<ProfilePage> {
                 ],
               ),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddChildDialog,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: childrenData.isEmpty
+          ? FloatingActionButton(
+              onPressed: _showAddChildDialog,
+              child: const Icon(Icons.add),
+            )
+          : null, // Disable Add button if a child already exists
     );
   }
 
@@ -287,7 +297,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   'name': nameController.text.trim(),
                   'age': age,
                   'childInterest': interestController.text.trim(),
-                  'childPhoto': '', // Default empty photo
+                  'childPhoto': '',
                 });
                 Navigator.pop(context);
               },

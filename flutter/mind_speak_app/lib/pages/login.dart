@@ -1,5 +1,3 @@
-// ignore_for_file: use_build_context_synchronously
-
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +8,7 @@ import 'package:mind_speak_app/pages/doctor_dashboard.dart';
 import 'package:mind_speak_app/pages/forgot_password.dart';
 import 'package:mind_speak_app/pages/signup.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
+import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:provider/provider.dart';
 
 class LogIn extends StatefulWidget {
@@ -62,6 +61,12 @@ class _LogInState extends State<LogIn> {
       bool isApproved = userData['status'] ?? false;
 
       if (hashedEnteredPassword == storedPassword) {
+        // Save session data using SessionProvider
+        final sessionProvider =
+            Provider.of<SessionProvider>(context, listen: false);
+        await sessionProvider.saveSession(userSnapshot.docs.first.id, role);
+
+        // Navigate based on role
         if (role == 'parent') {
           Navigator.pushReplacement(
             context,

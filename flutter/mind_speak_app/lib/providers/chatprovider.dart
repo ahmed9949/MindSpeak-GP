@@ -1,14 +1,11 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:just_audio/just_audio.dart';
 import 'package:mind_speak_app/models/message.dart';
 import 'package:mind_speak_app/service/llmservice.dart';
 import 'package:mind_speak_app/service/speechservice.dart';
-import 'package:mind_speak_app/service/ttsService.dart';
+import 'package:mind_speak_app/service/ttsservice.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
-
 class ChatProvider extends ChangeNotifier {
   late final SpeechService speechService;
   late final TTSService ttsService;
@@ -17,15 +14,9 @@ class ChatProvider extends ChangeNotifier {
   bool isInSession = false;
   bool isSpeaking = false;
   bool isListening = false;
+  bool isProcessingResponse = false;
   String currentBuffer = '';
   List<ChatMessage> chatHistory = [];
-  bool isProcessingResponse = false;
-  
-  // Add timeout management
-  Timer? _sessionTimer;
-  static const sessionTimeout = Duration(minutes: 2);
-  
-  StreamSubscription? _ttsSubscription;
 
   ChatProvider() {
     _initializeServices();
@@ -45,38 +36,27 @@ class ChatProvider extends ChangeNotifier {
 
     await speechService.initialize(
       onError: (error) => print('Speech error: ${error.errorMsg}'),
-      onStatus: (status) => print('Speech status: $status'),
+      onStatus: (status) {
+        print('Speech status: $status');
+        if (status == 'done') {
+          isListening = false;
+          notifyListeners();
+        }
+      },
     );
 
-    // Enhanced TTS state management
-    _ttsSubscription = ttsService.playerStateStream.listen((state) {
-      isSpeaking = state.playing;
+    // Listen to TTS speaking state
+    ttsService.isSpeakingStream.listen((speaking) {
+      isSpeaking = speaking;
+      notifyListeners();
       
-      if (state.processingState == ProcessingState.completed) {
-        isProcessingResponse = false;
-        isSpeaking = false;
-        // Add delay before resuming listening
+      // If we finished speaking and still in session, start listening again
+      if (!speaking && isInSession && !isProcessingResponse) {
         Future.delayed(const Duration(milliseconds: 500), () {
-          if (isInSession && !isProcessingResponse) {
-            _startListening();
-          }
+          _startListening();
         });
-        notifyListeners();
       }
     });
-  }
-
-  Future<void> _startListening() async {
-    if (!isInSession || isProcessingResponse || isSpeaking || isListening) return;
-
-    isListening = true;
-    notifyListeners();
-
-    await speechService.startListening(
-      onResult: _handleSpeechResult,
-      listenFor: const Duration(seconds: 30),
-      pauseFor: const Duration(seconds: 3),
-    );
   }
 
   Future<void> startSession() async {
@@ -85,82 +65,83 @@ class ChatProvider extends ChangeNotifier {
     isInSession = true;
     isProcessingResponse = false;
     isSpeaking = false;
-    isListening = false;
+    currentBuffer = '';
     notifyListeners();
-
-    // Start session timer
-    _sessionTimer?.cancel();
-    _sessionTimer = Timer(sessionTimeout, () {
-      endSession();
-    });
 
     await _startListening();
   }
 
-  Future<void> endSession() async {
-    _sessionTimer?.cancel();
-    isInSession = false;
-    currentBuffer = '';
-    isProcessingResponse = false;
-    isSpeaking = false;
-    isListening = false;
-    await speechService.stop();
-    await ttsService.stop();
-    notifyListeners();
-  }
+  Future<void> _startListening() async {
+    if (!isInSession || isSpeaking || isProcessingResponse) return;
 
-  void _handleSpeechResult(SpeechRecognitionResult result) async {
-    if (!isInSession || isProcessingResponse || isSpeaking) return;
-
-    currentBuffer = result.recognizedWords;
-    notifyListeners();
-
-    if (result.finalResult && currentBuffer.isNotEmpty) {
-      isProcessingResponse = true;
-      isListening = false;
-      final text = currentBuffer;
-      currentBuffer = '';
+    try {
+      isListening = true;
       notifyListeners();
 
-      try {
-        await speechService.stop();
-        
-        // Reset session timer on valid input
-        _sessionTimer?.cancel();
-        _sessionTimer = Timer(sessionTimeout, () {
-          endSession();
-        });
+      await speechService.startListening(
+        onResult: (result) async {
+          if (!isInSession) return; // Check if still in session
 
-        addMessage(ChatMessage(text: text, isUser: true));
-        final response = await llmService.getResponse(text);
-        
-        // Add small delay before TTS to prevent self-listening
-        await Future.delayed(const Duration(milliseconds: 300));
-        addMessage(ChatMessage(text: response, isUser: false));
-        await ttsService.speak(response);
-      } catch (e) {
-        print('Error processing speech: $e');
-        isProcessingResponse = false;
-        isSpeaking = false;
-        isListening = false;
-        if (isInSession) {
-          Future.delayed(const Duration(milliseconds: 500), () {
-            _startListening();
-          });
-        }
+          if (result.finalResult && result.recognizedWords.isNotEmpty) {
+            isListening = false;
+            isProcessingResponse = true;
+            notifyListeners();
+
+            try {
+              // Add user message to chat
+              chatHistory.add(ChatMessage(
+                text: result.recognizedWords,
+                isUser: true,
+              ));
+              notifyListeners();
+
+              // Get and process AI response
+              final response = await llmService.getResponse(result.recognizedWords);
+              chatHistory.add(ChatMessage(
+                text: response,
+                isUser: false,
+              ));
+              notifyListeners();
+
+              // Speak the response
+              await ttsService.speak(response);
+            } catch (e) {
+              print('Error processing response: $e');
+              isProcessingResponse = false;
+              if (isInSession) _startListening(); // Retry listening if still in session
+            }
+          } else {
+            // Update current buffer for partial results
+            currentBuffer = result.recognizedWords;
+            notifyListeners();
+          }
+        },
+        listenFor: const Duration(seconds: 30),
+        pauseFor: const Duration(seconds: 3),
+      );
+    } catch (e) {
+      print('Error starting listening: $e');
+      isListening = false;
+      if (isInSession) {
+        Future.delayed(const Duration(seconds: 1), _startListening);
       }
+      notifyListeners();
     }
   }
 
-  void addMessage(ChatMessage message) {
-    chatHistory.add(message);
+  Future<void> endSession() async {
+    isInSession = false;
+    await speechService.stop();
+    await ttsService.stop();
+    isProcessingResponse = false;
+    isSpeaking = false;
+    isListening = false;
+    currentBuffer = '';
     notifyListeners();
   }
 
   @override
   void dispose() {
-    _sessionTimer?.cancel();
-    _ttsSubscription?.cancel();
     ttsService.dispose();
     super.dispose();
   }

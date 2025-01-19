@@ -21,7 +21,9 @@ class _StartSessionState extends State<start_session> {
   void initState() {
     super.initState();
     _initializeAnimations();
-    _setupTTSListener();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupTTSListener();
+    });
   }
 
   void _initializeAnimations() {
@@ -32,22 +34,33 @@ class _StartSessionState extends State<start_session> {
 
   void _setupTTSListener() {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    chatProvider.ttsService.playerStateStream.listen((state) {
+    chatProvider.ttsService.isSpeakingStream.listen((isSpeaking) {
       if (!mounted) return;
 
-      if (state.playing) {
+      if (isSpeaking) {
         _triggerAction(_talkController);
+      } else if (chatProvider.isInSession && !chatProvider.isProcessingResponse) {
+        _triggerAction(_hearController);
       } else {
-        if (chatProvider.isInSession && !chatProvider.isProcessingResponse) {
-          _triggerAction(_hearController);
-        } else {
-          _triggerAction(_stopHearController);
-        }
+        _triggerAction(_stopHearController);
+      }
+    });
+
+    // Add listener for listening state changes
+    chatProvider.addListener(() {
+      if (!mounted) return;
+      
+      if (chatProvider.isListening && !chatProvider.isSpeaking) {
+        _triggerAction(_hearController);
+      } else if (!chatProvider.isListening && !chatProvider.isSpeaking && !chatProvider.isInSession) {
+        _triggerAction(_stopHearController);
       }
     });
   }
 
   void _triggerAction(OneShotAnimation controller) {
+    if (!mounted) return;
+    
     setState(() {
       _talkController.isActive = false;
       _hearController.isActive = false;
@@ -69,6 +82,7 @@ class _StartSessionState extends State<start_session> {
                 onPressed: () {
                   chatProvider.chatHistory.clear();
                   chatProvider.endSession();
+                  _triggerAction(_stopHearController);
                 },
               ),
             ],
@@ -98,18 +112,21 @@ class _StartSessionState extends State<start_session> {
   }
 
   Widget _buildStatusText(ChatProvider chatProvider) {
+    String statusText = "Tap to start conversation";
+    if (chatProvider.isSpeaking) {
+      statusText = "Speaking...";
+    } else if (chatProvider.isListening) {
+      statusText = "Listening...";
+    } else if (chatProvider.isProcessingResponse) {
+      statusText = "Processing...";
+    }
+
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Column(
         children: [
           Text(
-            chatProvider.isInSession
-                ? chatProvider.isSpeaking
-                    ? "Speaking..."
-                    : chatProvider.isProcessingResponse
-                        ? "Thinking..."
-                        : "Listening..."
-                : "Tap to start conversation",
+            statusText,
             style: const TextStyle(fontSize: 16.0),
           ),
           if (chatProvider.currentBuffer.isNotEmpty)
@@ -146,8 +163,14 @@ class _StartSessionState extends State<start_session> {
         children: [
           ElevatedButton.icon(
             onPressed: chatProvider.isInSession
-                ? chatProvider.endSession
-                : chatProvider.startSession,
+                ? () {
+                    chatProvider.endSession();
+                    _triggerAction(_stopHearController);
+                  }
+                : () {
+                    chatProvider.startSession();
+                    _triggerAction(_hearController);
+                  },
             icon: Icon(chatProvider.isInSession ? Icons.call_end : Icons.call),
             label: Text(chatProvider.isInSession ? 'End Call' : 'Start Call'),
             style: ElevatedButton.styleFrom(

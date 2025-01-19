@@ -33,9 +33,9 @@ class _ChatScreenState extends State<ChatScreen> {
     _stopHearController = OneShotAnimation('hands_hear_stop', autoplay: false);
   }
   
-  void _setupTTSListener() {
-    widget.controller.ttsService.playerStateStream.listen((state) {
-      if (state.playing) {
+void _setupTTSListener() {
+    widget.controller.ttsService.isSpeakingStream.listen((isSpeaking) {
+      if (isSpeaking) {
         _triggerAction(_talkController);
       } else if (widget.controller.isInSession) {
         _triggerAction(_hearController);
@@ -43,7 +43,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _triggerAction(_stopHearController);
       }
     });
-  }
+}
   
   void _triggerAction(OneShotAnimation controller) {
     setState(() {

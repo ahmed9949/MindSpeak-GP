@@ -3,6 +3,7 @@ import 'package:mind_speak_app/pages/homepage.dart';
 import 'package:mind_speak_app/pages/logout.dart';
 import 'package:mind_speak_app/pages/predict.dart';
 import 'package:mind_speak_app/pages/profilepage.dart';
+import 'package:mind_speak_app/pages/searchpage.dart';
 
 class NavigationDrawe extends StatelessWidget {
   const NavigationDrawe({super.key});
@@ -28,7 +29,7 @@ class NavigationDrawe extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.home),
             title: const Text('Home'),
-           onTap: () {
+            onTap: () {
               Navigator.pop(context);
               Navigator.push(context,
                   MaterialPageRoute(builder: (context) => const HomePage()));
@@ -44,16 +45,25 @@ class NavigationDrawe extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.settings),    
+            leading: const Icon(Icons.settings),
             title: const Text('Settings'),
             onTap: () {
               Navigator.pop(context);
             },
           ),
-           ListTile(
+          ListTile(
+            leading: const Icon(Icons.search),
+            title: const Text('Search therapist'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => const SearchPage()));
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.mobile_screen_share),
             title: const Text('Prediction'),
-           onTap: () {
+            onTap: () {
               Navigator.pop(context);
               Navigator.push(context,
                   MaterialPageRoute(builder: (context) => const Predict()));

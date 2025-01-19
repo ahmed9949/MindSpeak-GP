@@ -356,8 +356,16 @@ class _SignUpState extends State<SignUp> {
                         labelText: "Parent Phone Number",
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(30))),
-                    validator: (value) =>
-                        value!.isEmpty ? 'Enter Your Phone Number' : null,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Enter parent Phone Number';
+                      }
+                      int? Phone = int.tryParse(value);
+                      if (Phone == null || Phone != 11) {
+                        return 'phone number must be 11 numbers only';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 20.0),
                   TextFormField(
@@ -422,8 +430,16 @@ class _SignUpState extends State<SignUp> {
                         borderRadius: BorderRadius.circular(30),
                       ),
                     ),
-                    validator: (value) =>
-                        value!.isEmpty ? 'Enter Your Phone Number' : null,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Enter Therapist Phone Number';
+                      }
+                      int? Phone = int.tryParse(value);
+                      if (Phone == null || Phone != 11) {
+                        return 'phone number must be 11 numbers only';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 20.0),
                   TextFormField(

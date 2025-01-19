@@ -7,6 +7,7 @@ import 'package:mind_speak_app/pages/DashBoard.dart';
 import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/doctor_dashboard.dart';
 import 'package:mind_speak_app/pages/forgot_password.dart';
+import 'package:mind_speak_app/pages/homepage.dart';
 import 'package:mind_speak_app/pages/signup.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
@@ -67,13 +68,50 @@ class _LogInState extends State<LogIn> {
             Provider.of<SessionProvider>(context, listen: false);
         await sessionProvider.saveSession(userSnapshot.docs.first.id, role);
 
-        // Navigate based on role
         if (role == 'parent') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => carsform()),
-          );
-        } else if (role == 'therapist') {
+  // Fetch child data for the current user
+  QuerySnapshot childSnapshot = await FirebaseFirestore.instance
+      .collection('child')
+      .where('userId', isEqualTo: userSnapshot.docs.first.id)
+      .get();
+
+  if (childSnapshot.docs.isNotEmpty) {
+    final childId = childSnapshot.docs.first['childId'];
+
+    // Check if the Cars form is completed
+    QuerySnapshot carsSnapshot = await FirebaseFirestore.instance
+        .collection('Cars')
+        .where('childId', isEqualTo: childId)
+        .get();
+
+    if (carsSnapshot.docs.isNotEmpty) {
+      final carsData = carsSnapshot.docs.first.data() as Map<String, dynamic>;
+      bool formStatus = carsData['status'] ?? false;
+
+      if (formStatus) {
+        // Navigate to HomePage if Cars form is completed
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
+      } else {
+        // Navigate to carsform if Cars form is not completed
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => carsform()),
+        );
+      }
+    } else {
+      // Navigate to carsform if no Cars form exists
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => carsform()),
+      );
+    }
+  } else {
+    throw Exception("No child associated with this parent.");
+  }
+} else if (role == 'therapist') {
           if (isApproved) {
             Navigator.pushReplacement(
               context,

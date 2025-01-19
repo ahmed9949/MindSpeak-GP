@@ -4,7 +4,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:uuid/uuid.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
+
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -17,6 +20,7 @@ class _ProfilePageState extends State<ProfilePage> {
   String? parentId;
   Map<String, dynamic>? parentData;
   List<Map<String, dynamic>> childrenData = [];
+  List<Map<String, dynamic>> carsData = [];
   bool isLoading = true;
 
   @override
@@ -51,12 +55,36 @@ class _ProfilePageState extends State<ProfilePage> {
           .where('userId', isEqualTo: userId)
           .get();
 
-      childrenData = childSnapshot.docs
-          .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
-          .toList();
+      List<Map<String, dynamic>> childrenWithDetails = [];
+      List<Map<String, dynamic>> carsWithDetails = [];
+
+      for (var child in childSnapshot.docs) {
+        final childId = child['childId'];
+        QuerySnapshot carDetailsSnapshot = await FirebaseFirestore.instance
+            .collection('Cars')
+            .where('childId', isEqualTo: childId)
+            .get();
+
+        Map<String, dynamic> childData = child.data() as Map<String, dynamic>;
+
+        int trialCounter = 1;
+        for (var carDetails in carDetailsSnapshot.docs) {
+          carsWithDetails.add({
+            'trial': trialCounter++, // Add trial count
+            'childId': carDetails['childId'],
+            'totalScore': carDetails['totalScore'],
+            'selectedQuestions': carDetails['selectedQuestions'],
+            'status': carDetails['status'],
+          });
+        }
+
+        childrenWithDetails.add({...childData, 'id': child.id});
+      }
 
       setState(() {
         parentId = userId;
+        childrenData = childrenWithDetails;
+        carsData = carsWithDetails;
         isLoading = false;
       });
     } catch (e) {
@@ -64,40 +92,6 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() {
         isLoading = false;
       });
-    }
-  }
-
-  Future<void> addChild(Map<String, dynamic> childData) async {
-    try {
-      if (childrenData.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('You can only add one child.'),
-          backgroundColor: Colors.orange,
-        ));
-        return;
-      }
-
-      String childId = const Uuid().v4();
-      await FirebaseFirestore.instance.collection('child').doc(childId).set({
-        ...childData,
-        'childId': childId,
-        'userId': parentId,
-        'assigned': false,
-        'therapistId': '',
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Child added successfully!'),
-        backgroundColor: Colors.green,
-      ));
-
-      fetchParentAndChildData();
-    } catch (e) {
-      print('Error adding child: $e');
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Error adding child'),
-        backgroundColor: Colors.red,
-      ));
     }
   }
 
@@ -124,26 +118,92 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> deleteChild(String childId) async {
+  Future<void> _pickImage(String childId) async {
+  final picker = ImagePicker();
+  final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+  if (pickedFile != null) {
+    File file = File(pickedFile.path);
+
     try {
-      await FirebaseFirestore.instance
-          .collection('child')
-          .doc(childId)
-          .delete();
+      // Upload the image to Firebase Storage
+      final storageRef = FirebaseStorage.instance.ref().child('childPhotos/$childId.jpg');
+      await storageRef.putFile(file);
 
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Child deleted successfully!'),
-        backgroundColor: Colors.green,
-      ));
+      // Get the uploaded image URL
+      String imageUrl = await storageRef.getDownloadURL();
 
-      fetchParentAndChildData(); // Refresh data
+      // Update Firestore with the new image URL
+      await updateChild(childId, {'childPhoto': imageUrl});
     } catch (e) {
-      print('Error deleting child: $e');
+      print('Error updating photo: $e');
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Error deleting child'),
+        content: Text('Error uploading photo.'),
         backgroundColor: Colors.red,
       ));
     }
+  }
+}
+  void _showUpdateDialog(Map<String, dynamic> child) {
+    TextEditingController ageController =
+        TextEditingController(text: child['age'].toString());
+    TextEditingController interestController =
+        TextEditingController(text: child['childInterest']);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Update Child'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: ageController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Age'),
+                ),
+                TextField(
+                  controller: interestController,
+                  decoration: const InputDecoration(labelText: 'Interest'),
+                ),
+                const SizedBox(height: 10),
+                ElevatedButton.icon(
+                  onPressed: () => _pickImage(child['id']),
+                  icon: const Icon(Icons.image),
+                  label: const Text('Update Photo'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                int age = int.tryParse(ageController.text) ?? -1;
+                if (age < 3 || age > 12) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Age must be between 3 and 12'),
+                    backgroundColor: Colors.red,
+                  ));
+                  return;
+                }
+                updateChild(child['id'], {
+                  'age': age,
+                  'childInterest': interestController.text.trim(),
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('Update'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -169,210 +229,109 @@ class _ProfilePageState extends State<ProfilePage> {
           ? const Center(child: CircularProgressIndicator())
           : Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Parent Info',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 10),
-                  Card(
-                    elevation: 4,
-                    child: ListTile(
-                      title: Text('Name: ${parentData?['username'] ?? 'N/A'}'),
-                      subtitle: Text('Email: ${parentData?['email'] ?? 'N/A'}'),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Parent Info',
+                      style: Theme.of(context).textTheme.headlineSmall,
                     ),
-                  ),
-                  const Divider(height: 30),
-                  Text(
-                    'Children',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 10),
-                  childrenData.isNotEmpty
-                      ? Expanded(
-                          child: ListView.builder(
+                    const SizedBox(height: 10),
+                    Card(
+                      elevation: 4,
+                      child: ListTile(
+                        title: Text('Name: ${parentData?['username'] ?? 'N/A'}'),
+                        subtitle:
+                            Text('Email: ${parentData?['email'] ?? 'N/A'}'),
+                      ),
+                    ),
+                    const Divider(height: 30),
+                    Text(
+                      'Children',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 10),
+                    childrenData.isNotEmpty
+                        ? ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
                             itemCount: childrenData.length,
                             itemBuilder: (context, index) {
                               final child = childrenData[index];
-                              return Dismissible(
-                                key: Key(child['id']),
-                                direction: DismissDirection.endToStart,
-                                background: Container(
-                                  alignment: Alignment.centerRight,
-                                  color: Colors.red,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 20.0),
-                                  child: const Icon(Icons.delete,
-                                      color: Colors.white),
+                              return Card(
+                                margin:
+                                    const EdgeInsets.symmetric(vertical: 8.0),
+                                elevation: 4,
+                                 child: ListTile(
+                                   leading: CircleAvatar(
+    backgroundImage: child['childPhoto'] != null
+        ? NetworkImage(child['childPhoto']) // Display from URL
+        : null,
+    child: child['childPhoto'] == null
+        ? const Icon(Icons.person) // Fallback if no photo
+        : null,
+  ),
+  title: Text(child['name']),
+  subtitle: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('Age: ${child['age']}'),
+      Text('Interest: ${child['childInterest']}'),
+    ],
+  ),
+  trailing: IconButton(
+    icon: const Icon(Icons.edit, color: Colors.blue),
+    onPressed: () {
+      _showUpdateDialog(child);
+    },
+  ),
                                 ),
-                                onDismissed: (_) {
-                                  deleteChild(child['id']);
-                                },
-                                child: Card(
-                                  margin:
-                                      const EdgeInsets.symmetric(vertical: 8.0),
-                                  elevation: 4,
-                                  child: ListTile(
-                                    title: Text(child['name']),
-                                    subtitle: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text('Age: ${child['age']}'),
-                                        Text(
-                                            'Interest: ${child['childInterest']}'),
-                                        Text('Assigned: ${child['assigned']}'),
-                                      ],
-                                    ),
-                                    trailing: IconButton(
-                                      icon: const Icon(Icons.edit,
-                                          color: Colors.blue),
-                                      onPressed: () {
-                                        _showUpdateDialog(child);
-                                      },
-                                    ),
+                              );
+                            },
+                          )
+                        : const Text('No children added yet.'),
+                    const Divider(height: 30),
+                    Text(
+                      'Cars Trials Forms',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 10),
+                    carsData.isNotEmpty
+                        ? ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: carsData.length,
+                            itemBuilder: (context, index) {
+                              final car = carsData[index];
+                              return Card(
+                                margin:
+                                    const EdgeInsets.symmetric(vertical: 8.0),
+                                elevation: 4,
+                                child: ListTile(
+                                  title: Text(
+                                      'Cars Form Trial ${car['trial']}'),
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Child ID: ${car['childId']}'),
+                                      Text(
+                                          'Total Score: ${car['totalScore']}'),
+                                      Text(
+                                          'Selected Questions: ${(car['selectedQuestions'] as List<dynamic>?)?.join(", ") ?? 'N/A'}'),
+                                      Text('Status: ${car['status']}'),
+                                    ],
                                   ),
                                 ),
                               );
                             },
-                          ),
-                        )
-                      : const Text('No children added yet.'),
-                ],
+                          )
+                        : const Text('No cars trials available.'),
+                  ],
+                ),
               ),
             ),
-      floatingActionButton: childrenData.isEmpty
-          ? FloatingActionButton(
-              onPressed: _showAddChildDialog,
-              child: const Icon(Icons.add),
-            )
-          : null, // Disable Add button if a child already exists
-    );
-  }
-
-  void _showAddChildDialog() {
-    TextEditingController nameController = TextEditingController();
-    TextEditingController ageController = TextEditingController();
-    TextEditingController interestController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Add Child'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Name'),
-                ),
-                TextField(
-                  controller: ageController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Age'),
-                ),
-                TextField(
-                  controller: interestController,
-                  decoration: const InputDecoration(labelText: 'Interest'),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                int age = int.tryParse(ageController.text) ?? -1;
-                if (age < 3 || age > 12) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Age must be between 3 and 12'),
-                    backgroundColor: Colors.red,
-                  ));
-                  return;
-                }
-                addChild({
-                  'name': nameController.text.trim(),
-                  'age': age,
-                  'childInterest': interestController.text.trim(),
-                  'childPhoto': '',
-                });
-                Navigator.pop(context);
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showUpdateDialog(Map<String, dynamic> child) {
-    TextEditingController nameController =
-        TextEditingController(text: child['name']);
-    TextEditingController ageController =
-        TextEditingController(text: child['age'].toString());
-    TextEditingController interestController =
-        TextEditingController(text: child['childInterest']);
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Update Child'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Name'),
-                ),
-                TextField(
-                  controller: ageController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Age'),
-                ),
-                TextField(
-                  controller: interestController,
-                  decoration: const InputDecoration(labelText: 'Interest'),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                int age = int.tryParse(ageController.text) ?? -1;
-                if (age < 3 || age > 12) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Age must be between 3 and 12'),
-                    backgroundColor: Colors.red,
-                  ));
-                  return;
-                }
-                updateChild(child['id'], {
-                  'name': nameController.text.trim(),
-                  'age': age,
-                  'childInterest': interestController.text.trim(),
-                });
-                Navigator.pop(context);
-              },
-              child: const Text('Update'),
-            ),
-          ],
-        );
-      },
     );
   }
 }

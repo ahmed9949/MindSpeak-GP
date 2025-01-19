@@ -57,24 +57,7 @@ class HomePage extends StatelessWidget {
 
             const SizedBox(height: 100),
 
-            // Container(
-            //   width: double.infinity,
-            //   height: 200,
-            //   decoration: BoxDecoration(
-            //     color: Colors.black,
-            //     borderRadius: BorderRadius.circular(25),
-            //   ),
-            //   child: const Center(
-            //     child: Text(
-            //       'Big Card',
-            //       style: TextStyle(
-            //         color: Colors.white,
-            //         fontSize: 24,
-            //         fontWeight: FontWeight.bold,
-            //       ),
-            //     ),
-            //   ),
-            // ),
+           
             const BiggerCard(),
             const SizedBox(height: 20),
 

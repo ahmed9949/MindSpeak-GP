@@ -13,6 +13,7 @@ import 'dart:convert';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -61,19 +62,41 @@ class _SignUpState extends State<SignUp> {
     }
   }
 
-  Future<String> saveImageLocally(File image, String folderName) async {
+  // Future<String> saveImageLocally(File image, String folderName) async {
+  //   try {
+  //     final directory = await getApplicationDocumentsDirectory();
+  //     final folderPath = Directory('${directory.path}/$folderName');
+  //     if (!folderPath.existsSync()) {
+  //       folderPath.createSync(recursive: true);
+  //     }
+  //     final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+  //     final localPath = '${folderPath.path}/$fileName';
+  //     final savedImage = await image.copy(localPath);
+  //     return savedImage.path;
+  //   } catch (e) {
+  //     throw Exception("Image save failed: $e");
+  //   }
+  // }
+
+  Future<String> uploadImageToStorage(File image, String folderName) async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final folderPath = Directory('${directory.path}/$folderName');
-      if (!folderPath.existsSync()) {
-        folderPath.createSync(recursive: true);
-      }
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final localPath = '${folderPath.path}/$fileName';
-      final savedImage = await image.copy(localPath);
-      return savedImage.path;
+      // Generate a unique file name
+      String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      // Define the storage reference
+      Reference storageRef =
+          FirebaseStorage.instance.ref().child('$folderName/$fileName');
+
+      // Upload the file to Firebase Storage
+      UploadTask uploadTask = storageRef.putFile(image);
+      TaskSnapshot snapshot = await uploadTask;
+
+      // Get the download URL
+      String downloadUrl = await snapshot.ref.getDownloadURL();
+
+      return downloadUrl;
     } catch (e) {
-      throw Exception("Image save failed: $e");
+      throw Exception("Image upload failed: $e");
     }
   }
 
@@ -93,6 +116,7 @@ class _SignUpState extends State<SignUp> {
         bio = bioController.text.trim();
         nationalid = nationalIdController.text.trim();
 
+        // Register user with Firebase Auth
         UserCredential userCredential = await FirebaseAuth.instance
             .createUserWithEmailAndPassword(email: email, password: password);
 
@@ -106,10 +130,12 @@ class _SignUpState extends State<SignUp> {
           childInterest = childInterestController.text.trim();
 
           if (_childImage != null) {
+            // Upload child image to Firebase Storage and get the URL
             childImageUrl =
-                await saveImageLocally(_childImage!, 'assets/child_image');
+                await uploadImageToStorage(_childImage!, 'child_images');
           }
 
+          // Save child details to Firestore
           await FirebaseFirestore.instance
               .collection('child')
               .doc(childId)
@@ -127,10 +153,12 @@ class _SignUpState extends State<SignUp> {
           String nationalProofUrl = "";
 
           if (_nationalProofImage != null) {
-            nationalProofUrl =
-                await saveImageLocally(_nationalProofImage!, 'national_proofs');
+            // Upload national proof to Firebase Storage and get the URL
+            nationalProofUrl = await uploadImageToStorage(
+                _nationalProofImage!, 'national_proofs');
           }
 
+          // Save therapist details to Firestore
           await FirebaseFirestore.instance
               .collection('therapist')
               .doc(userId)
@@ -144,6 +172,7 @@ class _SignUpState extends State<SignUp> {
           });
         }
 
+        // Save user details to Firestore
         await FirebaseFirestore.instance.collection('user').doc(userId).set({
           'email': email,
           'password': password,
@@ -163,7 +192,7 @@ class _SignUpState extends State<SignUp> {
           style: TextStyle(fontSize: 20.0),
         )));
 
-        // **Navigate based on Role**
+        // Navigate based on Role
         if (role == 'parent') {
           Navigator.push(context,
               MaterialPageRoute(builder: (context) => const Navigationpage()));
@@ -196,10 +225,10 @@ class _SignUpState extends State<SignUp> {
                 style: TextStyle(fontSize: 18.0),
               )));
         } else {
-          print("Error: \${e.toString()}");
+          print("Error: ${e.toString()}");
         }
       } catch (e) {
-        print("Error: \${e.toString()}");
+        print("Error: ${e.toString()}");
       }
     }
   }

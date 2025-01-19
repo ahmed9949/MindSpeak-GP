@@ -198,7 +198,7 @@ class _SignUpState extends State<SignUp> {
           }
           if (_TherapistImage != null) {
             // Upload national proof to Firebase Storage and get the URL
-            nationalProofUrl = await uploadImageToStorage(
+            TherpistImageUrl = await uploadImageToStorage(
                 _TherapistImage!, 'Therapists_images');
           }
 

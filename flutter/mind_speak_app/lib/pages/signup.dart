@@ -353,16 +353,21 @@ class _SignUpState extends State<SignUp> {
                   TextFormField(
                     controller: parentPhoneNumberController,
                     decoration: InputDecoration(
-                        labelText: "Parent Phone Number",
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30))),
+                      labelText: "Parent Phone Number",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    keyboardType: TextInputType.phone,
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Enter parent Phone Number';
+                        return 'Enter parent phone number';
                       }
-                      int? Phone = int.tryParse(value);
-                      if (Phone == null || Phone != 11) {
-                        return 'phone number must be 11 numbers only';
+                      if (value.length != 11) {
+                        return 'Phone number must be exactly 11 digits';
+                      }
+                      if (!RegExp(r'^\d{11}$').hasMatch(value)) {
+                        return 'Phone number must contain only numbers';
                       }
                       return null;
                     },

@@ -8,11 +8,11 @@ class SpeechService {
   bool _isInitialized = false;
   bool _isListening = false;
 
-  Future<bool> initialize({
-    required Function(SpeechRecognitionError) onError,
-    required Function(String) onStatus,
-  }) async {
-    if (_isInitialized) return true;
+//   Future<bool> initialize({
+//     required Function(SpeechRecognitionError) onError,
+//     required Function(String) onStatus,
+//   }) async {
+//     if (_isInitialized) return true;
 
     try {
       // Force cleanup of any existing instance

@@ -1,9 +1,10 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+// import 'dart:convert';
+// import 'package:http/http.dart' as http;
 
 class LLMService {
   final String apiKey;
-  static const String _baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
+  static const String _baseUrl =
+      'https://api.groq.com/openai/v1/chat/completions';
 
   LLMService({required this.apiKey});
 

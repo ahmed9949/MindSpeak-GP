@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
-import 'package:mind_speak_app/pages/choose_avatar_page.dart';
-import 'package:mind_speak_app/providers/theme_provider.dart';
-import 'package:mind_speak_app/pages/start_session.dart';
-import 'package:provider/provider.dart';
+// import 'package:flutter/material.dart';
+// import 'package:mind_speak_app/pages/choose_avatar_page.dart';
+// import 'package:mind_speak_app/providers/theme_provider.dart';
+// import 'package:mind_speak_app/pages/start_session.dart';
+// import 'package:provider/provider.dart';
 
 class SessionPage extends StatelessWidget {
   const SessionPage({super.key});
@@ -61,34 +61,6 @@ class SessionPage extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 20), // Spacing between card and button
-
-            // Button to Navigate to Choose Avatar Page
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ChooseAvatarPage(),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(50),
-                ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-              ),
-              child: const Text(
-                'Choose Avatar',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
-              ),
-            ),
             const SizedBox(height: 20), // Spacing between card and button
 
             // Button to Navigate to Choose Avatar Page

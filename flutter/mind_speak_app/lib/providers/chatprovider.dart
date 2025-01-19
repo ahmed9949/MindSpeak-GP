@@ -31,21 +31,21 @@ class ChatProvider extends ChangeNotifier {
 
   StreamSubscription? _ttsSpeakingSubscription;
 
-  ChatProvider() {
-    _initializeServices();
-  }
+//   ChatProvider() {
+//     _initializeServices();
+//   }
 
-  Future<void> _initializeServices() async {
-    final elApiKey = dotenv.env['EL_API_KEY'];
-    final groqApiKey = dotenv.env['GROQ_API_KEY'];
+//   Future<void> _initializeServices() async {
+//     final elApiKey = dotenv.env['EL_API_KEY'];
+//     final groqApiKey = dotenv.env['GROQ_API_KEY'];
 
-    if (elApiKey == null || groqApiKey == null) {
-      throw Exception('API keys not found in .env file');
-    }
+//     if (elApiKey == null || groqApiKey == null) {
+//       throw Exception('API keys not found in .env file');
+//     }
 
-    speechService = SpeechService();
-    ttsService = TTSService(apiKey: elApiKey);
-    llmService = LLMService(apiKey: groqApiKey);
+//     speechService = SpeechService();
+//     ttsService = TTSService(apiKey: elApiKey);
+//     llmService = LLMService(apiKey: groqApiKey);
 
     await speechService.initialize(
       onError: (error) {
@@ -88,8 +88,8 @@ class ChatProvider extends ChangeNotifier {
     });
   }
 
-  Future<void> startSession() async {
-    if (isInSession) return;
+//   Future<void> startSession() async {
+//     if (isInSession) return;
 
     isInSession = true;
     isProcessingResponse = false;

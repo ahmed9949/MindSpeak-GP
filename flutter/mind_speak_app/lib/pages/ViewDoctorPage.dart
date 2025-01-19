@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/providers/theme_provider.dart';
+import 'package:mind_speak_app/components/CustomBottomNavigationBar.dart';
 import 'package:mind_speak_app/service/DoctorRepository.dart';
+import 'package:provider/provider.dart';
 
 class ViewDoctors extends StatefulWidget {
   const ViewDoctors({super.key});
@@ -59,10 +62,31 @@ class _ViewDoctorsState extends State<ViewDoctors> {
 
   @override
   Widget build(BuildContext context) {
-    return _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : Scaffold(
-            body: SingleChildScrollView(
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        actions: [
+          IconButton(
+            icon: Icon(themeProvider.isDarkMode
+                ? Icons.wb_sunny
+                : Icons.nightlight_round),
+            onPressed: () {
+              themeProvider.toggleTheme(); // Toggle theme
+            },
+          ),
+        ],
+        centerTitle: true,
+        backgroundColor:
+            themeProvider.isDarkMode ? Colors.black : Colors.lightBlue,
+        title: const Text(
+          "View Therapists",
+          style: TextStyle(color: Colors.white),
+        ),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
               padding: const EdgeInsets.all(10.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,6 +145,7 @@ class _ViewDoctorsState extends State<ViewDoctors> {
                 ],
               ),
             ),
-          );
+      bottomNavigationBar: const CustomBottomNavigationBar(currentIndex: 1),
+    );
   }
 }

@@ -4,9 +4,9 @@ import 'package:http/http.dart' as http;
 class LLMService {
   final String apiKey;
   static const String _baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
-  
+
   LLMService({required this.apiKey});
-  
+
   Future<String> getResponse(String text) async {
     final response = await http.post(
       Uri.parse(_baseUrl),
@@ -34,13 +34,12 @@ Keep responses:
         "max_tokens": 150,
       }),
     );
-    
+
     if (response.statusCode != 200) {
       throw Exception('LLM API error: ${response.statusCode}');
     }
-    
+
     final jsonResponse = json.decode(response.body);
     return jsonResponse['choices'][0]['message']['content'] as String;
   }
 }
-

@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:mind_speak_app/audio/chat_bubble.dart';
+import 'package:mind_speak_app/components/chat_bubble.dart';
 import 'package:mind_speak_app/providers/chatprovider.dart';
 import 'package:provider/provider.dart';
 import 'package:rive/rive.dart';
 
-class start_session extends StatefulWidget {
-  const start_session({super.key});
+class StartSession extends StatefulWidget {
+  const StartSession({super.key});
 
   @override
-  State<start_session> createState() => _StartSessionState();
+  State<StartSession> createState() => _StartSessionState();
 }
 
-class _StartSessionState extends State<start_session> {
+class _StartSessionState extends State<StartSession> {
   late OneShotAnimation _talkController;
   late OneShotAnimation _hearController;
   late OneShotAnimation _stopHearController;
@@ -21,9 +21,7 @@ class _StartSessionState extends State<start_session> {
   void initState() {
     super.initState();
     _initializeAnimations();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _setupTTSListener();
-    });
+    _setupTTSListener();
   }
 
   void _initializeAnimations() {
@@ -45,22 +43,9 @@ class _StartSessionState extends State<start_session> {
         _triggerAction(_stopHearController);
       }
     });
-
-    // Add listener for listening state changes
-    chatProvider.addListener(() {
-      if (!mounted) return;
-      
-      if (chatProvider.isListening && !chatProvider.isSpeaking) {
-        _triggerAction(_hearController);
-      } else if (!chatProvider.isListening && !chatProvider.isSpeaking && !chatProvider.isInSession) {
-        _triggerAction(_stopHearController);
-      }
-    });
   }
 
   void _triggerAction(OneShotAnimation controller) {
-    if (!mounted) return;
-    
     setState(() {
       _talkController.isActive = false;
       _hearController.isActive = false;
@@ -82,7 +67,6 @@ class _StartSessionState extends State<start_session> {
                 onPressed: () {
                   chatProvider.chatHistory.clear();
                   chatProvider.endSession();
-                  _triggerAction(_stopHearController);
                 },
               ),
             ],
@@ -112,21 +96,16 @@ class _StartSessionState extends State<start_session> {
   }
 
   Widget _buildStatusText(ChatProvider chatProvider) {
-    String statusText = "Tap to start conversation";
-    if (chatProvider.isSpeaking) {
-      statusText = "Speaking...";
-    } else if (chatProvider.isListening) {
-      statusText = "Listening...";
-    } else if (chatProvider.isProcessingResponse) {
-      statusText = "Processing...";
-    }
-
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Column(
         children: [
           Text(
-            statusText,
+            chatProvider.isSpeaking
+                ? "Speaking..."
+                : chatProvider.isListening
+                    ? "Listening..."
+                    : "Tap to start conversation",
             style: const TextStyle(fontSize: 16.0),
           ),
           if (chatProvider.currentBuffer.isNotEmpty)
@@ -140,6 +119,12 @@ class _StartSessionState extends State<start_session> {
   }
 
   Widget _buildChatList(ChatProvider chatProvider) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
+    });
+
     return Expanded(
       flex: 4,
       child: Container(
@@ -148,7 +133,9 @@ class _StartSessionState extends State<start_session> {
           controller: _scrollController,
           itemCount: chatProvider.chatHistory.length,
           itemBuilder: (context, index) {
-            return ChatBubble(message: chatProvider.chatHistory[index]);
+            final message = chatProvider.chatHistory[index];
+            print('Displaying message: ${message.text}'); // Debug log
+            return ChatBubble(message: message);
           },
         ),
       ),
@@ -163,14 +150,8 @@ class _StartSessionState extends State<start_session> {
         children: [
           ElevatedButton.icon(
             onPressed: chatProvider.isInSession
-                ? () {
-                    chatProvider.endSession();
-                    _triggerAction(_stopHearController);
-                  }
-                : () {
-                    chatProvider.startSession();
-                    _triggerAction(_hearController);
-                  },
+                ? chatProvider.endSession
+                : chatProvider.startSession,
             icon: Icon(chatProvider.isInSession ? Icons.call_end : Icons.call),
             label: Text(chatProvider.isInSession ? 'End Call' : 'Start Call'),
             style: ElevatedButton.styleFrom(

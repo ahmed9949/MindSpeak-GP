@@ -1,21 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:mind_speak_app/pages/splashscreen.dart';
-import 'package:mind_speak_app/providers/theme_provider.dart';
-import 'package:mind_speak_app/providers/session_provider.dart';
+import 'package:mind_speak_app/components/splashscreen.dart';
 import 'package:mind_speak_app/providers/chatprovider.dart';
+import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:provider/provider.dart';
-
+import 'providers/theme_provider.dart';
+ 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load environment variables
+  await Firebase.initializeApp();
   await dotenv.load(fileName: "assets/.env");
 
-  // Initialize Firebase
-  await Firebase.initializeApp();
-
+  // Initialize services
   runApp(
     MultiProvider(
       providers: [

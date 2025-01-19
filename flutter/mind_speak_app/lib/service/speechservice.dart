@@ -1,17 +1,12 @@
-import 'dart:async';
-
 import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
+import 'package:flutter/foundation.dart';
 
 class SpeechService {
   final SpeechToText _speechToText = SpeechToText();
   bool _isInitialized = false;
   bool _isListening = false;
-
-  final StreamController<bool> _isListeningController = StreamController<bool>.broadcast();
-  Stream<bool> get isListeningStream => _isListeningController.stream;
-  bool get isListening => _isListening;
 
   Future<bool> initialize({
     required Function(SpeechRecognitionError) onError,
@@ -20,89 +15,77 @@ class SpeechService {
     if (_isInitialized) return true;
 
     try {
+      // Force cleanup of any existing instance
+      await _speechToText.cancel();
+      await Future.delayed(const Duration(milliseconds: 500));
+
       _isInitialized = await _speechToText.initialize(
         onError: (error) {
-          print('Speech error: ${error.errorMsg}'); // Debug log
+          debugPrint('Speech error: ${error.errorMsg}');
           onError(error);
         },
         onStatus: (status) {
-          print('Speech status: $status'); // Debug log
+          debugPrint('Speech status: $status');
           onStatus(status);
-
-          // Update listening state based on status
-          if (status == 'listening') {
-            _isListening = true;
-            _isListeningController.add(true);
-          } else if (status == 'notListening') {
+          if (status == 'notListening') {
             _isListening = false;
-            _isListeningController.add(false);
           }
         },
-        debugLogging: true, // Enable detailed logs for debugging
+        debugLogging: kDebugMode,
       );
-
-      if (!_isInitialized) {
-        print("Speech-to-Text initialization failed.");
-      }
 
       return _isInitialized;
     } catch (e) {
-      print('Error initializing Speech-to-Text: $e');
-      return false;
+      debugPrint('Speech initialization error: $e');
+      rethrow;
     }
   }
 
   Future<void> startListening({
     required Function(SpeechRecognitionResult) onResult,
-    Duration listenFor = const Duration(seconds: 30),
-    Duration pauseFor = const Duration(seconds: 3),
+    required Duration listenFor,
+    required Duration pauseFor,
   }) async {
     if (!_isInitialized) {
       throw Exception('Speech service not initialized');
     }
 
-    if (!await _speechToText.hasPermission) {
-      throw Exception('Speech recognition permission not granted');
+    if (_isListening) {
+      await stop();
     }
 
     try {
       _isListening = true;
-      _isListeningController.add(true);
-
       await _speechToText.listen(
-        onResult: (result) {
-          print('Speech result: ${result.recognizedWords}'); // Debug log
-          onResult(result);
-        },
-        listenMode: ListenMode.dictation,
-        pauseFor: pauseFor,
+        onResult: onResult,
         listenFor: listenFor,
+        pauseFor: pauseFor,
         partialResults: true,
-        cancelOnError: true,
         onSoundLevelChange: (level) {
-          print('Sound level: $level'); // Debug log
+          debugPrint('Sound level: $level');
         },
+        cancelOnError: false,
+        listenMode: ListenMode.dictation,
       );
     } catch (e) {
-      print('Error starting speech recognition: $e');
       _isListening = false;
-      _isListeningController.add(false);
+      debugPrint('Error in startListening: $e');
       rethrow;
     }
   }
 
   Future<void> stop() async {
     try {
-      await _speechToText.stop();
+      if (_speechToText.isListening) {
+        await _speechToText.stop();
+      }
       _isListening = false;
-      _isListeningController.add(false);
     } catch (e) {
-      print('Error stopping speech recognition: $e'); // Debug log
-      rethrow;
+      debugPrint('Error stopping speech recognition: $e');
     }
   }
 
-  void dispose() {
-    _isListeningController.close();
-  }
+  bool get isListening => _isListening;
+
+  bool get isAvailable => _isInitialized;
 }

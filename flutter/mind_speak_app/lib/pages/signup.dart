@@ -27,9 +27,12 @@ class _SignUpState extends State<SignUp> {
   String childname = "", nationalid = "", childInterest = "";
   String bio = "";
   int childAge = 0;
+  int parentPhonenumber = 0;
+  int therapistPhonenumber = 0;
   bool status = false;
   File? _childImage;
   File? _nationalProofImage;
+  File? _TherapistImage;
 
   TextEditingController usernamecontroller = TextEditingController();
   TextEditingController emailcontroller = TextEditingController();
@@ -39,6 +42,9 @@ class _SignUpState extends State<SignUp> {
   TextEditingController childInterestController = TextEditingController();
   TextEditingController nationalIdController = TextEditingController();
   TextEditingController bioController = TextEditingController();
+  TextEditingController parentPhoneNumberController = TextEditingController();
+  TextEditingController therapistPhoneNumberController =
+      TextEditingController();
 
   final _formkey = GlobalKey<FormState>();
   final ImagePicker _picker = ImagePicker();
@@ -58,6 +64,15 @@ class _SignUpState extends State<SignUp> {
     if (pickedFile != null) {
       setState(() {
         _nationalProofImage = File(pickedFile.path);
+      });
+    }
+  }
+
+  Future<void> pickTherapistImage() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _TherapistImage = File(pickedFile.path);
       });
     }
   }
@@ -116,6 +131,24 @@ class _SignUpState extends State<SignUp> {
         bio = bioController.text.trim();
         nationalid = nationalIdController.text.trim();
 
+        if (role == 'parent' && _childImage == null) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Please upload your child's image."),
+            backgroundColor: Colors.red,
+          ));
+          return;
+        }
+
+        if (role == 'therapist' &&
+            (_nationalProofImage == null || _TherapistImage == null)) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content:
+                Text("Please upload your national proof and therapist image."),
+            backgroundColor: Colors.red,
+          ));
+          return;
+        }
+
         // Register user with Firebase Auth
         UserCredential userCredential = await FirebaseAuth.instance
             .createUserWithEmailAndPassword(email: email, password: password);
@@ -127,6 +160,8 @@ class _SignUpState extends State<SignUp> {
           String childId = uuid.v4();
           childname = childNameController.text.trim();
           childAge = int.parse(childAgeController.text.trim());
+          parentPhonenumber =
+              int.parse(parentPhoneNumberController.text.trim());
           childInterest = childInterestController.text.trim();
 
           if (_childImage != null) {
@@ -146,16 +181,25 @@ class _SignUpState extends State<SignUp> {
             'childInterest': childInterest,
             'childPhoto': childImageUrl,
             'userId': userId,
+            'parentnumber': parentPhonenumber,
             'therapistId': '',
             'assigned': false,
           });
         } else if (role == 'therapist') {
           String nationalProofUrl = "";
+          String TherpistImageUrl = "";
+          therapistPhonenumber =
+              int.parse(therapistPhoneNumberController.text.trim());
 
           if (_nationalProofImage != null) {
             // Upload national proof to Firebase Storage and get the URL
             nationalProofUrl = await uploadImageToStorage(
                 _nationalProofImage!, 'national_proofs');
+          }
+          if (_TherapistImage != null) {
+            // Upload national proof to Firebase Storage and get the URL
+            nationalProofUrl = await uploadImageToStorage(
+                _TherapistImage!, 'Therapists_images');
           }
 
           // Save therapist details to Firestore
@@ -166,7 +210,9 @@ class _SignUpState extends State<SignUp> {
             'bio': bio,
             'nationalid': nationalid,
             'nationalproof': nationalProofUrl,
+            'therapistimage': TherpistImageUrl,
             'status': status,
+            'therapistnumber': therapistPhonenumber,
             'therapistid': userId,
             'userid': userId
           });
@@ -305,6 +351,16 @@ class _SignUpState extends State<SignUp> {
                 if (role == 'parent') ...[
                   const SizedBox(height: 20.0),
                   TextFormField(
+                    controller: parentPhoneNumberController,
+                    decoration: InputDecoration(
+                        labelText: "Parent Phone Number",
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(30))),
+                    validator: (value) =>
+                        value!.isEmpty ? 'Enter Your Phone Number' : null,
+                  ),
+                  const SizedBox(height: 20.0),
+                  TextFormField(
                     controller: childNameController,
                     decoration: InputDecoration(
                         labelText: "Child Name",
@@ -359,6 +415,18 @@ class _SignUpState extends State<SignUp> {
                 if (role == 'therapist') ...[
                   const SizedBox(height: 20.0),
                   TextFormField(
+                    controller: therapistPhoneNumberController,
+                    decoration: InputDecoration(
+                      labelText: "Therapist Phone",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    validator: (value) =>
+                        value!.isEmpty ? 'Enter Your Phone Number' : null,
+                  ),
+                  const SizedBox(height: 20.0),
+                  TextFormField(
                     controller: bioController,
                     decoration: InputDecoration(
                       labelText: "Bio",
@@ -373,11 +441,24 @@ class _SignUpState extends State<SignUp> {
                   TextFormField(
                     controller: nationalIdController,
                     decoration: InputDecoration(
-                        labelText: "National ID",
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30))),
-                    validator: (value) =>
-                        value!.isEmpty ? 'Enter National ID' : null,
+                      labelText: "National ID",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Enter National ID';
+                      }
+                      if (value.length != 14) {
+                        return 'National ID must be exactly 14 digits';
+                      }
+                      if (!RegExp(r'^\d{14}$').hasMatch(value)) {
+                        return 'National ID must contain only numbers';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 20.0),
                   const Text("National Proof"),
@@ -389,6 +470,20 @@ class _SignUpState extends State<SignUp> {
                           ? FileImage(_nationalProofImage!)
                           : null,
                       child: _nationalProofImage == null
+                          ? const Icon(Icons.camera_alt, size: 50)
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(height: 20.0),
+                  const Text("Therapist Image"),
+                  GestureDetector(
+                    onTap: pickTherapistImage,
+                    child: CircleAvatar(
+                      radius: 50,
+                      backgroundImage: _TherapistImage != null
+                          ? FileImage(_TherapistImage!)
+                          : null,
+                      child: _TherapistImage == null
                           ? const Icon(Icons.camera_alt, size: 50)
                           : null,
                     ),

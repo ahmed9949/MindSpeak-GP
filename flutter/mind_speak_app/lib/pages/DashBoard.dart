@@ -1,9 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/components/CustomBottomNavigationBar.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
-import 'package:mind_speak_app/service/database.dart';
-
+import 'package:mind_speak_app/service/AdminRepository.dart';
 import 'package:provider/provider.dart';
 
 class MyApp extends StatelessWidget {
@@ -28,15 +26,15 @@ class DashBoard extends StatefulWidget {
 class _DashBoardState extends State<DashBoard> {
   int usersCount = 0;
   int therapistCount = 0;
-
   bool showUsersCount = false;
   bool showTherapistCount = false;
 
-  final DatabaseMethods databaseMethods = DatabaseMethods();
+  final AdminRepository adminRepository = AdminRepository();
   List<Map<String, dynamic>> therapists = [];
 
-  int currentPage = 0;
+  int currentPage = 1;
   int itemsPerPage = 5;
+  int totalPages = 1;
 
   @override
   void initState() {
@@ -47,8 +45,8 @@ class _DashBoardState extends State<DashBoard> {
 
   Future<void> fetchCounts() async {
     try {
-      int users = await databaseMethods.getUsersCount();
-      int therapistsCount = await databaseMethods.getTherapistsCount();
+      int users = await adminRepository.getUsersCount();
+      int therapistsCount = await adminRepository.getTherapistsCount();
       setState(() {
         usersCount = users;
         therapistCount = therapistsCount;
@@ -60,34 +58,13 @@ class _DashBoardState extends State<DashBoard> {
 
   Future<void> fetchTherapistRequests() async {
     try {
-      QuerySnapshot therapistSnapshot = await FirebaseFirestore.instance
-          .collection('therapist')
-          .where('status', isEqualTo: false)
-          .get();
-
-      List<Map<String, dynamic>> tempTherapists = [];
-
-      for (var therapistDoc in therapistSnapshot.docs) {
-        var therapistData = therapistDoc.data() as Map<String, dynamic>;
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance
-            .collection('user')
-            .doc(therapistData['userid'])
-            .get();
-
-        if (userDoc.exists) {
-          var userData = userDoc.data() as Map<String, dynamic>;
-
-          tempTherapists.add({
-            'username': userData['username'] ?? 'N/A',
-            'email': userData['email'] ?? 'N/A',
-            'nationalid': therapistData['nationalid'] ?? 'N/A',
-            'userid': therapistDoc.id
-          });
-        }
-      }
-
+      List<Map<String, dynamic>> tempTherapists =
+          await adminRepository.getPendingTherapistRequests();
       setState(() {
         therapists = tempTherapists;
+        totalPages = (therapists.length / itemsPerPage).ceil();
+        if (currentPage > totalPages)
+          currentPage = totalPages > 0 ? totalPages : 1;
       });
     } catch (e) {
       print('Error fetching therapist requests: $e');
@@ -96,26 +73,17 @@ class _DashBoardState extends State<DashBoard> {
 
   Future<void> approveTherapist(String therapistId) async {
     try {
-      // Update status in therapist collection
-      await FirebaseFirestore.instance
-          .collection('therapist')
-          .doc(therapistId)
-          .update({'status': true});
-
-      // Update status in user collection
-      await FirebaseFirestore.instance
-          .collection('user')
-          .doc(therapistId)
-          .update({'status': true});
-
+      await adminRepository.approveTherapist(therapistId);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Therapist approved successfully!'),
         backgroundColor: Colors.green,
       ));
-
       setState(() {
         therapists
             .removeWhere((therapist) => therapist['userid'] == therapistId);
+        totalPages = (therapists.length / itemsPerPage).ceil();
+        if (currentPage > totalPages)
+          currentPage = totalPages > 0 ? totalPages : 1;
       });
     } catch (e) {
       print('Error approving therapist: $e');
@@ -124,36 +92,69 @@ class _DashBoardState extends State<DashBoard> {
 
   Future<void> rejectTherapist(String therapistId) async {
     try {
-      // Delete therapist document
-      await FirebaseFirestore.instance
-          .collection('therapist')
-          .doc(therapistId)
-          .delete();
-
-      // Delete associated user document
-      await FirebaseFirestore.instance
-          .collection('user')
-          .doc(therapistId)
-          .delete();
-
+      await adminRepository.rejectTherapist(therapistId);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Therapist rejected and removed!'),
         backgroundColor: Colors.red,
       ));
-
       setState(() {
         therapists
             .removeWhere((therapist) => therapist['userid'] == therapistId);
+        totalPages = (therapists.length / itemsPerPage).ceil();
+        if (currentPage > totalPages)
+          currentPage = totalPages > 0 ? totalPages : 1;
       });
     } catch (e) {
       print('Error rejecting therapist: $e');
     }
   }
 
+  void _showImageDialog(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              imageUrl.isNotEmpty
+                  ? Image.network(imageUrl)
+                  : const Center(
+                      child: Text('No image available'),
+                    ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void nextPage() {
+    if (currentPage < totalPages) {
+      setState(() {
+        currentPage++;
+      });
+    }
+  }
+
+  void previousPage() {
+    if (currentPage > 1) {
+      setState(() {
+        currentPage--;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
- 
+
     return Scaffold(
       appBar: AppBar(
         actions: [
@@ -258,39 +259,96 @@ class _DashBoardState extends State<DashBoard> {
               const SizedBox(height: 20),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columns: const [
-                    DataColumn(label: Text('Name')),
-                    DataColumn(label: Text('Email')),
-                    DataColumn(label: Text('National ID')),
-                    DataColumn(label: Text('Actions')),
-                  ],
-                  rows: therapists
-                      .skip(currentPage * itemsPerPage)
-                      .take(itemsPerPage)
-                      .map((therapist) => DataRow(cells: [
-                            DataCell(Text(therapist['username'])),
-                            DataCell(Text(therapist['email'])),
-                            DataCell(Text(therapist['nationalid'])),
-                            DataCell(Row(
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.check,
-                                      color: Colors.green),
-                                  onPressed: () =>
-                                      approveTherapist(therapist['userid']),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.close,
-                                      color: Colors.red),
-                                  onPressed: () =>
-                                      rejectTherapist(therapist['userid']),
-                                ),
-                              ],
-                            ))
-                          ]))
-                      .toList(),
-                ),
+                child: therapists.isNotEmpty
+                    ? DataTable(
+                        columns: const [
+                          DataColumn(label: Text('Name')),
+                          DataColumn(label: Text('Email')),
+                          DataColumn(label: Text('National ID')),
+                          DataColumn(label: Text('Bio')),
+                          DataColumn(label: Text('Phone Number')),
+                          DataColumn(label: Text('Therapist Image')),
+                          DataColumn(label: Text('National Proof')),
+                          DataColumn(label: Text('Actions')),
+                        ],
+                        rows: therapists
+                            .skip((currentPage - 1) * itemsPerPage)
+                            .take(itemsPerPage)
+                            .map((therapist) => DataRow(cells: [
+                                  DataCell(Text(therapist['username'])),
+                                  DataCell(Text(therapist['email'])),
+                                  DataCell(Text(therapist['nationalid'])),
+                                  DataCell(Text(therapist['bio'] ?? 'N/A')),
+                                  DataCell(Text(
+                                      therapist['therapistPhoneNumber'] ??
+                                          'N/A')),
+                                  DataCell(
+                                    IconButton(
+                                      icon: const Icon(Icons.image,
+                                          color: Colors.green),
+                                      onPressed: () {
+                                        _showImageDialog(context,
+                                            therapist['therapistImage']);
+                                      },
+                                    ),
+                                  ),
+                                  DataCell(
+                                    IconButton(
+                                      icon: const Icon(Icons.image,
+                                          color: Colors.blue),
+                                      onPressed: () {
+                                        _showImageDialog(context,
+                                            therapist['nationalProof']);
+                                      },
+                                    ),
+                                  ),
+                                  DataCell(Row(
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.check,
+                                            color: Colors.green),
+                                        onPressed: () => approveTherapist(
+                                            therapist['userid']),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.close,
+                                            color: Colors.red),
+                                        onPressed: () => rejectTherapist(
+                                            therapist['userid']),
+                                      ),
+                                    ],
+                                  )),
+                                ]))
+                            .toList(),
+                      )
+                    : const Center(
+                        child: Text('No therapist requests available'),
+                      ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: previousPage,
+                    child: const Text(
+                      'Previous',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                  Text(
+                    '$currentPage of $totalPages',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  TextButton(
+                    onPressed: nextPage,
+                    child: const Text(
+                      'Next',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

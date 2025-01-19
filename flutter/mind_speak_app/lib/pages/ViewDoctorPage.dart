@@ -1,42 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
+import 'package:mind_speak_app/components/CustomBottomNavigationBar.dart';
+import 'package:mind_speak_app/service/DoctorRepository.dart';
 import 'package:provider/provider.dart';
-import '../Components/CustomBottomNavigationBar.dart';
-
-class ViewDoctorsPage extends StatelessWidget {
-  const ViewDoctorsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-
-    return Scaffold(
-      appBar: AppBar(
-        actions: [
-          IconButton(
-            icon: Icon(themeProvider.isDarkMode
-                ? Icons.wb_sunny
-                : Icons.nightlight_round),
-            onPressed: () {
-              themeProvider.toggleTheme(); // Toggle the theme
-            },
-          ),
-        ],
-        centerTitle: true,
-        backgroundColor: themeProvider.isDarkMode
-            ? Colors.black
-            : Colors.lightBlue, // Custom color for this screen
-        title: const Text(
-          "View Therapists",
-          style: TextStyle(color: Colors.white),
-        ),
-      ),
-      body: const ViewDoctors(),
-      bottomNavigationBar: const CustomBottomNavigationBar(currentIndex: 1),
-    );
-  }
-}
 
 class ViewDoctors extends StatefulWidget {
   const ViewDoctors({super.key});
@@ -46,6 +12,7 @@ class ViewDoctors extends StatefulWidget {
 }
 
 class _ViewDoctorsState extends State<ViewDoctors> {
+  final DoctorRepository _doctorRepository = DoctorRepository();
   List<Map<String, dynamic>> _allTherapist = [];
   List<Map<String, dynamic>> _foundTherapist = [];
   bool _isLoading = true;
@@ -56,49 +23,13 @@ class _ViewDoctorsState extends State<ViewDoctors> {
     fetchApprovedTherapist();
   }
 
-  // hena 3ashn get all therapist el approved fel system
   Future<void> fetchApprovedTherapist() async {
     try {
-      // Fetch all approved therapists
-      QuerySnapshot therapistSnapshot = await FirebaseFirestore.instance
-          .collection('therapist')
-          .where('status', isEqualTo: true)
-          .get();
-
-      // Get all user IDs from the fetched therapists
-      List<String> userIds =
-          therapistSnapshot.docs.map((doc) => doc['userid'] as String).toList();
-
-      // Fetch all user documents in a single batch call
-      QuerySnapshot userSnapshot = await FirebaseFirestore.instance
-          .collection('user')
-          .where(FieldPath.documentId, whereIn: userIds)
-          .get();
-
-      // Create a map of userId to user data for quick lookup
-      Map<String, Map<String, dynamic>> userMap = {
-        for (var doc in userSnapshot.docs)
-          doc.id: doc.data() as Map<String, dynamic>
-      };
-
-      // Combine therapist data with user data
-      List<Map<String, dynamic>> loadedTherapists = therapistSnapshot.docs.map(
-        (doc) {
-          var therapistData = doc.data() as Map<String, dynamic>;
-          var userData = userMap[therapistData['userid']] ?? {};
-
-          return {
-            'id': doc.id,
-            'name': userData['username'] ?? 'N/A',
-            'email': userData['email'] ?? 'N/A',
-            'nationalid': therapistData['nationalid'] ?? 'N/A',
-          };
-        },
-      ).toList();
-
+      List<Map<String, dynamic>> therapists =
+          await _doctorRepository.fetchApprovedTherapists();
       setState(() {
-        _allTherapist = loadedTherapists;
-        _foundTherapist = loadedTherapists;
+        _allTherapist = therapists;
+        _foundTherapist = therapists;
         _isLoading = false;
       });
     } catch (e) {
@@ -129,15 +60,59 @@ class _ViewDoctorsState extends State<ViewDoctors> {
     });
   }
 
+  void _showImageDialog(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              imageUrl.isNotEmpty
+                  ? Image.network(imageUrl)
+                  : const Center(
+                      child: Text('No image available'),
+                    ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : Scaffold(
-            resizeToAvoidBottomInset:
-                true, // Adjusts layout when the keyboard is open
-            body: SingleChildScrollView(
-              // Ensures the content is scrollable to prevent overflow
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        actions: [
+          IconButton(
+            icon: Icon(themeProvider.isDarkMode
+                ? Icons.wb_sunny
+                : Icons.nightlight_round),
+            onPressed: () {
+              themeProvider.toggleTheme(); // Toggle theme
+            },
+          ),
+        ],
+        centerTitle: true,
+        backgroundColor:
+            themeProvider.isDarkMode ? Colors.black : Colors.lightBlue,
+        title: const Text(
+          "View Therapists",
+          style: TextStyle(color: Colors.white),
+        ),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
               padding: const EdgeInsets.all(10.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,10 +128,8 @@ class _ViewDoctorsState extends State<ViewDoctors> {
                   const SizedBox(height: 20),
                   _foundTherapist.isNotEmpty
                       ? ListView.builder(
-                          shrinkWrap:
-                              true, // Ensures the ListView only takes necessary space
-                          physics:
-                              const NeverScrollableScrollPhysics(), // Disables ListView's scroll to let SingleChildScrollView handle it
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
                           itemCount: _foundTherapist.length,
                           itemBuilder: (context, index) => Card(
                             key: ValueKey(_foundTherapist[index]["id"]),
@@ -164,10 +137,24 @@ class _ViewDoctorsState extends State<ViewDoctors> {
                             elevation: 4,
                             margin: const EdgeInsets.symmetric(vertical: 10),
                             child: ListTile(
-                              leading: Text(
-                                (index + 1).toString(),
-                                style: const TextStyle(
-                                    fontSize: 24, color: Colors.white),
+                              leading: CircleAvatar(
+                                radius: 30, // Adjust the radius as needed
+                                backgroundImage: _foundTherapist[index]
+                                                ['therapistImage'] !=
+                                            null &&
+                                        _foundTherapist[index]['therapistImage']
+                                            .isNotEmpty
+                                    ? NetworkImage(_foundTherapist[index]
+                                        ['therapistImage'])
+                                    : null,
+                                child: _foundTherapist[index]
+                                                ['therapistImage'] ==
+                                            null ||
+                                        _foundTherapist[index]['therapistImage']
+                                            .isEmpty
+                                    ? const Icon(Icons.person,
+                                        size: 30, color: Colors.white)
+                                    : null,
                               ),
                               title: Text(
                                 _foundTherapist[index]['name'],
@@ -184,6 +171,39 @@ class _ViewDoctorsState extends State<ViewDoctors> {
                                     'National ID: ${_foundTherapist[index]['nationalid']}',
                                     style: const TextStyle(color: Colors.white),
                                   ),
+                                  Text(
+                                    'Bio: ${_foundTherapist[index]['bio'] ?? 'N/A'}',
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                  Text(
+                                    'Phone: ${_foundTherapist[index]['therapistPhoneNumber'] ?? 'N/A'}',
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                ],
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.image,
+                                        color: Colors.green),
+                                    onPressed: () {
+                                      _showImageDialog(
+                                          context,
+                                          _foundTherapist[index]
+                                              ['therapistImage']);
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.image,
+                                        color: Colors.blue),
+                                    onPressed: () {
+                                      _showImageDialog(
+                                          context,
+                                          _foundTherapist[index]
+                                              ['nationalProof']);
+                                    },
+                                  ),
                                 ],
                               ),
                             ),
@@ -198,6 +218,7 @@ class _ViewDoctorsState extends State<ViewDoctors> {
                 ],
               ),
             ),
-          );
+      bottomNavigationBar: const CustomBottomNavigationBar(currentIndex: 1),
+    );
   }
 }

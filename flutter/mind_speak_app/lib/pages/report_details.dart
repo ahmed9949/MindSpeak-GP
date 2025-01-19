@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/components/report_detail_item.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -9,7 +10,13 @@ class ReportDetailsPage extends StatelessWidget {
   final String progress;
   final String recommendation;
 
-  const ReportDetailsPage({super.key, required this.sessionId, required this.analysis, required this.progress, required this.recommendation});
+  const ReportDetailsPage({
+    super.key, 
+    required this.sessionId, 
+    required this.analysis, 
+    required this.progress, 
+    required this.recommendation
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -50,27 +57,13 @@ class ReportDetailsPage extends StatelessWidget {
               padding: const EdgeInsets.all(16.0),
               child: SizedBox(
                 width: 500,
-                child: SingleChildScrollView( // Allows scrolling if text overflows
+                child: SingleChildScrollView( 
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("Session Id: $sessionId",
-                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 10),
-                      Text("Analysis: $analysis",
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                          overflow: TextOverflow.ellipsis, // Handle long text
-                          maxLines: 3),
-                      const SizedBox(height: 10),
-                      Text("Progress: $progress",
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                          overflow: TextOverflow.ellipsis, // Handle long text
-                          maxLines: 3),
-                      const SizedBox(height: 10),
-                      Text("Recommendation: $recommendation",
-                          style: const TextStyle(fontSize: 18),
-                          overflow: TextOverflow.ellipsis, // Handle long text
-                          maxLines: 3),
+                      ReportDetailItem(title: "Session Id", content: sessionId),
+                      ReportDetailItem(title: "Analysis", content: analysis),
+                      ReportDetailItem(title: "Progress", content: progress),
+                      ReportDetailItem(title: "Recommendation", content: recommendation),
                     ],
                   ),
                 ),

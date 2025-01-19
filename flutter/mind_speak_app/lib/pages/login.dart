@@ -11,6 +11,7 @@ import 'package:mind_speak_app/pages/homepage.dart';
 import 'package:mind_speak_app/pages/signup.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
+import 'package:mind_speak_app/service/doctor_dashboard_service.dart';
 import 'package:provider/provider.dart';
 
 class LogIn extends StatefulWidget {
@@ -26,6 +27,8 @@ class _LogInState extends State<LogIn> {
 
   TextEditingController mailcontroller = TextEditingController();
   TextEditingController passwordcontroller = TextEditingController();
+  
+  final DoctorDashboardService _doctorServices = DoctorDashboardService();
 
   final _formkey = GlobalKey<FormState>();
 
@@ -113,10 +116,30 @@ class _LogInState extends State<LogIn> {
   }
 } else if (role == 'therapist') {
           if (isApproved) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const DoctorDashboard()),
-            );
+ try {
+      Map<String, dynamic> therapistInfo =
+          await _doctorServices.getTherapistInfo(userSnapshot.docs.first.id);
+      Map<String, dynamic> userInfo =
+          await _doctorServices.getUserInfo(userSnapshot.docs.first.id);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DoctorDashboard(
+            sessionId: userSnapshot.docs.first.id,
+            therapistInfo: therapistInfo,
+            userInfo: userInfo,
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: Colors.redAccent,
+        content: Text(
+          e.toString(),
+          style: const TextStyle(fontSize: 18.0),
+        ),
+      ));
+    }
           } else {
             throw Exception("Your account is not yet approved by the admin.");
           }

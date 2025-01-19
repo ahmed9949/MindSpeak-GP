@@ -60,6 +60,32 @@ class _ViewDoctorsState extends State<ViewDoctors> {
     });
   }
 
+  void _showImageDialog(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              imageUrl.isNotEmpty
+                  ? Image.network(imageUrl)
+                  : const Center(
+                      child: Text('No image available'),
+                    ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -111,10 +137,24 @@ class _ViewDoctorsState extends State<ViewDoctors> {
                             elevation: 4,
                             margin: const EdgeInsets.symmetric(vertical: 10),
                             child: ListTile(
-                              leading: Text(
-                                (index + 1).toString(),
-                                style: const TextStyle(
-                                    fontSize: 24, color: Colors.white),
+                              leading: CircleAvatar(
+                                radius: 30, // Adjust the radius as needed
+                                backgroundImage: _foundTherapist[index]
+                                                ['therapistImage'] !=
+                                            null &&
+                                        _foundTherapist[index]['therapistImage']
+                                            .isNotEmpty
+                                    ? NetworkImage(_foundTherapist[index]
+                                        ['therapistImage'])
+                                    : null,
+                                child: _foundTherapist[index]
+                                                ['therapistImage'] ==
+                                            null ||
+                                        _foundTherapist[index]['therapistImage']
+                                            .isEmpty
+                                    ? const Icon(Icons.person,
+                                        size: 30, color: Colors.white)
+                                    : null,
                               ),
                               title: Text(
                                 _foundTherapist[index]['name'],
@@ -130,6 +170,39 @@ class _ViewDoctorsState extends State<ViewDoctors> {
                                   Text(
                                     'National ID: ${_foundTherapist[index]['nationalid']}',
                                     style: const TextStyle(color: Colors.white),
+                                  ),
+                                  Text(
+                                    'Bio: ${_foundTherapist[index]['bio'] ?? 'N/A'}',
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                  Text(
+                                    'Phone: ${_foundTherapist[index]['therapistPhoneNumber'] ?? 'N/A'}',
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                ],
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.image,
+                                        color: Colors.green),
+                                    onPressed: () {
+                                      _showImageDialog(
+                                          context,
+                                          _foundTherapist[index]
+                                              ['therapistImage']);
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.image,
+                                        color: Colors.blue),
+                                    onPressed: () {
+                                      _showImageDialog(
+                                          context,
+                                          _foundTherapist[index]
+                                              ['nationalProof']);
+                                    },
                                   ),
                                 ],
                               ),

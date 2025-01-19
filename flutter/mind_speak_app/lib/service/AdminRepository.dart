@@ -30,6 +30,7 @@ class AdminRepository {
           .collection('therapist')
           .where('status', isEqualTo: false)
           .get();
+
       List<Map<String, dynamic>> therapists = [];
       for (var doc in snapshot.docs) {
         var data = doc.data() as Map<String, dynamic>;
@@ -42,7 +43,12 @@ class AdminRepository {
             'username': userData['username'] ?? 'N/A',
             'email': userData['email'] ?? 'N/A',
             'nationalid': data['nationalid'] ?? 'N/A',
-            'userid': doc.id
+            'bio': data['bio'] ?? 'N/A',
+            'therapistPhoneNumber':
+                data['therapistnumber']?.toString() ?? 'N/A',
+            'nationalProof': data['nationalproof'] ?? '',
+            'therapistImage': data['therapistimage'] ?? '',
+            'userid': doc.id,
           });
         }
       }

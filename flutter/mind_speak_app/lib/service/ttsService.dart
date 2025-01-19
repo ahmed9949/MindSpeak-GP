@@ -134,14 +134,14 @@ class TTSService {
         }),
       ).timeout(const Duration(seconds: 15));
 
-//       if (response.statusCode == 200) {
-//         await _player.stop();
+      if (response.statusCode == 200) {
+        await _player.stop();
 
-//         // Notify that speaking has started
-//         _isSpeakingController.add(true);
+        // Notify that speaking has started
+        _isSpeakingController.add(true);
 
-//         await _player.setAudioSource(CustomAudioSource(response.bodyBytes));
-//         await _player.play();
+        await _player.setAudioSource(CustomAudioSource(response.bodyBytes));
+        await _player.play();
 
         // Listen for playback completion
         _player.playerStateStream.listen((state) {
@@ -159,10 +159,10 @@ class TTSService {
     }
   }
 
-//   Future<void> stop() async {
-//     await _player.stop();
-//     _isSpeakingController.add(false); // Notify that speaking has stopped
-//   }
+  Future<void> stop() async {
+    await _player.stop();
+    _isSpeakingController.add(false); // Notify that speaking has stopped
+  }
 
   void dispose() {
     _isSpeakingController.close();

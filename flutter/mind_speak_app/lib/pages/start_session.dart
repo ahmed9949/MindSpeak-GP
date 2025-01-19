@@ -24,16 +24,16 @@ class _StartSessionState extends State<StartSession> {
     _setupTTSListener();
   }
 
-//   void _initializeAnimations() {
-//     _talkController = OneShotAnimation('Talk', autoplay: false);
-//     _hearController = OneShotAnimation('hands_hear_start', autoplay: false);
-//     _stopHearController = OneShotAnimation('hands_hear_stop', autoplay: false);
-//   }
+  void _initializeAnimations() {
+    _talkController = OneShotAnimation('Talk', autoplay: false);
+    _hearController = OneShotAnimation('hands_hear_start', autoplay: false);
+    _stopHearController = OneShotAnimation('hands_hear_stop', autoplay: false);
+  }
 
-//   void _setupTTSListener() {
-//     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-//     chatProvider.ttsService.isSpeakingStream.listen((isSpeaking) {
-//       if (!mounted) return;
+  void _setupTTSListener() {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    chatProvider.ttsService.isSpeakingStream.listen((isSpeaking) {
+      if (!mounted) return;
 
       if (isSpeaking) {
         _triggerAction(_talkController);
@@ -166,9 +166,9 @@ class _StartSessionState extends State<StartSession> {
     );
   }
 
-//   @override
-//   void dispose() {
-//     _scrollController.dispose();
-//     super.dispose();
-//   }
-// }
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+}

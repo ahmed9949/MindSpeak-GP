@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/components/homepageCards.dart';
 import 'package:mind_speak_app/components/drawer.dart';
+import 'package:mind_speak_app/pages/choose_avatar_page.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/pages/sessionpage.dart';
 import 'package:provider/provider.dart';
@@ -82,7 +83,7 @@ class HomePage extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const HomePage()),
+                  MaterialPageRoute(builder: (context) => const ChooseAvatarPage()),
                 );
               },
               style: ElevatedButton.styleFrom(

@@ -119,7 +119,7 @@ class _ChooseAvatarPageState extends State<ChooseAvatarPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const StartSession(),
+                  builder: (context) => const start_session(),
                 ),
               );
             },

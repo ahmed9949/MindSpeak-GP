@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/homepage.dart';
 import 'package:mind_speak_app/pages/logout.dart';
 import 'package:mind_speak_app/pages/predict.dart';
@@ -68,6 +69,17 @@ class NavigationDrawe extends StatelessWidget {
               Navigator.push(context,
                   MaterialPageRoute(builder: (context) => const Predict()));
             },
+            
+          ),
+          ListTile(
+            leading: const Icon(Icons.info_sharp),
+            title: const Text('Cars Details'),
+           onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => carsform()));
+            },
+            
           ),
           ListTile(
             leading: const Icon(Icons.logout),

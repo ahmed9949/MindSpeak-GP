@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:mind_speak_app/providers/session_provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mind_speak_app/components/cars.dart';
 import 'package:mind_speak_app/components/drawer.dart';
 import 'package:mind_speak_app/pages/homepage.dart';
@@ -165,14 +168,80 @@ class _CategorySelectionPageState extends State<carsform> {
 
  final ValueNotifier<List<double?>> selectedScores =
       ValueNotifier<List<double?>>(List.generate(15, (_) => null));
+  String? childId; // Make childId nullable
+  bool isLoading = true; // Track loading state
+
+ void showCustomPopup(BuildContext context, String message) {
+    final overlay = Overlay.of(context);
+
+    // Declare the overlayEntry with a placeholder
+    OverlayEntry? overlayEntry;
+    overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: MediaQuery.of(context).size.height / 3,
+        left: MediaQuery.of(context).size.width / 10,
+        width: MediaQuery.of(context).size.width * 0.8,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8.0),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 10,
+                  offset: Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'نتيجة التشخيص',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    overlayEntry?.remove();
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (context) => HomePage()),
+                      (route) => false,
+                    );
+                  },
+                  child: Text('حسنًا'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay?.insert(overlayEntry);
+  }
+
+
 
   @override
-     Widget build(BuildContext context) {
+   Widget build(BuildContext context) {
+    final sessionProvider = Provider.of<SessionProvider>(context);
+
     return Scaffold(
-
       appBar: AppBar(
-
-        title: Text('اختيار الأسئلة لكل فئة'),
+        title: Text('اختيار مستوى التوحد'),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -193,7 +262,7 @@ class _CategorySelectionPageState extends State<carsform> {
           ),
         ],
       ),
-      drawer:NavigationDrawe(),
+      drawer: NavigationDrawe(),
       body: ValueListenableBuilder<List<double?>>(
         valueListenable: selectedScores,
         builder: (context, scores, child) {
@@ -219,12 +288,21 @@ class _CategorySelectionPageState extends State<carsform> {
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton(
-          onPressed: () {
+          onPressed: () async {
+            if (sessionProvider.childId == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('لم يتم تحديد معرف الطفل.'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              return;
+            }
+
             // Check if all categories have one question selected
             bool allSelected = !selectedScores.value.contains(null);
 
             if (!allSelected) {
-              // Show alert for incomplete form
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
@@ -242,33 +320,44 @@ class _CategorySelectionPageState extends State<carsform> {
             double totalScore = selectedScores.value
                 .whereType<double>()
                 .reduce((a, b) => a + b);
-            String message;
-
+            
+           String message;
             if (totalScore < 15) {
               message = 'طفلك ليس مصابًا بالتوحد.';
             } else if (totalScore >= 15 && totalScore <= 29.5) {
-              message = 'طفلك ليس مصابًا بالتوحد.';
+              message = 'طفلك مصاب بالتوحد بدلرجة ضئيلة.';
             } else if (totalScore >= 30 && totalScore <= 36.5) {
-              message = 'طفلك مصاب بالتوحد بدرجة طبيعية.';
+              message = 'طفلك مصاب بالتوحد بدرجة متوسطة.';
             } else {
-              message = 'طفلك مصاب بالتوحد بدرجة شديدة. لا يمكننا مساعدتك. الرجاء مراجعة الطبيب للحصول على المساعدة.';
+              message =
+                  'طفلك مصاب بالتوحد بدرجة شديدة. لا يمكننا مساعدتك. الرجاء مراجعة الطبيب للحصول على المساعدة.';
             }
 
-            showDialog(
-              context: context,
-              builder: (context) {
-                return AlertDialog(
-                  title: Text('نتيجة التشخيص'),
-                  content: Text(message),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text('حسنًا'),
-                    ),
-                  ],
-                );
-              },
-            );
+            showCustomPopup(context, message);
+
+            try {
+              await FirebaseFirestore.instance.collection('Cars').add({
+                'childId': sessionProvider.childId,
+                'totalScore': totalScore,
+                'selectedQuestions': selectedScores.value,
+                'status': true,
+              });
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('تم حفظ الإجابات بنجاح.'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            } catch (e) {
+              print('Error saving form data: $e');
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('حدث خطأ أثناء حفظ البيانات. حاول مرة أخرى.'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,

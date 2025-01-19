@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/components/CustomBottomNavigationBar.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
-import 'package:mind_speak_app/repositories/AdminRepository.dart';
+import 'package:mind_speak_app/service/AdminRepository.dart';
 import 'package:provider/provider.dart';
  
 class  MyApp extends StatelessWidget {

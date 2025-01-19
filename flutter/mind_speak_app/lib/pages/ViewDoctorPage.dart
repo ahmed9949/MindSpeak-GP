@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mind_speak_app/repositories/DoctorRepository.dart';
+import 'package:mind_speak_app/service/DoctorRepository.dart';
 
 class ViewDoctors extends StatefulWidget {
   const ViewDoctors({super.key});

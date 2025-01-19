@@ -21,7 +21,7 @@ class CustomBottomNavigationBar extends StatelessWidget {
     } else if (index == 1 && currentIndex != 1) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const ViewDoctorsPage()),
+        MaterialPageRoute(builder: (context) => const ViewDoctors()),
       );
     } else if (index == 2) {
       Navigator.pushAndRemoveUntil(

@@ -1,42 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:mind_speak_app/providers/theme_provider.dart';
-import 'package:provider/provider.dart';
-import '../Components/CustomBottomNavigationBar.dart';
-
-class ViewDoctorsPage extends StatelessWidget {
-  const ViewDoctorsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-
-    return Scaffold(
-      appBar: AppBar(
-        actions: [
-          IconButton(
-            icon: Icon(themeProvider.isDarkMode
-                ? Icons.wb_sunny
-                : Icons.nightlight_round),
-            onPressed: () {
-              themeProvider.toggleTheme(); // Toggle the theme
-            },
-          ),
-        ],
-        centerTitle: true,
-        backgroundColor: themeProvider.isDarkMode
-            ? Colors.black
-            : Colors.lightBlue, // Custom color for this screen
-        title: const Text(
-          "View Therapists",
-          style: TextStyle(color: Colors.white),
-        ),
-      ),
-      body: const ViewDoctors(),
-      bottomNavigationBar: const CustomBottomNavigationBar(currentIndex: 1),
-    );
-  }
-}
+import 'package:mind_speak_app/repositories/DoctorRepository.dart';
 
 class ViewDoctors extends StatefulWidget {
   const ViewDoctors({super.key});
@@ -46,6 +9,7 @@ class ViewDoctors extends StatefulWidget {
 }
 
 class _ViewDoctorsState extends State<ViewDoctors> {
+  final DoctorRepository _doctorRepository = DoctorRepository();
   List<Map<String, dynamic>> _allTherapist = [];
   List<Map<String, dynamic>> _foundTherapist = [];
   bool _isLoading = true;
@@ -58,71 +22,15 @@ class _ViewDoctorsState extends State<ViewDoctors> {
 
   Future<void> fetchApprovedTherapist() async {
     try {
-      // Fetch all approved therapists
-      QuerySnapshot therapistSnapshot = await FirebaseFirestore.instance
-          .collection('therapist')
-          .where('status', isEqualTo: true)
-          .get();
-
-      // Get all user IDs from the fetched therapists
-      List<String> userIds = therapistSnapshot.docs
-          .map((doc) => doc['userid'] as String)
-          .where((id) => id != null && id.isNotEmpty)
-          .toList();
-
-      if (userIds.isEmpty) {
-        print("No approved therapists found.");
-        setState(() {
-          _isLoading = false;
-        });
-        return;
-      }
-
-      // Split userIds into batches to handle Firestore's limit of 10 items in 'whereIn'
-      List<List<String>> batches = [];
-      const batchSize = 10;
-      for (int i = 0; i < userIds.length; i += batchSize) {
-        batches.add(userIds.sublist(i,
-            i + batchSize > userIds.length ? userIds.length : i + batchSize));
-      }
-
-      List<DocumentSnapshot> allDocs = [];
-      for (var batch in batches) {
-        QuerySnapshot userSnapshot = await FirebaseFirestore.instance
-            .collection('user')
-            .where(FieldPath.documentId, whereIn: batch)
-            .get();
-        allDocs.addAll(userSnapshot.docs);
-      }
-
-      // Create a map of userId to user data for quick lookup
-      Map<String, Map<String, dynamic>> userMap = {
-        for (var doc in allDocs) doc.id: doc.data() as Map<String, dynamic>
-      };
-
-      // Combine therapist data with user data
-      List<Map<String, dynamic>> loadedTherapists = therapistSnapshot.docs.map(
-        (doc) {
-          var therapistData = doc.data() as Map<String, dynamic>;
-          var userData = userMap[therapistData['userid']] ?? {};
-
-          return {
-            'id': doc.id,
-            'name': userData['username'] ?? 'N/A',
-            'email': userData['email'] ?? 'N/A',
-            'nationalid': therapistData['nationalid'] ?? 'N/A',
-          };
-        },
-      ).toList();
-
+      List<Map<String, dynamic>> therapists =
+          await _doctorRepository.fetchApprovedTherapists();
       setState(() {
-        _allTherapist = loadedTherapists;
-        _foundTherapist = loadedTherapists;
+        _allTherapist = therapists;
+        _foundTherapist = therapists;
         _isLoading = false;
       });
-    } catch (e, stacktrace) {
+    } catch (e) {
       print('Error fetching therapists: $e');
-      print('Stacktrace: $stacktrace');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Error fetching therapists: $e'),
         backgroundColor: Colors.red,
@@ -154,10 +62,7 @@ class _ViewDoctorsState extends State<ViewDoctors> {
     return _isLoading
         ? const Center(child: CircularProgressIndicator())
         : Scaffold(
-            resizeToAvoidBottomInset:
-                true, // Adjusts layout when the keyboard is open
             body: SingleChildScrollView(
-              // Ensures the content is scrollable to prevent overflow
               padding: const EdgeInsets.all(10.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,10 +78,8 @@ class _ViewDoctorsState extends State<ViewDoctors> {
                   const SizedBox(height: 20),
                   _foundTherapist.isNotEmpty
                       ? ListView.builder(
-                          shrinkWrap:
-                              true, // Ensures the ListView only takes necessary space
-                          physics:
-                              const NeverScrollableScrollPhysics(), // Disables ListView's scroll to let SingleChildScrollView handle it
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
                           itemCount: _foundTherapist.length,
                           itemBuilder: (context, index) => Card(
                             key: ValueKey(_foundTherapist[index]["id"]),

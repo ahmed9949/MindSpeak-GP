@@ -1,8 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/components/CustomBottomNavigationBar.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
-import 'package:mind_speak_app/service/database.dart';
+import 'package:mind_speak_app/repositories/AdminRepository.dart';
 import 'package:provider/provider.dart';
 
 class MyApp extends StatelessWidget {
@@ -27,11 +26,10 @@ class DashBoard extends StatefulWidget {
 class _DashBoardState extends State<DashBoard> {
   int usersCount = 0;
   int therapistCount = 0;
-
   bool showUsersCount = false;
   bool showTherapistCount = false;
 
-  final DatabaseMethods databaseMethods = DatabaseMethods();
+  final AdminRepository adminRepository = AdminRepository();
   List<Map<String, dynamic>> therapists = [];
 
   int currentPage = 1;
@@ -47,8 +45,8 @@ class _DashBoardState extends State<DashBoard> {
 
   Future<void> fetchCounts() async {
     try {
-      int users = await databaseMethods.getUsersCount();
-      int therapistsCount = await databaseMethods.getTherapistsCount();
+      int users = await adminRepository.getUsersCount();
+      int therapistsCount = await adminRepository.getTherapistsCount();
       setState(() {
         usersCount = users;
         therapistCount = therapistsCount;
@@ -60,32 +58,8 @@ class _DashBoardState extends State<DashBoard> {
 
   Future<void> fetchTherapistRequests() async {
     try {
-      QuerySnapshot therapistSnapshot = await FirebaseFirestore.instance
-          .collection('therapist')
-          .where('status', isEqualTo: false)
-          .get();
-
-      List<Map<String, dynamic>> tempTherapists = [];
-
-      for (var therapistDoc in therapistSnapshot.docs) {
-        var therapistData = therapistDoc.data() as Map<String, dynamic>;
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance
-            .collection('user')
-            .doc(therapistData['userid'])
-            .get();
-
-        if (userDoc.exists) {
-          var userData = userDoc.data() as Map<String, dynamic>;
-
-          tempTherapists.add({
-            'username': userData['username'] ?? 'N/A',
-            'email': userData['email'] ?? 'N/A',
-            'nationalid': therapistData['nationalid'] ?? 'N/A',
-            'userid': therapistDoc.id
-          });
-        }
-      }
-
+      List<Map<String, dynamic>> tempTherapists =
+          await adminRepository.getPendingTherapistRequests();
       setState(() {
         therapists = tempTherapists;
         totalPages = (therapists.length / itemsPerPage).ceil();
@@ -99,21 +73,11 @@ class _DashBoardState extends State<DashBoard> {
 
   Future<void> approveTherapist(String therapistId) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('therapist')
-          .doc(therapistId)
-          .update({'status': true});
-
-      await FirebaseFirestore.instance
-          .collection('user')
-          .doc(therapistId)
-          .update({'status': true});
-
+      await adminRepository.approveTherapist(therapistId);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Therapist approved successfully!'),
         backgroundColor: Colors.green,
       ));
-
       setState(() {
         therapists
             .removeWhere((therapist) => therapist['userid'] == therapistId);
@@ -128,21 +92,11 @@ class _DashBoardState extends State<DashBoard> {
 
   Future<void> rejectTherapist(String therapistId) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('therapist')
-          .doc(therapistId)
-          .delete();
-
-      await FirebaseFirestore.instance
-          .collection('user')
-          .doc(therapistId)
-          .delete();
-
+      await adminRepository.rejectTherapist(therapistId);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Therapist rejected and removed!'),
         backgroundColor: Colors.red,
       ));
-
       setState(() {
         therapists
             .removeWhere((therapist) => therapist['userid'] == therapistId);

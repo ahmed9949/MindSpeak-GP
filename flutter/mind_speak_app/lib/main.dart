@@ -11,7 +11,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Load environment variables
-  await dotenv.load(fileName: "assets/.env");
+  // await dotenv.load(fileName: "assets/.env");
 
   // Initialize Firebase
   await Firebase.initializeApp();
@@ -22,7 +22,7 @@ void main() async {
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
         ChangeNotifierProvider(
             create: (context) => SessionProvider()..loadSession()),
-        ChangeNotifierProvider(create: (context) => ChatProvider()),
+        // ChangeNotifierProvider(create: (context) => ChatProvider()),
       ],
       child: const MyApp(),
     ),

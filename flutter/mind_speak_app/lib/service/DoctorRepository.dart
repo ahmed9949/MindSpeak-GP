@@ -6,16 +6,14 @@ class DoctorRepository {
   // Fetch all approved therapists
   Future<List<Map<String, dynamic>>> fetchApprovedTherapists() async {
     try {
-      
       QuerySnapshot therapistSnapshot = await _firestore
           .collection('therapist')
           .where('status', isEqualTo: true)
           .get();
 
-      
       List<String> userIds = therapistSnapshot.docs
           .map((doc) => doc['userid'] as String)
-          .where((id) => id != null && id.isNotEmpty)
+          .where((id) => id.isNotEmpty)
           .toList();
 
       if (userIds.isEmpty) return [];
@@ -36,12 +34,10 @@ class DoctorRepository {
         allDocs.addAll(userSnapshot.docs);
       }
 
-     
       Map<String, Map<String, dynamic>> userMap = {
         for (var doc in allDocs) doc.id: doc.data() as Map<String, dynamic>
       };
 
-      
       return therapistSnapshot.docs.map((doc) {
         var therapistData = doc.data() as Map<String, dynamic>;
         var userData = userMap[therapistData['userid']] ?? {};
@@ -51,6 +47,11 @@ class DoctorRepository {
           'name': userData['username'] ?? 'N/A',
           'email': userData['email'] ?? 'N/A',
           'nationalid': therapistData['nationalid'] ?? 'N/A',
+          'bio': therapistData['bio'] ?? 'N/A',
+          'therapistPhoneNumber':
+              therapistData['therapistnumber']?.toString() ?? 'N/A',
+          'therapistImage': therapistData['therapistimage'] ?? '',
+          'nationalProof': therapistData['nationalproof'] ?? '',
         };
       }).toList();
     } catch (e) {

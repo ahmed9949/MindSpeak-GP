@@ -3,8 +3,8 @@ import 'package:mind_speak_app/components/CustomBottomNavigationBar.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/service/AdminRepository.dart';
 import 'package:provider/provider.dart';
- 
-class  MyApp extends StatelessWidget {
+
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
@@ -107,6 +107,32 @@ class _DashBoardState extends State<DashBoard> {
     } catch (e) {
       print('Error rejecting therapist: $e');
     }
+  }
+
+  void _showImageDialog(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              imageUrl.isNotEmpty
+                  ? Image.network(imageUrl)
+                  : const Center(
+                      child: Text('No image available'),
+                    ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void nextPage() {
@@ -239,6 +265,10 @@ class _DashBoardState extends State<DashBoard> {
                           DataColumn(label: Text('Name')),
                           DataColumn(label: Text('Email')),
                           DataColumn(label: Text('National ID')),
+                          DataColumn(label: Text('Bio')),
+                          DataColumn(label: Text('Phone Number')),
+                          DataColumn(label: Text('Therapist Image')),
+                          DataColumn(label: Text('National Proof')),
                           DataColumn(label: Text('Actions')),
                         ],
                         rows: therapists
@@ -248,6 +278,30 @@ class _DashBoardState extends State<DashBoard> {
                                   DataCell(Text(therapist['username'])),
                                   DataCell(Text(therapist['email'])),
                                   DataCell(Text(therapist['nationalid'])),
+                                  DataCell(Text(therapist['bio'] ?? 'N/A')),
+                                  DataCell(Text(
+                                      therapist['therapistPhoneNumber'] ??
+                                          'N/A')),
+                                  DataCell(
+                                    IconButton(
+                                      icon: const Icon(Icons.image,
+                                          color: Colors.green),
+                                      onPressed: () {
+                                        _showImageDialog(context,
+                                            therapist['therapistImage']);
+                                      },
+                                    ),
+                                  ),
+                                  DataCell(
+                                    IconButton(
+                                      icon: const Icon(Icons.image,
+                                          color: Colors.blue),
+                                      onPressed: () {
+                                        _showImageDialog(context,
+                                            therapist['nationalProof']);
+                                      },
+                                    ),
+                                  ),
                                   DataCell(Row(
                                     children: [
                                       IconButton(
@@ -263,7 +317,7 @@ class _DashBoardState extends State<DashBoard> {
                                             therapist['userid']),
                                       ),
                                     ],
-                                  ))
+                                  )),
                                 ]))
                             .toList(),
                       )

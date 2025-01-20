@@ -6,7 +6,8 @@ class ChildItem extends StatelessWidget {
   final Map<String, dynamic> child;
   final DoctorDashboardService doctorServices;
 
-  const ChildItem({super.key, required this.child, required this.doctorServices});
+  const ChildItem(
+      {super.key, required this.child, required this.doctorServices});
 
   @override
   Widget build(BuildContext context) {
@@ -36,9 +37,10 @@ class ChildItem extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         elevation: 6,
         child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
           leading: CircleAvatar(
-            backgroundColor: Colors.teal[200],
+            backgroundColor: Colors.blue[200],
             child: Text(
               child['name'][0],
               style: const TextStyle(fontSize: 18, color: Colors.white),
@@ -50,7 +52,7 @@ class ChildItem extends StatelessWidget {
           ),
           trailing: const Icon(
             Icons.arrow_forward_ios,
-            color: Colors.teal,
+            color: Colors.blue,
             size: 20,
           ),
         ),

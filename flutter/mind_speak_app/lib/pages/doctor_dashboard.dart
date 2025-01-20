@@ -10,12 +10,12 @@ class DoctorDashboard extends StatefulWidget {
   final Map<String, dynamic> therapistInfo;
   final Map<String, dynamic> userInfo;
 
-  const DoctorDashboard({
-    super.key,
-    required this.sessionId,
-    required this.therapistInfo,
-    required this.userInfo
-  });
+  const DoctorDashboard(
+      {Key? key,
+      required this.sessionId,
+      required this.therapistInfo,
+      required this.userInfo})
+      : super(key: key);
 
   @override
   _DoctorDashboardState createState() => _DoctorDashboardState();
@@ -35,16 +35,17 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
 
     doctorName = widget.userInfo['username'] ?? 'Doctor';
     specialization = widget.therapistInfo['bio'] ?? 'Specialization';
-    
+
     _loadChildrenData();
   }
-  
+
   void _loadChildrenData() async {
-      List<Map<String, dynamic>> fetchedChildren = await _doctorServices.fetchChildren(widget.sessionId);
-      setState(() {
-        children = fetchedChildren;
-        isLoading = false;
-      });
+    List<Map<String, dynamic>> fetchedChildren =
+        await _doctorServices.fetchChildren(widget.sessionId);
+    setState(() {
+      children = fetchedChildren;
+      isLoading = false;
+    });
   }
 
   @override
@@ -63,7 +64,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
             },
           ),
         ],
-        backgroundColor: Colors.teal,
+        backgroundColor: Colors.blue,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

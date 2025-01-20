@@ -19,12 +19,18 @@ class ChildrenList extends StatelessWidget {
     return isLoading
         ? const Center(child: CircularProgressIndicator())
         : children.isEmpty
-            ? const Center(child: Text("No children found",
-             style: TextStyle(fontSize: 22, color: Colors.grey, fontWeight: FontWeight.bold),))
+            ? const Center(
+                child: Text(
+                "No children found",
+                style: TextStyle(
+                    fontSize: 22,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.bold),
+              ))
             : Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Colors.teal[50]!, Colors.teal[100]!],
+                    colors: [Colors.blue[50]!, Colors.blue[100]!],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -34,7 +40,8 @@ class ChildrenList extends StatelessWidget {
                   itemCount: children.length,
                   itemBuilder: (context, index) {
                     final child = children[index];
-                    return ChildItem(child: child, doctorServices: doctorServices);
+                    return ChildItem(
+                        child: child, doctorServices: doctorServices);
                   },
                 ),
               );

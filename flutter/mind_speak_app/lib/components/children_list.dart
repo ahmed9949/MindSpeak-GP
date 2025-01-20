@@ -8,11 +8,11 @@ class ChildrenList extends StatelessWidget {
   final DoctorDashboardService doctorServices;
 
   const ChildrenList({
-    Key? key,
+    super.key,
     required this.children,
     required this.isLoading,
     required this.doctorServices,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

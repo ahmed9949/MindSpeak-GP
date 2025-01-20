@@ -62,6 +62,7 @@ dependencies:
   web_socket_channel: ^3.0.1
   socket_io_client: ^3.0.2
   rive: ^0.13.20
+  local_auth: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -96,6 +97,7 @@ flutter:
     - assets/cars.png
     - assets/doctor.png
     - assets/predict.png
+    - assets/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -114,32 +114,32 @@
 //           ),
 //           const SizedBox(height: 20), // Spacing between card and button
 
-//           ElevatedButton(
-//             onPressed: () {
-//               Navigator.push(
-//                 context,
-//                 MaterialPageRoute(
-//                   builder: (context) => const StartSession(),
-//                 ),
-//               );
-//             },
-//             style: ElevatedButton.styleFrom(
-//               backgroundColor: Colors.blue,
-//               shape: RoundedRectangleBorder(
-//                 borderRadius: BorderRadius.circular(50),
-//               ),
-//               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-//             ),
-//             child: const Text(
-//               'start the session',
-//               style: TextStyle(
-//                 color: Colors.white,
-//                 fontSize: 16,
-//               ),
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const start_session(),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(50),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+            ),
+            child: const Text(
+              'start the session',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

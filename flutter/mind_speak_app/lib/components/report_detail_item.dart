@@ -20,14 +20,14 @@ class ReportDetailItem extends StatelessWidget {
             color: Colors.black.withOpacity(0.1),
             spreadRadius: 2,
             blurRadius: 5,
-            offset: Offset(0, 3),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
+          const Icon(
             Icons.info_outline,
             color: Colors.blue,
             size: 30,

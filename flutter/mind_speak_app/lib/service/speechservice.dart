@@ -1,91 +1,68 @@
-// import 'package:speech_to_text/speech_recognition_error.dart';
-// import 'package:speech_to_text/speech_recognition_result.dart';
-// import 'package:speech_to_text/speech_to_text.dart';
-// import 'package:flutter/foundation.dart';
+import 'package:speech_to_text/speech_to_text.dart';
+import 'package:speech_to_text/speech_recognition_error.dart';
 
-// class SpeechService {
-//   final SpeechToText _speechToText = SpeechToText();
-//   bool _isInitialized = false;
-//   bool _isListening = false;
+class STTService {
+  final SpeechToText _speechToText = SpeechToText();
+  bool _isInitialized = false;
 
-//   Future<bool> initialize({
-//     required Function(SpeechRecognitionError) onError,
-//     required Function(String) onStatus,
-//   }) async {
-//     if (_isInitialized) return true;
+  bool get isInitialized => _isInitialized;
+  bool get isListening => _speechToText.isListening;
 
-//     try {
-//       // Force cleanup of any existing instance
-//       await _speechToText.cancel();
-//       await Future.delayed(const Duration(milliseconds: 500));
+  Future<void> initialize({
+    required void Function(SpeechRecognitionError error)? onError,
+    required void Function(String status)? onStatus,
+  }) async {
+    if (_isInitialized) return;
+    _isInitialized = await _speechToText.initialize(
+      onError: onError,
+      onStatus: onStatus,
+      debugLogging: false,
+    );
 
-//       _isInitialized = await _speechToText.initialize(
-//         onError: (error) {
-//           debugPrint('Speech error: ${error.errorMsg}');
-//           onError(error);
-//         },
-//         onStatus: (status) {
-//           debugPrint('Speech status: $status');
-//           onStatus(status);
-//           if (status == 'notListening') {
-//             _isListening = false;
-//           }
-//         },
-//         debugLogging: kDebugMode,
-//       );
+    if (!_isInitialized) {
+      throw Exception('Speech recognition not available on this device');
+    }
+  }
 
-//       return _isInitialized;
-//     } catch (e) {
-//       debugPrint('Speech initialization error: $e');
-//       rethrow;
-//     }
-//   }
+  Future<void> startListening({
+    required void Function(
+            String recognizedWords, double confidence, bool isFinal)
+        onResult,
+    Duration listenFor = const Duration(seconds: 60),
+    Duration pauseFor = const Duration(seconds: 5),
+    bool partialResults = true,
+    bool cancelOnError = true,
+    ListenMode listenMode = ListenMode.dictation,
+  }) async {
+    if (!_isInitialized) {
+      throw Exception('STT not initialized. Call initialize() first.');
+    }
 
-//   Future<void> startListening({
-//     required Function(SpeechRecognitionResult) onResult,
-//     required Duration listenFor,
-//     required Duration pauseFor,
-//   }) async {
-//     if (!_isInitialized) {
-//       throw Exception('Speech service not initialized');
-//     }
+    await _speechToText.listen(
+      onResult: (result) {
+        onResult(
+          result.recognizedWords,
+          result.confidence,
+          result.finalResult,
+        );
+      },
+      listenFor: const Duration(seconds: 60),
+      pauseFor: const Duration(seconds: 5),
+      partialResults: false, // no partial results
+      cancelOnError: true,
+      listenMode: listenMode,
+    );
+  }
 
-//     if (_isListening) {
-//       await stop();
-//     }
+  Future<void> stopListening() async {
+    if (_speechToText.isListening) {
+      await _speechToText.stop();
+    }
+  }
 
-//     try {
-//       _isListening = true;
-//       await _speechToText.listen(
-//         onResult: onResult,
-//         listenFor: listenFor,
-//         pauseFor: pauseFor,
-//         partialResults: true,
-//         onSoundLevelChange: (level) {
-//           debugPrint('Sound level: $level');
-//         },
-//         cancelOnError: false,
-//         listenMode: ListenMode.dictation,
-//       );
-//     } catch (e) {
-//       _isListening = false;
-//       debugPrint('Error in startListening: $e');
-//       rethrow;
-//     }
-//   }
-
-//   Future<void> stop() async {
-//     try {
-//       if (_speechToText.isListening) {
-//         await _speechToText.stop();
-//       }
-//       _isListening = false;
-//     } catch (e) {
-//       debugPrint('Error stopping speech recognition: $e');
-//     }
-//   }
-
-//   bool get isListening => _isListening;
-
-//   bool get isAvailable => _isInitialized;
-// }
+  Future<void> cancelListening() async {
+    if (_speechToText.isListening) {
+      await _speechToText.cancel();
+    }
+  }
+}

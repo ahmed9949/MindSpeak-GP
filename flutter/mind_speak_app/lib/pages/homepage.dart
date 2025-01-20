@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/predict.dart';
-import 'package:mind_speak_app/pages/choose_avatar_page.dart';
 import 'package:mind_speak_app/pages/searchpage.dart';
 import 'package:mind_speak_app/components/drawer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mind_speak_app/pages/signup.dart';
+import 'package:mind_speak_app/pages/start_session.dart';
 import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
+import 'package:mind_speak_app/providers/theme_provider.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -17,6 +18,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  List<Map<String, dynamic>> therapists = [];
   String? childPhoto;
   bool isLoading = true;
 
@@ -24,19 +27,20 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     fetchChildPhoto();
+    _fetchTherapists();
   }
 
   Future<void> fetchChildPhoto() async {
     try {
-      final sessionProvider = Provider.of<SessionProvider>(context, listen: false);
+      final sessionProvider =
+          Provider.of<SessionProvider>(context, listen: false);
       final userId = sessionProvider.userId;
 
       if (userId == null) {
         throw Exception('User not logged in');
       }
 
-      // Query Firestore for the current user's child
-      final querySnapshot = await FirebaseFirestore.instance
+      final querySnapshot = await _firestore
           .collection('child')
           .where('userId', isEqualTo: userId)
           .get();
@@ -44,16 +48,66 @@ class _HomePageState extends State<HomePage> {
       if (querySnapshot.docs.isNotEmpty) {
         setState(() {
           childPhoto = querySnapshot.docs.first.data()['childPhoto'] as String?;
-          isLoading = false;
         });
       } else {
         setState(() {
-          childPhoto = null; // No child photo found
-          isLoading = false;
+          childPhoto = null;
         });
       }
     } catch (e) {
       print('Error fetching child photo: $e');
+    }
+  }
+
+  Future<void> _fetchTherapists() async {
+    try {
+      QuerySnapshot therapistSnapshot = await _firestore
+          .collection('therapist')
+          .where('status', isEqualTo: true)
+          .get();
+
+      List<Map<String, dynamic>> tempTherapists = [];
+
+      for (var doc in therapistSnapshot.docs) {
+        var therapistData = doc.data() as Map<String, dynamic>;
+
+        if (therapistData['userid'] == null ||
+            therapistData['userid'].toString().isEmpty) {
+          print('Skipping therapist document with invalid userid: ${doc.id}');
+          continue;
+        }
+
+        DocumentSnapshot userDoc = await _firestore
+            .collection('user')
+            .doc(therapistData['userid'])
+            .get();
+
+        if (userDoc.exists) {
+          var userData = userDoc.data() as Map<String, dynamic>;
+
+          tempTherapists.add({
+            'name': userData['username'] ?? 'Unknown',
+            'email': userData['email'] ?? 'N/A',
+            'therapistPhoneNumber':
+                therapistData['therapistnumber']?.toString() ?? 'N/A',
+            'bio': therapistData['bio'] ?? 'N/A',
+            'therapistImage': therapistData['therapistimage'] ?? '',
+            'therapistId': doc.id,
+          });
+        } else {
+          print(
+              'Associated user document not found for userid: ${therapistData['userid']}');
+        }
+      }
+
+      setState(() {
+        therapists = tempTherapists;
+        isLoading = false;
+      });
+
+      print('Fetched ${therapists.length} therapists successfully.');
+    } catch (e) {
+      print('Error fetching therapists: $e');
       setState(() {
         isLoading = false;
       });
@@ -62,14 +116,24 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
       drawer: const NavigationDrawe(),
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.blue,
+    backgroundColor: themeProvider.isDarkMode ? Colors.grey[900] : Colors.blue,
         title: Row(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
+            IconButton(
+              icon: Icon(themeProvider.isDarkMode
+                  ? Icons.wb_sunny
+                  : Icons.nightlight_round),
+              onPressed: () {
+                themeProvider.toggleTheme();
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.favorite_border),
               onPressed: () {},
@@ -79,13 +143,14 @@ class _HomePageState extends State<HomePage> {
         actions: [
           Row(
             children: [
-              const SizedBox(width: 10),
+              const SizedBox(width: 20),
               CircleAvatar(
+                radius: 50,
                 backgroundImage: childPhoto != null
-                    ? NetworkImage(childPhoto!) // Use fetched image
-                    : const AssetImage('assets/user_image.png') as ImageProvider, // Fallback image
+                    ? NetworkImage(childPhoto!)
+                    : null,
                 child: childPhoto == null
-                    ? const Icon(Icons.person, color: Colors.white)
+                    ? const Icon(Icons.person, color: Colors.white, size: 40)
                     : null,
               ),
               const SizedBox(width: 10),
@@ -93,121 +158,127 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      
-      body: Container(
-        color: Colors.blue,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-                  const SizedBox(height: 30), // Adjust the height here to control the gap
-
-            // Top 4 Cards
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Container(
+              color: themeProvider.isDarkMode ? Colors.black : Colors.blue,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTopCard(
-                    context,
-                    "Doctors",
-                    "assets/doctor.png",
-                    const SearchPage(),
+                  const SizedBox(height: 30),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildTopCard(
+                          context,
+                          "Doctors",
+                          "assets/doctor.png",
+                          const SearchPage(),
+                        ),
+                        _buildTopCard(
+                          context,
+                          "Cars Form",
+                          "assets/cars.png",
+                          carsform(),
+                        ),
+                        _buildTopCard(
+                          context,
+                          "Prediction",
+                          "assets/predict.png",
+                          const Predict(),
+                        ),
+                        _buildTopCard(
+                          context,
+                          "Choose Avatars",
+                          "assets/avatar.png",
+                          const SignUp(),
+                        ),
+                      ],
+                    ),
                   ),
-                  _buildTopCard(
-                    context,
-                    "Cars Form",
-                    "assets/cars.png",
-                    carsform(),
-                  ),
-                  _buildTopCard(
-                    context,
-                    "Prediction",
-                    "assets/predict.png",
-                    const Predict(),
-                  ),
-                  _buildTopCard(
-                    context,
-                    "Choose Avatars",
-                    "assets/avatar.png",
-                    // const ChooseAvatarPage(),
-                    const SignUp()
+                  const SizedBox(height: 35),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: themeProvider.isDarkMode
+                            ? Colors.grey[900]
+                            : Colors.white,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(30),
+                          topRight: Radius.circular(30),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Top Therapists",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: themeProvider.isDarkMode
+                                    ? Colors.white
+                                    : Colors.black,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Expanded(
+                              child: GridView.builder(
+                                physics: const BouncingScrollPhysics(),
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 3,
+                                  crossAxisSpacing: 10,
+                                  mainAxisSpacing: 10,
+                                ),
+                                itemCount: therapists.length,
+                                itemBuilder: (context, index) {
+                                  final therapist = therapists[index];
+                                  return _buildTherapistCard(therapist);
+                                },
+                              ),
+                            ),
+                            Center(
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const SignUp(),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 50,
+                                    vertical: 20,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                ),
+                                child: const Text(
+                                  "Start Session",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 35),
-
-            // Top Doctors Section
-            Expanded(
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(30),
-                    topRight: Radius.circular(30),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "Top Doctor",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          height: 150,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            children: [
-                              _buildDoctorCard(
-                                  "Dr. Kawsar Ahmed", "Dental Sargon"),
-                              _buildDoctorCard("Dr. Mohbuba Is", "Dental Sargon"),
-                              _buildDoctorCard("Dr. Riyadh", "Dental Sargon"),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 90),
-                        // Green Start Session Button
-          Center(
-            child: ElevatedButton(
-              onPressed: () {
-                // Handle button press
-                print("Start Session button pressed!");
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green, // Button color
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 50,
-                  vertical: 30,
-                ), // Button size
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-              ),
-              child: const Text(
-                "Start Session",
-                style: TextStyle(fontSize: 18, color: Colors.white),
-              ),
-            ),
-          ),
-
-                      
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -251,65 +322,32 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildDoctorCard(String name, String specialty) {
-    return Container(
-      margin: const EdgeInsets.only(right: 10),
-      width: 120,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        color: Colors.white,
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 4,
-          )
-        ],
-      ),
+  Widget _buildTherapistCard(Map<String, dynamic> therapist) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircleAvatar(
-            radius: 30,
-            backgroundImage: AssetImage('assets/doctor_image.png'),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            name,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-          ),
-          Text(
-            specialty,
-            style: const TextStyle(fontSize: 10, color: Colors.grey),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAvailableDoctor(String title) {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        color: Colors.white,
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 4,
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 25,
-            backgroundImage: AssetImage('assets/doctor_image.png'),
+            backgroundImage: therapist['therapistImage'] != null
+                ? NetworkImage(therapist['therapistImage'])
+                : null,
+            child: therapist['therapistImage'] == null
+                ? const Icon(Icons.person)
+                : null,
           ),
-          const SizedBox(width: 15),
+          const SizedBox(height: 5),
           Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            therapist['name'],
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            textAlign: TextAlign.center,
+          ),
+          Text(
+            therapist['bio'],
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+            textAlign: TextAlign.center,
           ),
         ],
       ),

@@ -93,7 +93,10 @@ flutter:
     - assets/car.PNG
     - assets/images/superheros/
     - assets/logo.webp
-    - assets/
+    - assets/avatar.png
+    - assets/cars.png
+    - assets/doctor.png
+    - assets/predict.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

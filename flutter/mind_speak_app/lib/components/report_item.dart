@@ -28,7 +28,7 @@ class ReportItem extends StatelessWidget {
         elevation: 6,
         child: ListTile(
           contentPadding: const EdgeInsets.all(16),
-          leading: const Icon(Icons.report, color: Colors.teal, size: 30),
+          leading: const Icon(Icons.report, color: Colors.blue, size: 30),
           title: Text(
             report['sessionId'],
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
@@ -37,7 +37,7 @@ class ReportItem extends StatelessWidget {
             report['analysis'],
             style: const TextStyle(fontSize: 14, color: Colors.grey),
           ),
-          trailing: const Icon(Icons.arrow_forward_ios, color: Colors.teal),
+          trailing: const Icon(Icons.arrow_forward_ios, color: Colors.blue),
         ),
       ),
     );

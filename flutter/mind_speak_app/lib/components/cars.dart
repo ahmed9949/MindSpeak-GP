@@ -8,26 +8,26 @@ class Cars extends StatelessWidget {
   final Function(double) onValueChanged;
 
   const Cars({
-    Key? key,
+    super.key,
     required this.title,
     required this.questions,
     required this.scores,
     required this.selectedScore,
     required this.onValueChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: EdgeInsets.all(10),
+      margin: const EdgeInsets.all(10),
       child: Padding(
-        padding: EdgeInsets.all(10),
+        padding: const EdgeInsets.all(10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             ValueListenableBuilder<double?>(
               valueListenable: selectedScore,

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:provider/provider.dart';
@@ -127,7 +126,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     try {
       // Upload the image to Firebase Storage
-      final storageRef = FirebaseStorage.instance.ref().child('childPhotos/$childId.jpg');
+      final storageRef = FirebaseStorage.instance.ref().child('child_images/$childId.jpg');
       await storageRef.putFile(file);
 
       // Get the uploaded image URL

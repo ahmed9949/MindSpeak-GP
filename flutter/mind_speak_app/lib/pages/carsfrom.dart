@@ -262,7 +262,7 @@ class _CategorySelectionPageState extends State<carsform> {
           ),
         ],
       ),
-      drawer: NavigationDrawe(),
+      drawer: const NavigationDrawe(),
       body: ValueListenableBuilder<List<double?>>(
         valueListenable: selectedScores,
         builder: (context, scores, child) {

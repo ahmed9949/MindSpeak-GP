@@ -33,6 +33,7 @@ class _SignUpState extends State<SignUp> {
   File? _childImage;
   File? _nationalProofImage;
   File? _TherapistImage;
+  bool isLoading = false;
 
   TextEditingController usernamecontroller = TextEditingController();
   TextEditingController emailcontroller = TextEditingController();
@@ -122,6 +123,9 @@ class _SignUpState extends State<SignUp> {
   }
 
   registration() async {
+    setState(() {
+      isLoading = true; // Show loading spinner immediately
+    });
     if (_formkey.currentState!.validate()) {
       try {
         email = emailcontroller.text.trim();
@@ -132,6 +136,9 @@ class _SignUpState extends State<SignUp> {
         nationalid = nationalIdController.text.trim();
 
         if (role == 'parent' && _childImage == null) {
+          setState(() {
+            isLoading = false; // Hide loading spinner
+          });
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text("Please upload your child's image."),
             backgroundColor: Colors.red,
@@ -141,6 +148,9 @@ class _SignUpState extends State<SignUp> {
 
         if (role == 'therapist' &&
             (_nationalProofImage == null || _TherapistImage == null)) {
+          setState(() {
+            isLoading = false; // Hide loading spinner
+          });
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content:
                 Text("Please upload your national proof and therapist image."),
@@ -198,7 +208,7 @@ class _SignUpState extends State<SignUp> {
           }
           if (_TherapistImage != null) {
             // Upload national proof to Firebase Storage and get the URL
-            nationalProofUrl = await uploadImageToStorage(
+            TherpistImageUrl = await uploadImageToStorage(
                 _TherapistImage!, 'Therapists_images');
           }
 
@@ -256,6 +266,9 @@ class _SignUpState extends State<SignUp> {
               MaterialPageRoute(builder: (context) => const DashBoard()));
         }
       } on FirebaseAuthException catch (e) {
+        setState(() {
+          isLoading = false; // Hide loading spinner
+        });
         if (e.code == 'weak-password') {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
               backgroundColor: Colors.orangeAccent,
@@ -277,6 +290,9 @@ class _SignUpState extends State<SignUp> {
         print("Error: ${e.toString()}");
       }
     }
+    setState(() {
+      isLoading = false; // Hide loading spinner when done
+    });
   }
 
   @override
@@ -298,233 +314,266 @@ class _SignUpState extends State<SignUp> {
         centerTitle: true,
       ),
       backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Form(
-            key: _formkey,
-            child: Column(
-              children: [
-                TextFormField(
-                  controller: usernamecontroller,
-                  decoration: InputDecoration(
-                      labelText: "Username",
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30))),
-                  validator: (value) =>
-                      value!.isEmpty ? 'Enter Username' : null,
-                ),
-                const SizedBox(height: 20.0),
-                TextFormField(
-                  controller: emailcontroller,
-                  decoration: InputDecoration(
-                      labelText: "Email",
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30))),
-                  validator: (value) => value!.isEmpty ? 'Enter Email' : null,
-                ),
-                const SizedBox(height: 20.0),
-                TextFormField(
-                  controller: passwordcontroller,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                      labelText: "Password",
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30))),
-                  validator: (value) =>
-                      value!.isEmpty ? 'Enter Password' : null,
-                ),
-                const SizedBox(height: 20.0),
-                DropdownButtonFormField(
-                  value: role,
-                  items: ['parent', 'therapist']
-                      .map((role) =>
-                          DropdownMenuItem(value: role, child: Text(role)))
-                      .toList(),
-                  onChanged: (value) => setState(() => role = value.toString()),
-                  decoration: InputDecoration(
-                    labelText: 'Role',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30)),
-                  ),
-                ),
-                if (role == 'parent') ...[
-                  const SizedBox(height: 20.0),
-                  TextFormField(
-                    controller: parentPhoneNumberController,
-                    decoration: InputDecoration(
-                        labelText: "Parent Phone Number",
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30))),
-                    validator: (value) =>
-                        value!.isEmpty ? 'Enter Your Phone Number' : null,
-                  ),
-                  const SizedBox(height: 20.0),
-                  TextFormField(
-                    controller: childNameController,
-                    decoration: InputDecoration(
-                        labelText: "Child Name",
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30))),
-                    validator: (value) =>
-                        value!.isEmpty ? 'Enter Child Name' : null,
-                  ),
-                  const SizedBox(height: 20.0),
-                  TextFormField(
-                    controller: childAgeController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                        labelText: "Child Age",
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30))),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Enter Child Age';
-                      }
-                      int? age = int.tryParse(value);
-                      if (age == null || age < 3 || age > 12) {
-                        return 'Age must be between 3 and 12';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 20.0),
-                  TextFormField(
-                    controller: childInterestController,
-                    decoration: InputDecoration(
-                        labelText: "Child Interest",
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30))),
-                    validator: (value) =>
-                        value!.isEmpty ? 'Enter Child Interest' : null,
-                  ),
-                  const SizedBox(height: 20.0),
-                  const Text("Child Image"),
-                  GestureDetector(
-                    onTap: pickChildImage,
-                    child: CircleAvatar(
-                      radius: 50,
-                      backgroundImage:
-                          _childImage != null ? FileImage(_childImage!) : null,
-                      child: _childImage == null
-                          ? const Icon(Icons.camera_alt, size: 50)
-                          : null,
-                    ),
-                  ),
-                ],
-                if (role == 'therapist') ...[
-                  const SizedBox(height: 20.0),
-                  TextFormField(
-                    controller: therapistPhoneNumberController,
-                    decoration: InputDecoration(
-                      labelText: "Therapist Phone",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
+      // Use the `isLoading` flag to control what is shown
+      body: isLoading
+          ? const Center(
+              child: CircularProgressIndicator(), // Show loading spinner
+            )
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Form(
+                  key: _formkey,
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: usernamecontroller,
+                        decoration: InputDecoration(
+                            labelText: "Username",
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(30))),
+                        validator: (value) =>
+                            value!.isEmpty ? 'Enter Username' : null,
                       ),
-                    ),
-                    validator: (value) =>
-                        value!.isEmpty ? 'Enter Your Phone Number' : null,
-                  ),
-                  const SizedBox(height: 20.0),
-                  TextFormField(
-                    controller: bioController,
-                    decoration: InputDecoration(
-                      labelText: "Bio",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
+                      const SizedBox(height: 20.0),
+                      TextFormField(
+                        controller: emailcontroller,
+                        decoration: InputDecoration(
+                            labelText: "Email",
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(30))),
+                        validator: (value) =>
+                            value!.isEmpty ? 'Enter Email' : null,
                       ),
-                    ),
-                    validator: (value) =>
-                        value!.isEmpty ? 'Enter a short bio' : null,
-                  ),
-                  const SizedBox(height: 20.0),
-                  TextFormField(
-                    controller: nationalIdController,
-                    decoration: InputDecoration(
-                      labelText: "National ID",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
+                      const SizedBox(height: 20.0),
+                      TextFormField(
+                        controller: passwordcontroller,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                            labelText: "Password",
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(30))),
+                        validator: (value) =>
+                            value!.isEmpty ? 'Enter Password' : null,
                       ),
-                    ),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Enter National ID';
-                      }
-                      if (value.length != 14) {
-                        return 'National ID must be exactly 14 digits';
-                      }
-                      if (!RegExp(r'^\d{14}$').hasMatch(value)) {
-                        return 'National ID must contain only numbers';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 20.0),
-                  const Text("National Proof"),
-                  GestureDetector(
-                    onTap: pickNationalProofImage,
-                    child: CircleAvatar(
-                      radius: 50,
-                      backgroundImage: _nationalProofImage != null
-                          ? FileImage(_nationalProofImage!)
-                          : null,
-                      child: _nationalProofImage == null
-                          ? const Icon(Icons.camera_alt, size: 50)
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(height: 20.0),
-                  const Text("Therapist Image"),
-                  GestureDetector(
-                    onTap: pickTherapistImage,
-                    child: CircleAvatar(
-                      radius: 50,
-                      backgroundImage: _TherapistImage != null
-                          ? FileImage(_TherapistImage!)
-                          : null,
-                      child: _TherapistImage == null
-                          ? const Icon(Icons.camera_alt, size: 50)
-                          : null,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 30.0),
-                ElevatedButton(
-                  onPressed: registration,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueAccent,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 50, vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  child: const Text(
-                    "Register",
-                    style: TextStyle(fontSize: 18, color: Colors.white),
+                      const SizedBox(height: 20.0),
+                      DropdownButtonFormField(
+                        value: role,
+                        items: ['parent', 'therapist']
+                            .map((role) => DropdownMenuItem(
+                                value: role, child: Text(role)))
+                            .toList(),
+                        onChanged: (value) =>
+                            setState(() => role = value.toString()),
+                        decoration: InputDecoration(
+                          labelText: 'Role',
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30)),
+                        ),
+                      ),
+                      if (role == 'parent') ...[
+                        const SizedBox(height: 20.0),
+                        TextFormField(
+                          controller: parentPhoneNumberController,
+                          decoration: InputDecoration(
+                            labelText: "Parent Phone Number",
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
+                          keyboardType: TextInputType.phone,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Enter parent phone number';
+                            }
+                            if (value.length != 11) {
+                              return 'Phone number must be exactly 11 digits';
+                            }
+                            if (!RegExp(r'^\d{11}$').hasMatch(value)) {
+                              return 'Phone number must contain only numbers';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 20.0),
+                        TextFormField(
+                          controller: childNameController,
+                          decoration: InputDecoration(
+                              labelText: "Child Name",
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(30))),
+                          validator: (value) =>
+                              value!.isEmpty ? 'Enter Child Name' : null,
+                        ),
+                        const SizedBox(height: 20.0),
+                        TextFormField(
+                          controller: childAgeController,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                              labelText: "Child Age",
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(30))),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Enter Child Age';
+                            }
+                            int? age = int.tryParse(value);
+                            if (age == null || age < 3 || age > 12) {
+                              return 'Age must be between 3 and 12';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 20.0),
+                        TextFormField(
+                          controller: childInterestController,
+                          decoration: InputDecoration(
+                              labelText: "Child Interest",
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(30))),
+                          validator: (value) =>
+                              value!.isEmpty ? 'Enter Child Interest' : null,
+                        ),
+                        const SizedBox(height: 20.0),
+                        const Text("Child Image"),
+                        GestureDetector(
+                          onTap: pickChildImage,
+                          child: CircleAvatar(
+                            radius: 50,
+                            backgroundImage: _childImage != null
+                                ? FileImage(_childImage!)
+                                : null,
+                            child: _childImage == null
+                                ? const Icon(Icons.camera_alt, size: 50)
+                                : null,
+                          ),
+                        ),
+                      ],
+                      if (role == 'therapist') ...[
+                        const SizedBox(height: 20.0),
+                        TextFormField(
+                          controller: therapistPhoneNumberController,
+                          decoration: InputDecoration(
+                            labelText: "Therapist Phone",
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Enter Therapist Phone Number';
+                            }
+                            if (value.length != 11) {
+                              return 'Phone number must be exactly 11 digits';
+                            }
+                            if (!RegExp(r'^\d{11}$').hasMatch(value)) {
+                              return 'Phone number must contain only numbers';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 20.0),
+                        TextFormField(
+                          controller: bioController,
+                          decoration: InputDecoration(
+                            labelText: "Bio",
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
+                          validator: (value) =>
+                              value!.isEmpty ? 'Enter a short bio' : null,
+                        ),
+                        const SizedBox(height: 20.0),
+                        TextFormField(
+                          controller: nationalIdController,
+                          decoration: InputDecoration(
+                            labelText: "National ID",
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Enter National ID';
+                            }
+                            if (value.length != 14) {
+                              return 'National ID must be exactly 14 digits';
+                            }
+                            if (!RegExp(r'^\d{14}$').hasMatch(value)) {
+                              return 'National ID must contain only numbers';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 20.0),
+                        const Text("National Proof"),
+                        GestureDetector(
+                          onTap: pickNationalProofImage,
+                          child: CircleAvatar(
+                            radius: 50,
+                            backgroundImage: _nationalProofImage != null
+                                ? FileImage(_nationalProofImage!)
+                                : null,
+                            child: _nationalProofImage == null
+                                ? const Icon(Icons.camera_alt, size: 50)
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(height: 20.0),
+                        const Text("Therapist Image"),
+                        GestureDetector(
+                          onTap: pickTherapistImage,
+                          child: CircleAvatar(
+                            radius: 50,
+                            backgroundImage: _TherapistImage != null
+                                ? FileImage(_TherapistImage!)
+                                : null,
+                            child: _TherapistImage == null
+                                ? const Icon(Icons.camera_alt, size: 50)
+                                : null,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 30.0),
+                      ElevatedButton(
+                        onPressed: registration,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 50, vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                        child: const Text(
+                          "Register",
+                          style: TextStyle(fontSize: 18, color: Colors.white),
+                        ),
+                      ),
+                      const SizedBox(height: 20.0),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const LogIn()));
+                        },
+                        child: const Text(
+                          "Already have an account? Log In",
+                          style: TextStyle(
+                            color: Colors.blueAccent,
+                            fontSize: 16.0,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 20.0),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => const LogIn()));
-                  },
-                  child: const Text(
-                    "Already have an account? Log In",
-                    style: TextStyle(
-                      color: Colors.blueAccent,
-                      fontSize: 16.0,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
-      ),
     );
   }
 }

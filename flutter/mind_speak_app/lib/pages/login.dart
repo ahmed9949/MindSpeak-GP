@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:crypto/crypto.dart'; // Import for hashing passwords
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:mind_speak_app/components/navigationpage.dart';
 import 'package:mind_speak_app/pages/DashBoard.dart';
 import 'package:mind_speak_app/pages/carsfrom.dart';
@@ -13,6 +14,8 @@ import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:mind_speak_app/service/doctor_dashboard_service.dart';
 import 'package:provider/provider.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LogIn extends StatefulWidget {
   const LogIn({super.key});
@@ -27,7 +30,7 @@ class _LogInState extends State<LogIn> {
 
   TextEditingController mailcontroller = TextEditingController();
   TextEditingController passwordcontroller = TextEditingController();
-  
+
   final DoctorDashboardService _doctorServices = DoctorDashboardService();
 
   final _formkey = GlobalKey<FormState>();
@@ -37,6 +40,20 @@ class _LogInState extends State<LogIn> {
     final bytes = utf8.encode(password);
     final hashed = sha256.convert(bytes);
     return hashed.toString();
+  }
+
+  signInWithGoogle() async {
+    GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+    GoogleSignInAuthentication? googleAuth = await googleUser?.authentication;
+    AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth?.accessToken, idToken: googleAuth?.idToken);
+    UserCredential userCredential =
+        await FirebaseAuth.instance.signInWithCredential(credential);
+
+    if (userCredential.user != null) {
+      Navigator.of(context)
+          .push(MaterialPageRoute(builder: (context) => HomePage()));
+    }
   }
 
   Future<void> userLogin() async {
@@ -72,74 +89,75 @@ class _LogInState extends State<LogIn> {
         await sessionProvider.saveSession(userSnapshot.docs.first.id, role);
 
         if (role == 'parent') {
-  // Fetch child data for the current user
-  QuerySnapshot childSnapshot = await FirebaseFirestore.instance
-      .collection('child')
-      .where('userId', isEqualTo: userSnapshot.docs.first.id)
-      .get();
+          // Fetch child data for the current user
+          QuerySnapshot childSnapshot = await FirebaseFirestore.instance
+              .collection('child')
+              .where('userId', isEqualTo: userSnapshot.docs.first.id)
+              .get();
 
-  if (childSnapshot.docs.isNotEmpty) {
-    final childId = childSnapshot.docs.first['childId'];
+          if (childSnapshot.docs.isNotEmpty) {
+            final childId = childSnapshot.docs.first['childId'];
 
-    // Check if the Cars form is completed
-    QuerySnapshot carsSnapshot = await FirebaseFirestore.instance
-        .collection('Cars')
-        .where('childId', isEqualTo: childId)
-        .get();
+            // Check if the Cars form is completed
+            QuerySnapshot carsSnapshot = await FirebaseFirestore.instance
+                .collection('Cars')
+                .where('childId', isEqualTo: childId)
+                .get();
 
-    if (carsSnapshot.docs.isNotEmpty) {
-      final carsData = carsSnapshot.docs.first.data() as Map<String, dynamic>;
-      bool formStatus = carsData['status'] ?? false;
+            if (carsSnapshot.docs.isNotEmpty) {
+              final carsData =
+                  carsSnapshot.docs.first.data() as Map<String, dynamic>;
+              bool formStatus = carsData['status'] ?? false;
 
-      if (formStatus) {
-        // Navigate to HomePage if Cars form is completed
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomePage()),
-        );
-      } else {
-        // Navigate to carsform if Cars form is not completed
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => carsform()),
-        );
-      }
-    } else {
-      // Navigate to carsform if no Cars form exists
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => carsform()),
-      );
-    }
-  } else {
-    throw Exception("No child associated with this parent.");
-  }
-} else if (role == 'therapist') {
+              if (formStatus) {
+                // Navigate to HomePage if Cars form is completed
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const HomePage()),
+                );
+              } else {
+                // Navigate to carsform if Cars form is not completed
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => carsform()),
+                );
+              }
+            } else {
+              // Navigate to carsform if no Cars form exists
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => carsform()),
+              );
+            }
+          } else {
+            throw Exception("No child associated with this parent.");
+          }
+        } else if (role == 'therapist') {
           if (isApproved) {
- try {
-      Map<String, dynamic> therapistInfo =
-          await _doctorServices.getTherapistInfo(userSnapshot.docs.first.id);
-      Map<String, dynamic> userInfo =
-          await _doctorServices.getUserInfo(userSnapshot.docs.first.id);
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DoctorDashboard(
-            sessionId: userSnapshot.docs.first.id,
-            therapistInfo: therapistInfo,
-            userInfo: userInfo,
-          ),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        backgroundColor: Colors.redAccent,
-        content: Text(
-          e.toString(),
-          style: const TextStyle(fontSize: 18.0),
-        ),
-      ));
-    }
+            try {
+              Map<String, dynamic> therapistInfo = await _doctorServices
+                  .getTherapistInfo(userSnapshot.docs.first.id);
+              Map<String, dynamic> userInfo =
+                  await _doctorServices.getUserInfo(userSnapshot.docs.first.id);
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DoctorDashboard(
+                    sessionId: userSnapshot.docs.first.id,
+                    therapistInfo: therapistInfo,
+                    userInfo: userInfo,
+                  ),
+                ),
+              );
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                backgroundColor: Colors.redAccent,
+                content: Text(
+                  e.toString(),
+                  style: const TextStyle(fontSize: 18.0),
+                ),
+              ));
+            }
           } else {
             throw Exception("Your account is not yet approved by the admin.");
           }
@@ -292,11 +310,14 @@ class _LogInState extends State<LogIn> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Image.asset(
-                            "assets/google.png",
-                            height: 45,
-                            width: 45,
-                            fit: BoxFit.cover,
+                          ElevatedButton(
+                            onPressed: signInWithGoogle,
+                            child: Image.asset(
+                              "assets/google.png",
+                              height: 45,
+                              width: 45,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                           const SizedBox(
                             width: 30.0,

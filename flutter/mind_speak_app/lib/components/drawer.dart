@@ -95,7 +95,7 @@ class NavigationDrawe extends StatelessWidget {
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const Predict()));
+                  MaterialPageRoute(builder: (context) => const PredictScreen()));
             },
           ),
           ListTile(

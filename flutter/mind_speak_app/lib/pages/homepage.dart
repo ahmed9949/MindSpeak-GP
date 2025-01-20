@@ -187,7 +187,7 @@ class _HomePageState extends State<HomePage> {
                           context,
                           "Prediction",
                           "assets/predict.png",
-                          const Predict(),
+                          const PredictScreen(),
                         ),
                         _buildTopCard(
                           context,

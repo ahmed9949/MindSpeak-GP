@@ -384,7 +384,6 @@
 //   }
 // }
 
-
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:rive/rive.dart';
@@ -395,17 +394,16 @@ import 'package:speech_to_text/speech_to_text.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 
-// Your local imports:
 import 'package:mind_speak_app/audio/customesource.dart';
 import 'package:mind_speak_app/components/chat_bubble.dart';
 import 'package:mind_speak_app/models/message.dart';
-import 'package:mind_speak_app/service/llmservice.dart'; // now calls Gemin AI
+import 'package:mind_speak_app/service/llmservice.dart';
 import 'package:mind_speak_app/service/speechservice.dart';
 import 'package:mind_speak_app/service/ttsService.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 
 class start_session extends StatefulWidget {
-  const start_session({super.key});
+  const start_session({Key? key}) : super(key: key);
 
   @override
   State<start_session> createState() => _HomePageState();
@@ -415,10 +413,12 @@ class _HomePageState extends State<start_session> {
   // Services
   final _sttService = STTService();
   final _ttsService = TTSService();
-  final _chatService = ChatService(); // uses Gemin AI now
+  final _chatService = ChatService();
 
   // Audio player
   final AudioPlayer _player = AudioPlayer();
+  // We'll keep a reference to our subscription so we can cancel in dispose
+  StreamSubscription<PlayerState>? _playerSubscription;
 
   // Chat state
   List<ChatMessage> _chatHistory = [];
@@ -429,7 +429,7 @@ class _HomePageState extends State<start_session> {
   late OneShotAnimation _hearController;
   late OneShotAnimation _stopHearController;
 
-  // Conversation session
+  // Flags
   bool _isInSession = false;
   bool _isProcessingResponse = false;
   String _currentBuffer = "";
@@ -437,6 +437,7 @@ class _HomePageState extends State<start_session> {
   @override
   void initState() {
     super.initState();
+    // Rive animations
     _talkController = OneShotAnimation('Talk', autoplay: false);
     _hearController = OneShotAnimation('hands_hear_start', autoplay: false);
     _stopHearController = OneShotAnimation('hands_hear_stop', autoplay: false);
@@ -453,7 +454,7 @@ class _HomePageState extends State<start_session> {
           _endConversationSession();
         },
         onStatus: (status) {
-          // Handle STT status changes if needed
+          // If needed, handle STT status changes here
         },
       );
       _validateApiKeys();
@@ -464,13 +465,12 @@ class _HomePageState extends State<start_session> {
 
   void _validateApiKeys() {
     final elApiKey = dotenv.env['EL_API_KEY'];
-    final geminApiKey = dotenv.env['GEMIN_API_KEY'];
-
+    final geminiKey = dotenv.env['GEMINI_API_KEY'];
     if (elApiKey == null || elApiKey.isEmpty) {
       _handleError('ElevenLabs API key not found in .env file');
     }
-    if (geminApiKey == null || geminApiKey.isEmpty) {
-      _handleError('Gemin AI API key not found in .env file');
+    if (geminiKey == null || geminiKey.isEmpty) {
+      _handleError('Gemini AI API key not found in .env file');
     }
   }
 
@@ -481,6 +481,7 @@ class _HomePageState extends State<start_session> {
     }
   }
 
+  // Trigger a single Rive animation
   void _triggerAction(OneShotAnimation controller) {
     if (!mounted) return;
     setState(() {
@@ -491,28 +492,35 @@ class _HomePageState extends State<start_session> {
     });
   }
 
+  // Start session
   void _startConversationSession() {
     if (_isInSession) return;
     setState(() => _isInSession = true);
 
+    // "Hear" animation
     _triggerAction(_hearController);
     _startContinuousListening();
   }
 
+  // End session
   Future<void> _endConversationSession() async {
-    // 1) Save the conversation to Firestore
+    // Save conversation
     await _saveSessionToFirestore();
 
-    // 2) Stop STT and reset
+    // Stop STT
     await _sttService.stopListening();
+    if (!mounted) return;
+
     setState(() {
       _isInSession = false;
       _currentBuffer = "";
       _isProcessingResponse = false;
     });
+
     _triggerAction(_stopHearController);
   }
 
+  // Continuous STT
   Future<void> _startContinuousListening() async {
     if (!_isInSession) return;
     try {
@@ -535,6 +543,7 @@ class _HomePageState extends State<start_session> {
     }
   }
 
+  // Called once STT finalizes text
   Future<void> _processSpeechBuffer() async {
     final textToProcess = _currentBuffer.trim();
     if (textToProcess.isEmpty || _isProcessingResponse) return;
@@ -548,39 +557,44 @@ class _HomePageState extends State<start_session> {
     await _processWithLLM(textToProcess);
   }
 
+  // LLM call + TTS
+  // We stop STT to avoid self-echo, then TTS, then resume STT.
   Future<void> _processWithLLM(String text) async {
-    // Stop STT so TTS isn't picked up
+    // Stop STT so it doesn't hear TTS
     await _sttService.stopListening();
 
     try {
       final response = await _chatService.sendMessageToLLM(text);
       _addMessage(ChatMessage(text: response, isUser: false));
 
-      // Play TTS
+      // TTS
       await _playTextToSpeech(response);
     } catch (e) {
       _handleError('LLM processing error: $e');
     }
 
-    // Restart STT if still in session
-    if (mounted && _isInSession) {
+    // Resume STT for next user input
+    if (!mounted) return;
+    if (_isInSession) {
       setState(() => _isProcessingResponse = false);
       _startContinuousListening();
     }
   }
 
+  // TTS
   Future<void> _playTextToSpeech(String text) async {
+    // Cancel old subscription if any
     await _player.stop();
+    _playerSubscription?.cancel();
+    _playerSubscription = null;
 
     try {
       final bytes = await _ttsService.synthesizeSpeech(text);
-
       await _player.setAudioSource(CustomAudioSource(bytes));
 
-      final completer = Completer<void>();
-      late final StreamSubscription subscription;
-      subscription = _player.playerStateStream.listen((playerState) {
-        if (!mounted) return;
+      // Listen for player events
+      _playerSubscription = _player.playerStateStream.listen((playerState) {
+        if (!mounted) return; // if widget gone, do nothing
 
         switch (playerState.processingState) {
           case ProcessingState.ready:
@@ -590,10 +604,8 @@ class _HomePageState extends State<start_session> {
           case ProcessingState.completed:
             // TTS finished
             _triggerAction(_stopHearController);
-            subscription.cancel();
-            if (!completer.isCompleted) {
-              completer.complete();
-            }
+            _playerSubscription?.cancel();
+            _playerSubscription = null;
             break;
           default:
             break;
@@ -601,65 +613,75 @@ class _HomePageState extends State<start_session> {
       });
 
       await _player.play();
-      await completer.future;
     } catch (e) {
       _handleError('Text-to-speech error: $e');
       _triggerAction(_stopHearController);
     }
   }
 
-  // -------------------------------------------
-  // SAVE SESSION TO FIRESTORE
-  // -------------------------------------------
+  // If user hits "Interrupt" button: forcibly stop TTS
+  // Then optionally resume STT
+  void _interruptSpeech() async {
+    // Stop the player
+    await _player.stop();
+    if (!mounted) return;
+
+    // If we want to keep listening
+    if (_isInSession) {
+      _triggerAction(_hearController);
+      setState(() => _isProcessingResponse = false);
+      // STT may be off if we had just started TTS => so re-start
+      _startContinuousListening();
+    }
+  }
+
+  // Save session to Firestore
   Future<void> _saveSessionToFirestore() async {
     try {
-      // Access the SessionProvider (make sure you have set up ChangeNotifierProvider somewhere above)
-      final sessionProvider = Provider.of<SessionProvider>(context, listen: false);
+      final sessionProvider =
+          Provider.of<SessionProvider>(context, listen: false);
       final childId = sessionProvider.childId;
-
       if (childId == null) {
-        debugPrint('No childId found for this user, cannot save session.');
+        debugPrint('No childId found, cannot save session.');
         return;
       }
 
-      // Fetch child doc to get the therapistId (assuming child doc has 'therapistId')
       final childDoc = await FirebaseFirestore.instance
           .collection('child')
           .doc(childId)
           .get();
-
       if (!childDoc.exists) {
-        debugPrint('Child document does not exist, cannot save session.');
+        debugPrint('Child doc does not exist.');
         return;
       }
 
       final therapistId = childDoc.data()?['therapistId'] ?? '';
 
-      // Build a text string from the entire chat
-      final conversationText = _chatHistory.map((msg) {
-        final who = msg.isUser ? 'User' : 'AI';
-        return '$who: ${msg.text}';
+      final conversationText = _chatHistory.map((m) {
+        final who = m.isUser ? 'User' : 'AI';
+        return '$who: ${m.text}';
       }).join('\n');
 
-      // Create a new document in "session" collection
       await FirebaseFirestore.instance.collection('session').add({
         'childId': childId,
         'therapistId': therapistId,
         'date': DateTime.now().toIso8601String(),
-        'sessionNumforChild': 0, // or increment if needed
+        'sessionNumforChild': 0, // or increment
         'conversation': conversationText,
       });
-
       debugPrint('Session saved successfully to Firestore.');
     } catch (e) {
       debugPrint('Error saving session: $e');
     }
   }
-  // -------------------------------------------
 
+  // Add message to chat
   void _addMessage(ChatMessage message) {
+    if (!mounted) return;
     setState(() => _chatHistory.add(message));
+    // Auto-scroll
     Future.delayed(const Duration(milliseconds: 100), () {
+      if (!mounted) return;
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
@@ -680,13 +702,21 @@ class _HomePageState extends State<start_session> {
 
   @override
   void dispose() {
+    // Cancel subscription to avoid setState() after dispose
+    _playerSubscription?.cancel();
+    _playerSubscription = null;
+
+    // Stop STT, TTS
     _sttService.stopListening();
     _player.dispose();
+
+    _scrollController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // **Fix overflow** by adding Expanded or flexible layout
     return Scaffold(
       appBar: AppBar(
         title: const Text('AI Voice Assistant'),
@@ -694,6 +724,7 @@ class _HomePageState extends State<start_session> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
+              // Clear chat & end session
               setState(() => _chatHistory.clear());
               _endConversationSession();
             },
@@ -702,7 +733,8 @@ class _HomePageState extends State<start_session> {
       ),
       body: Column(
         children: [
-          Expanded(
+          // RIVE animation - wrap in a flexible to avoid overflow
+          Flexible(
             flex: 3,
             child: RiveAnimation.asset(
               'assets/login_screen_character.riv',
@@ -714,6 +746,8 @@ class _HomePageState extends State<start_session> {
               fit: BoxFit.contain,
             ),
           ),
+
+          // Status text
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Text(
@@ -725,6 +759,8 @@ class _HomePageState extends State<start_session> {
               style: const TextStyle(fontSize: 16.0),
             ),
           ),
+
+          // Show partial recognized text
           if (_currentBuffer.isNotEmpty)
             Padding(
               padding: const EdgeInsets.all(8.0),
@@ -733,34 +769,62 @@ class _HomePageState extends State<start_session> {
                 style: const TextStyle(fontSize: 14.0),
               ),
             ),
+
+          // Chat area
           Expanded(
             flex: 4,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              color: Colors.grey[100],
               child: ListView.builder(
                 controller: _scrollController,
                 itemCount: _chatHistory.length,
                 itemBuilder: (context, index) {
-                  final message = _chatHistory[index];
-                  return ChatBubble(message: message);
+                  final msg = _chatHistory[index];
+                  return ChatBubble(message: msg);
                 },
               ),
             ),
           ),
+
+          // Buttons
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton.icon(
-              onPressed: _isInSession
-                  ? _endConversationSession
-                  : _startConversationSession,
-              icon: Icon(_isInSession ? Icons.call_end : Icons.call),
-              label: Text(_isInSession ? 'End Call' : 'Start Call'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _isInSession ? Colors.red : Colors.green,
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Start / End
+                ElevatedButton.icon(
+                  onPressed: _isInSession
+                      ? _endConversationSession
+                      : _startConversationSession,
+                  icon: Icon(_isInSession ? Icons.call_end : Icons.call),
+                  label: Text(_isInSession ? 'End Call' : 'Start Call'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _isInSession ? Colors.red : Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+
+                // Interrupt TTS
+                if (_isInSession)
+                  ElevatedButton.icon(
+                    onPressed: _interruptSpeech,
+                    icon: const Icon(Icons.stop),
+                    label: const Text('Interrupt'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],

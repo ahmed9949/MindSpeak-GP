@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:mind_speak_app/pages/login.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
-
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -119,31 +119,129 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _pickImage(String childId) async {
-  final picker = ImagePicker();
-  final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
-  if (pickedFile != null) {
-    File file = File(pickedFile.path);
+    if (pickedFile != null) {
+      File file = File(pickedFile.path);
 
+      try {
+        // Upload the image to Firebase Storage
+        final storageRef =
+            FirebaseStorage.instance.ref().child('child_images/$childId.jpg');
+        await storageRef.putFile(file);
+
+        // Get the uploaded image URL
+        String imageUrl = await storageRef.getDownloadURL();
+
+        // Update Firestore with the new image URL
+        await updateChild(childId, {'childPhoto': imageUrl});
+      } catch (e) {
+        print('Error updating photo: $e');
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Error uploading photo.'),
+          backgroundColor: Colors.red,
+        ));
+      }
+    }
+  }
+
+  Future<void> deleteParentAccount() async {
     try {
-      // Upload the image to Firebase Storage
-      final storageRef = FirebaseStorage.instance.ref().child('child_images/$childId.jpg');
-      await storageRef.putFile(file);
+     
+      bool confirmDelete = await showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Confirm Deletion'),
+            content: const Text(
+                'Are you sure you want to delete your account? This will also delete all associated child data and cannot be undone.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Delete'),
+              ),
+            ],
+          );
+        },
+      );
 
-      // Get the uploaded image URL
-      String imageUrl = await storageRef.getDownloadURL();
+      if (!confirmDelete) return;
 
-      // Update Firestore with the new image URL
-      await updateChild(childId, {'childPhoto': imageUrl});
-    } catch (e) {
-      print('Error updating photo: $e');
+     
+      final sessionProvider =
+          Provider.of<SessionProvider>(context, listen: false);
+      final userId = sessionProvider.userId;
+
+      if (userId == null) {
+        throw Exception('User not logged in');
+      }
+
+      
+      QuerySnapshot childSnapshot = await FirebaseFirestore.instance
+          .collection('child')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      for (var childDoc in childSnapshot.docs) {
+        final childId = childDoc.id;
+
+       
+        QuerySnapshot carSnapshot = await FirebaseFirestore.instance
+            .collection('Cars')
+            .where('childId', isEqualTo: childId)
+            .get();
+
+        for (var carDoc in carSnapshot.docs) {
+          await carDoc.reference.delete();
+        }
+
+        // Delete child document
+        await childDoc.reference.delete();
+      }
+
+      // Delete parent data
+      await FirebaseFirestore.instance.collection('user').doc(userId).delete();
+
+      // Delete Firebase Auth user
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await user.delete();
+      }
+
+     
+      await Future.delayed(const Duration(seconds: 1));
+
+      
+      if (FirebaseAuth.instance.currentUser == null) {
+        print("User successfully deleted and signed out.");
+      } else {
+        throw Exception('Error: User deletion not fully propagated.');
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Error uploading photo.'),
+        content: Text('Account deleted successfully.'),
+        backgroundColor: Colors.green,
+      ));
+
+      
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LogIn()),
+      );
+    } catch (e) {
+      print('Error deleting account: $e');
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Error deleting account. Please try again later.'),
         backgroundColor: Colors.red,
       ));
     }
   }
-}
+
   void _showUpdateDialog(Map<String, dynamic> child) {
     TextEditingController ageController =
         TextEditingController(text: child['age'].toString());
@@ -213,7 +311,12 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        title: const Text('Profile Page'),
+        backgroundColor: Colors.blue,
+        title: Center(
+            child: const Text(
+          'Profile Page',
+          style: TextStyle(color: Colors.white),
+        )),
         actions: [
           IconButton(
             icon: Icon(themeProvider.isDarkMode
@@ -241,9 +344,33 @@ class _ProfilePageState extends State<ProfilePage> {
                     Card(
                       elevation: 4,
                       child: ListTile(
-                        title: Text('Name: ${parentData?['username'] ?? 'N/A'}'),
+                        title:
+                            Text('Name: ${parentData?['username'] ?? 'N/A'}'),
                         subtitle:
                             Text('Email: ${parentData?['email'] ?? 'N/A'}'),
+                      ),
+                    ),
+                    const SizedBox(height: 20), // Add some spacing
+                    ElevatedButton(
+                      onPressed: deleteParentAccount,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 20),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.delete, color: Colors.white),
+                            SizedBox(width: 8),
+                            Text('Delete Account',
+                                style: TextStyle(color: Colors.white)),
+                          ],
+                        ),
                       ),
                     ),
                     const Divider(height: 30),
@@ -263,29 +390,34 @@ class _ProfilePageState extends State<ProfilePage> {
                                 margin:
                                     const EdgeInsets.symmetric(vertical: 8.0),
                                 elevation: 4,
-                                 child: ListTile(
-                                   leading: CircleAvatar(
-    backgroundImage: child['childPhoto'] != null
-        ? NetworkImage(child['childPhoto']) // Display from URL
-        : null,
-    child: child['childPhoto'] == null
-        ? const Icon(Icons.person) // Fallback if no photo
-        : null,
-  ),
-  title: Text(child['name']),
-  subtitle: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text('Age: ${child['age']}'),
-      Text('Interest: ${child['childInterest']}'),
-    ],
-  ),
-  trailing: IconButton(
-    icon: const Icon(Icons.edit, color: Colors.blue),
-    onPressed: () {
-      _showUpdateDialog(child);
-    },
-  ),
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundImage: child['childPhoto'] != null
+                                        ? NetworkImage(child[
+                                            'childPhoto']) // Display from URL
+                                        : null,
+                                    child: child['childPhoto'] == null
+                                        ? const Icon(Icons
+                                            .person) // Fallback if no photo
+                                        : null,
+                                  ),
+                                  title: Text(child['name']),
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Age: ${child['age']}'),
+                                      Text(
+                                          'Interest: ${child['childInterest']}'),
+                                    ],
+                                  ),
+                                  trailing: IconButton(
+                                    icon: const Icon(Icons.edit,
+                                        color: Colors.blue),
+                                    onPressed: () {
+                                      _showUpdateDialog(child);
+                                    },
+                                  ),
                                 ),
                               );
                             },
@@ -308,21 +440,25 @@ class _ProfilePageState extends State<ProfilePage> {
                                 margin:
                                     const EdgeInsets.symmetric(vertical: 8.0),
                                 elevation: 4,
-                                child: ListTile(
-                                  title: Text(
-                                      'Cars Form Trial ${car['trial']}'),
-                                  subtitle: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text('Child ID: ${car['childId']}'),
-                                      Text(
-                                          'Total Score: ${car['totalScore']}'),
-                                      Text(
-                                          'Selected Questions: ${(car['selectedQuestions'] as List<dynamic>?)?.join(", ") ?? 'N/A'}'),
-                                      Text('Status: ${car['status']}'),
-                                    ],
-                                  ),
+                                child: ExpansionTile(
+                                  title:
+                                      Text('Cars Form Trial ${car['trial']}'),
+                                  children: [
+                                    ListTile(
+                                      title: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Child ID: ${car['childId']}'),
+                                          Text(
+                                              'Total Score: ${car['totalScore']}'),
+                                          Text(
+                                              'Selected Questions: ${(car['selectedQuestions'] as List<dynamic>?)?.join(", ") ?? 'N/A'}'),
+                                          Text('Status: ${car['status']}'),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               );
                             },

@@ -6,12 +6,12 @@ import 'package:mind_speak_app/providers/chatprovider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:provider/provider.dart';
 import 'providers/theme_provider.dart';
- 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp();
-  await dotenv.load(fileName: "assets/.env");
+  // await dotenv.load(fileName: "assets/.env");
 
   // Initialize services
   runApp(
@@ -20,7 +20,7 @@ void main() async {
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
         ChangeNotifierProvider(
             create: (context) => SessionProvider()..loadSession()),
-        ChangeNotifierProvider(create: (context) => ChatProvider()),
+        // ChangeNotifierProvider(create: (context) => ChatProvider()),
       ],
       child: const MyApp(),
     ),

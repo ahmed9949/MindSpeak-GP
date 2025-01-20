@@ -227,22 +227,23 @@ class _HomePageState extends State<HomePage> {
                               ),
                             ),
                             const SizedBox(height: 10),
-                            Expanded(
-                              child: GridView.builder(
-                                physics: const BouncingScrollPhysics(),
-                                gridDelegate:
-                                    const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 3,
-                                  crossAxisSpacing: 10,
-                                  mainAxisSpacing: 10,
-                                ),
-                                itemCount: therapists.length,
-                                itemBuilder: (context, index) {
-                                  final therapist = therapists[index];
-                                  return _buildTherapistCard(therapist);
-                                },
-                              ),
+                            SizedBox(
+                             height: 150, // Set a fixed height for the ListView
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal, // Enable horizontal scrolling
+              physics: const BouncingScrollPhysics(),
+              itemCount: therapists.length,
+              itemBuilder: (context, index) {
+                final therapist = therapists[index];
+                return Padding(
+                  padding: const EdgeInsets.only(right: 10), // Add spacing between cards
+                  child: _buildTherapistCard(therapist),
+                );
+               },
+               ),
                             ),
+                            const SizedBox(height: 120), // Add a gap here
+
                            Center(
   child: ElevatedButton(
     onPressed: () async {
@@ -280,10 +281,9 @@ class _HomePageState extends State<HomePage> {
             bool formStatus = carsData['status'] ?? false;
 
             if (formStatus) {
-              // Navigate to the SignUp page if the Cars form is completed
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const SignUp()),
+                MaterialPageRoute(builder: (context) => const start_session()),
               );
             } else {
               // Display snackbar if the Cars form is incomplete

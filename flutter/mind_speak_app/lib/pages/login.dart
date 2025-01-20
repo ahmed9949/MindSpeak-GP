@@ -312,7 +312,7 @@ class _LogInState extends State<LogIn> {
           child: Column(
             children: [
               SizedBox(
-                width: MediaQuery.of(context).size.width,
+                 width: MediaQuery.of(context).size.width * 0.8,
                 child: Image.asset(
                   "assets/logo.webp",
                   fit: BoxFit.cover,

@@ -148,7 +148,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> deleteParentAccount() async {
     try {
-     
       bool confirmDelete = await showDialog(
         context: context,
         builder: (context) {
@@ -172,7 +171,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (!confirmDelete) return;
 
-     
       final sessionProvider =
           Provider.of<SessionProvider>(context, listen: false);
       final userId = sessionProvider.userId;
@@ -181,7 +179,6 @@ class _ProfilePageState extends State<ProfilePage> {
         throw Exception('User not logged in');
       }
 
-      
       QuerySnapshot childSnapshot = await FirebaseFirestore.instance
           .collection('child')
           .where('userId', isEqualTo: userId)
@@ -190,7 +187,6 @@ class _ProfilePageState extends State<ProfilePage> {
       for (var childDoc in childSnapshot.docs) {
         final childId = childDoc.id;
 
-       
         QuerySnapshot carSnapshot = await FirebaseFirestore.instance
             .collection('Cars')
             .where('childId', isEqualTo: childId)
@@ -213,10 +209,8 @@ class _ProfilePageState extends State<ProfilePage> {
         await user.delete();
       }
 
-     
       await Future.delayed(const Duration(seconds: 1));
 
-      
       if (FirebaseAuth.instance.currentUser == null) {
         print("User successfully deleted and signed out.");
       } else {
@@ -228,7 +222,6 @@ class _ProfilePageState extends State<ProfilePage> {
         backgroundColor: Colors.green,
       ));
 
-      
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const LogIn()),
@@ -311,7 +304,8 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-    backgroundColor: themeProvider.isDarkMode ? Colors.grey[900] : Colors.blue,
+        backgroundColor:
+            themeProvider.isDarkMode ? Colors.grey[900] : Colors.blue,
         title: Center(
             child: const Text(
           'Profile Page',

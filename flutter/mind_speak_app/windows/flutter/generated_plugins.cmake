@@ -9,6 +9,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   firebase_core
   firebase_storage
   flutter_webrtc
+  local_auth_windows
   permission_handler_windows
   rive_common
 )

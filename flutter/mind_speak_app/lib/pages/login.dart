@@ -13,9 +13,11 @@ import 'package:mind_speak_app/pages/signup.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:mind_speak_app/service/doctor_dashboard_service.dart';
+import 'package:mind_speak_app/service/local_auth_service.dart';
 import 'package:provider/provider.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:mind_speak_app/service/local_auth_service.dart';
 
 class LogIn extends StatefulWidget {
   const LogIn({super.key});
@@ -27,6 +29,7 @@ class LogIn extends StatefulWidget {
 class _LogInState extends State<LogIn> {
   String email = "", password = "";
   bool isLoading = false;
+  bool _isAuthenticated = false;
 
   TextEditingController mailcontroller = TextEditingController();
   TextEditingController passwordcontroller = TextEditingController();
@@ -68,6 +71,7 @@ class _LogInState extends State<LogIn> {
       String enteredPassword = passwordcontroller.text.trim();
       String hashedEnteredPassword = hashPassword(enteredPassword);
 
+      // Fetch user from Firestore by email
       QuerySnapshot userSnapshot = await FirebaseFirestore.instance
           .collection('user')
           .where('email', isEqualTo: email)
@@ -81,6 +85,8 @@ class _LogInState extends State<LogIn> {
       String storedPassword = userData['password'];
       String role = userData['role'];
       bool isApproved = userData['status'] ?? false;
+      bool biometricEnabled = userData['biometricEnabled'] ?? false;
+      String userId = userSnapshot.docs.first.id;
 
       if (hashedEnteredPassword == storedPassword) {
         // Save session data using SessionProvider
@@ -88,6 +94,23 @@ class _LogInState extends State<LogIn> {
             Provider.of<SessionProvider>(context, listen: false);
         await sessionProvider.saveSession(userSnapshot.docs.first.id, role);
 
+        if (biometricEnabled) {
+          // Authenticate using biometrics
+          bool authenticated = await LocalAuth.authenticate();
+
+          if (!authenticated) {
+            throw Exception("Biometric authentication failed.");
+          }
+        } else {
+          // Prompt to enable biometrics if not already enabled
+          bool enableBiometric = await LocalAuth.linkBiometrics();
+          if (enableBiometric) {
+            await FirebaseFirestore.instance
+                .collection('user')
+                .doc(userId)
+                .update({'biometricEnabled': true});
+          }
+        }
         if (role == 'parent') {
           // Fetch child data for the current user
           QuerySnapshot childSnapshot = await FirebaseFirestore.instance
@@ -194,6 +217,78 @@ class _LogInState extends State<LogIn> {
       });
     }
   }
+
+  // void _authenticateWithBiometrics(String userId) async {
+  //   try {
+  //     // Authenticate using biometrics
+  //     bool authenticated = await LocalAuth.authenticate();
+
+  //     if (authenticated) {
+  //       // Get current user data from Firestore
+  //       QuerySnapshot userSnapshot = await FirebaseFirestore.instance
+  //           .collection('user')
+  //           .where('biometricEnabled', isEqualTo: true)
+  //           .get();
+
+  //       if (userSnapshot.docs.isNotEmpty) {
+  //         var userData = userSnapshot.docs.first.data() as Map<String, dynamic>;
+  //         String role = userData['role'];
+  //         bool isApproved = userData['status'] ?? false;
+
+  //         // Navigate based on role
+  //         if (role == 'parent') {
+  //           Navigator.pushReplacement(
+  //             context,
+  //             MaterialPageRoute(builder: (context) => const HomePage()),
+  //           );
+  //         } else if (role == 'therapist' && isApproved) {
+  //           try {
+  //             Map<String, dynamic> therapistInfo = await _doctorServices
+  //                 .getTherapistInfo(userSnapshot.docs.first.id);
+  //             Map<String, dynamic> userInfo =
+  //                 await _doctorServices.getUserInfo(userSnapshot.docs.first.id);
+  //             Navigator.pushReplacement(
+  //               context,
+  //               MaterialPageRoute(
+  //                   builder: (context) => DoctorDashboard(
+  //                       sessionId: userSnapshot
+  //                           .docs.first.id, // Pass the sessionId (user ID)
+  //                       therapistInfo:
+  //                           therapistInfo, // Pass the therapist information
+  //                       userInfo: userInfo)),
+  //             );
+  //           } catch (e) {
+  //             // Handle errors
+  //             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+  //               backgroundColor: Colors.redAccent,
+  //               content: Text(
+  //                 e.toString(),
+  //                 style: const TextStyle(fontSize: 18.0),
+  //               ),
+  //             ));
+  //           }
+  //         } else if (role == 'admin') {
+  //           Navigator.pushReplacement(
+  //             context,
+  //             MaterialPageRoute(builder: (context) => const DashBoard()),
+  //           );
+  //         } else {
+  //           throw Exception("Your account is not yet approved.");
+  //         }
+  //       } else {
+  //         throw Exception(
+  //             "No user found with biometric authentication enabled.");
+  //       }
+  //     } else {
+  //       throw Exception("Biometric authentication failed.");
+  //     }
+  //   } catch (e) {
+  //     // Show error message
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text(e.toString())),
+  //     );
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -329,6 +424,25 @@ class _LogInState extends State<LogIn> {
                             fit: BoxFit.cover,
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 16.0),
+                      //authentication
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          final authenticated = await LocalAuth.authenticate();
+                          if (authenticated) {
+                            // Proceed with login after successful biometric authentication
+                            userLogin();
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content:
+                                      Text('Biometric authentication failed!')),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.fingerprint),
+                        label: const Text('Login with Biometrics'),
                       ),
                       const SizedBox(height: 40.0),
                       Row(

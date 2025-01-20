@@ -567,7 +567,7 @@ class _HomePageState extends State<start_session> {
   final AudioPlayer _player = AudioPlayer();
 
   // Chat state
-  List<ChatMessage> _chatHistory = [];
+  final List<ChatMessage> _chatHistory = [];
   final ScrollController _scrollController = ScrollController();
 
   // Rive controllers

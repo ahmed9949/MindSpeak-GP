@@ -181,7 +181,7 @@ class _HomePageState extends State<HomePage> {
                           context,
                           "Cars Form",
                           "assets/cars.png",
-                          carsform(),
+                          const carsform(),
                         ),
                         _buildTopCard(
                           context,
@@ -242,35 +242,121 @@ class _HomePageState extends State<HomePage> {
                                 },
                               ),
                             ),
-                            Center(
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const SignUp(),
-                                    ),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 50,
-                                    vertical: 20,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(30),
-                                  ),
-                                ),
-                                child: const Text(
-                                  "Start Session",
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
+                           Center(
+  child: ElevatedButton(
+    onPressed: () async {
+      final sessionProvider = Provider.of<SessionProvider>(context, listen: false);
+      final userId = sessionProvider.userId;
+
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('User not logged in.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      try {
+        // Fetch child data for the current user
+        QuerySnapshot childSnapshot = await FirebaseFirestore.instance
+            .collection('child')
+            .where('userId', isEqualTo: userId)
+            .get();
+
+        if (childSnapshot.docs.isNotEmpty) {
+          final childId = childSnapshot.docs.first['childId'];
+
+          // Check if the Cars form is completed
+          QuerySnapshot carsSnapshot = await FirebaseFirestore.instance
+              .collection('Cars')
+              .where('childId', isEqualTo: childId)
+              .get();
+
+          if (carsSnapshot.docs.isNotEmpty) {
+            final carsData = carsSnapshot.docs.first.data() as Map<String, dynamic>;
+            bool formStatus = carsData['status'] ?? false;
+
+            if (formStatus) {
+              // Navigate to the SignUp page if the Cars form is completed
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SignUp()),
+              );
+            } else {
+              // Display snackbar if the Cars form is incomplete
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text(
+                    'You should complete the Cars form first to start the session.',
+                  ),
+                  backgroundColor: Colors.red,
+                  action: SnackBarAction(
+                    label: 'Cars Form',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const carsform()),
+                      );
+                    },
+                  ),
+                ),
+              );
+            }
+          } else {
+            // No Cars form data found
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('You should complete the Cars form first to start the session.'),
+                backgroundColor: Colors.red,
+                 action: SnackBarAction(
+                    label: 'Press Here to Complete Cars Form',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const carsform()),
+                      );
+                    },
+                  ),
+              ),
+            );
+          }
+        } else {
+          // No child data found for the current user
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No child data found for the logged-in user.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
+        // Handle errors during the process
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    },
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Colors.green,
+      padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 20),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(30),
+      ),
+    ),
+    child: const Text(
+      "Start Session",
+      style: TextStyle(fontSize: 18, color: Colors.white),
+    ),
+  ),
+),
+
                           ],
                         ),
                       ),

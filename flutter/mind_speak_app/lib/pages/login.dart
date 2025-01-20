@@ -29,7 +29,7 @@ class LogIn extends StatefulWidget {
 class _LogInState extends State<LogIn> {
   String email = "", password = "";
   bool isLoading = false;
-  bool _isAuthenticated = false;
+  final bool _isAuthenticated = false;
 
   TextEditingController mailcontroller = TextEditingController();
   TextEditingController passwordcontroller = TextEditingController();
@@ -142,14 +142,14 @@ class _LogInState extends State<LogIn> {
                 // Navigate to carsform if Cars form is not completed
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => carsform()),
+                  MaterialPageRoute(builder: (context) => const carsform()),
                 );
               }
             } else {
               // Navigate to carsform if no Cars form exists
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => carsform()),
+                MaterialPageRoute(builder: (context) => const carsform()),
               );
             }
           } else {

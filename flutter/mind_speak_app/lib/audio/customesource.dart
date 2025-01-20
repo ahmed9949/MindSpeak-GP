@@ -1,30 +1,23 @@
-import 'dart:typed_data';
+// lib/audio/custom_audio_source.dart
+
 import 'package:just_audio/just_audio.dart';
-import 'package:flutter/foundation.dart';
 
 class CustomAudioSource extends StreamAudioSource {
-  final Uint8List _buffer;
-  
-  CustomAudioSource(this._buffer);
-  
+  final List<int> bytes;
+
+  CustomAudioSource(this.bytes);
+
   @override
   Future<StreamAudioResponse> request([int? start, int? end]) async {
     start ??= 0;
-    end ??= _buffer.length;
+    end ??= bytes.length;
 
-    try {
-      return StreamAudioResponse(
-        sourceLength: _buffer.length,
-        contentLength: end - start,
-        offset: start,
-        contentType: 'audio/mpeg',
-        stream: Stream.value(_buffer.sublist(start, end)),
-      );
-    } catch (e) {
-      if (kDebugMode) {
-        print('CustomAudioSource error: $e');
-      }
-      rethrow;
-    }
+    return StreamAudioResponse(
+      sourceLength: bytes.length,
+      contentLength: end - start,
+      offset: start,
+      stream: Stream.value(bytes.sublist(start, end)),
+      contentType: 'audio/mpeg',
+    );
   }
 }

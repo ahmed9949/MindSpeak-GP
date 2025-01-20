@@ -6,6 +6,7 @@ import 'package:mind_speak_app/pages/searchpage.dart';
 import 'package:mind_speak_app/components/drawer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mind_speak_app/pages/signup.dart';
+import 'package:mind_speak_app/pages/start_session.dart';
 import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 
@@ -28,7 +29,8 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> fetchChildPhoto() async {
     try {
-      final sessionProvider = Provider.of<SessionProvider>(context, listen: false);
+      final sessionProvider =
+          Provider.of<SessionProvider>(context, listen: false);
       final userId = sessionProvider.userId;
 
       if (userId == null) {
@@ -83,7 +85,8 @@ class _HomePageState extends State<HomePage> {
               CircleAvatar(
                 backgroundImage: childPhoto != null
                     ? NetworkImage(childPhoto!) // Use fetched image
-                    : const AssetImage('assets/user_image.png') as ImageProvider, // Fallback image
+                    : const AssetImage('assets/user_image.png')
+                        as ImageProvider, // Fallback image
                 child: childPhoto == null
                     ? const Icon(Icons.person, color: Colors.white)
                     : null,
@@ -93,13 +96,13 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      
       body: Container(
         color: Colors.blue,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-                  const SizedBox(height: 30), // Adjust the height here to control the gap
+            const SizedBox(
+                height: 30), // Adjust the height here to control the gap
 
             // Top 4 Cards
             Padding(
@@ -126,12 +129,11 @@ class _HomePageState extends State<HomePage> {
                     const Predict(),
                   ),
                   _buildTopCard(
-                    context,
-                    "Choose Avatars",
-                    "assets/avatar.png",
-                    // const ChooseAvatarPage(),
-                    const SignUp()
-                  ),
+                      context,
+                      "Choose Avatars",
+                      "assets/avatar.png",
+                      // const ChooseAvatarPage(),
+                      const SignUp()),
                 ],
               ),
             ),
@@ -168,37 +170,42 @@ class _HomePageState extends State<HomePage> {
                             children: [
                               _buildDoctorCard(
                                   "Dr. Kawsar Ahmed", "Dental Sargon"),
-                              _buildDoctorCard("Dr. Mohbuba Is", "Dental Sargon"),
+                              _buildDoctorCard(
+                                  "Dr. Mohbuba Is", "Dental Sargon"),
                               _buildDoctorCard("Dr. Riyadh", "Dental Sargon"),
                             ],
                           ),
                         ),
                         const SizedBox(height: 90),
                         // Green Start Session Button
-          Center(
-            child: ElevatedButton(
-              onPressed: () {
-                // Handle button press
-                print("Start Session button pressed!");
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green, // Button color
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 50,
-                  vertical: 30,
-                ), // Button size
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-              ),
-              child: const Text(
-                "Start Session",
-                style: TextStyle(fontSize: 18, color: Colors.white),
-              ),
-            ),
-          ),
-
-                      
+                        Center(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              // Handle button press
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const start_session()),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green, // Button color
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 50,
+                                vertical: 30,
+                              ), // Button size
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                            child: const Text(
+                              "Start Session",
+                              style:
+                                  TextStyle(fontSize: 18, color: Colors.white),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),

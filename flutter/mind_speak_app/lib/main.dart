@@ -10,7 +10,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp();
-  await dotenv.load(fileName: "assets/.env");
+  //await dotenv.load(fileName: "assets/.env");
 
   // Initialize services
   runApp(
@@ -19,7 +19,7 @@ void main() async {
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
         ChangeNotifierProvider(
             create: (context) => SessionProvider()..loadSession()),
-       ],
+      ],
       child: const MyApp(),
     ),
   );

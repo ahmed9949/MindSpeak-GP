@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/predict.dart';
+import 'package:mind_speak_app/pages/profilepage.dart';
 import 'package:mind_speak_app/pages/searchpage.dart';
 import 'package:mind_speak_app/components/drawer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -191,9 +192,9 @@ class _HomePageState extends State<HomePage> {
                         ),
                         _buildTopCard(
                           context,
-                          "Choose Avatars",
-                          "assets/avatar.png",
-                          const SignUp(),
+                          "Your Profile",
+                          "assets/profile.jpg",
+                          const ProfilePage(),
                         ),
                       ],
                     ),

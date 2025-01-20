@@ -311,7 +311,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        backgroundColor: Colors.blue,
+    backgroundColor: themeProvider.isDarkMode ? Colors.grey[900] : Colors.blue,
         title: Center(
             child: const Text(
           'Profile Page',

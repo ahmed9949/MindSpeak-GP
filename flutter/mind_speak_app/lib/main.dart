@@ -5,7 +5,7 @@ import 'package:mind_speak_app/components/splashscreen.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:provider/provider.dart';
 import 'providers/theme_provider.dart';
- 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 

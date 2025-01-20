@@ -239,6 +239,7 @@ class _CategorySelectionPageState extends State<carsform> {
 
   @override
    Widget build(BuildContext context) {
+    
     final sessionProvider = Provider.of<SessionProvider>(context);
 
     return Scaffold(

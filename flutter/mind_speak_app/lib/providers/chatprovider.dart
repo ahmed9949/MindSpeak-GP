@@ -18,16 +18,19 @@ class ChatProvider extends ChangeNotifier {
   bool isProcessingResponse = false;
   String currentBuffer = '';
   List<ChatMessage> chatHistory = [];
+  String lastProcessedText = '';
 
   Timer? _silenceTimer;
+  Timer? _inactivityTimer;
   Timer? _restartTimer;
   int _errorCount = 0;
-  bool _hasFinalResult = false;
-  String _lastProcessedText = '';
-
-  static const _restartDelay = 800; // ms
-  static const _silenceThreshold = 1500; // ms
-  static const _maxErrorsBeforeReset = 3;
+  bool _shouldContinueListening = false;
+  
+  // Thresholds and delays
+  static const _silenceThreshold = 2;
+  static const _inactivityThreshold = 30; // Increased from 15
+  static const _restartDelay = 800; // Increased from 500
+  static const _maxErrorsBeforeReset = 5; // Increased from 3
 
   StreamSubscription? _ttsSpeakingSubscription;
 
@@ -50,15 +53,13 @@ class ChatProvider extends ChangeNotifier {
     await speechService.initialize(
       onError: (error) {
         debugPrint('Speech error: ${error.errorMsg}');
-        if (error.errorMsg != 'error_speech_timeout' && error.errorMsg != 'error_busy') {
+        if (!error.permanent && error.errorMsg != 'error_speech_timeout') {
           _handleSpeechError(error);
         }
       },
       onStatus: (status) {
         debugPrint('Speech status: $status');
-        if (status == 'done' && isInSession && !isProcessingResponse && !isSpeaking) {
-          _checkAndProcessFinalResult();
-        }
+        _handleSpeechStatus(status);
       },
     );
 
@@ -66,26 +67,34 @@ class ChatProvider extends ChangeNotifier {
       isSpeaking = speaking;
       notifyListeners();
 
-      if (!speaking && isInSession && !isProcessingResponse) {
+      if (!speaking && isInSession && !isProcessingResponse && _shouldContinueListening) {
         _scheduleListeningRestart();
       }
     });
   }
 
-  void _checkAndProcessFinalResult() {
-    if (!_hasFinalResult && currentBuffer.isNotEmpty && currentBuffer != _lastProcessedText) {
-      _processSpeechBuffer(currentBuffer);
+  void _handleSpeechStatus(String status) {
+    switch (status) {
+      case 'listening':
+        isListening = true;
+        notifyListeners();
+        break;
+      case 'notListening':
+        isListening = false;
+        notifyListeners();
+        if (isInSession && !isProcessingResponse && !isSpeaking && _shouldContinueListening) {
+          _scheduleListeningRestart();
+        }
+        break;
+      case 'done':
+        isListening = false;
+        notifyListeners();
+        // Only restart if we should continue and not processing or speaking
+        if (isInSession && !isProcessingResponse && !isSpeaking && _shouldContinueListening) {
+          _scheduleListeningRestart();
+        }
+        break;
     }
-    _scheduleListeningRestart();
-  }
-
-  void _scheduleListeningRestart() {
-    _restartTimer?.cancel();
-    _restartTimer = Timer(Duration(milliseconds: _restartDelay), () {
-      if (isInSession && !isProcessingResponse && !isSpeaking) {
-        _startListening();
-      }
-    });
   }
 
   Future<void> startSession() async {
@@ -96,17 +105,18 @@ class ChatProvider extends ChangeNotifier {
     isSpeaking = false;
     isListening = false;
     currentBuffer = '';
-    _lastProcessedText = '';
-    _hasFinalResult = false;
+    lastProcessedText = '';
     _errorCount = 0;
+    _shouldContinueListening = true;
     notifyListeners();
 
-    await _startListening();
+    _startInactivityTimer();
+    await _startContinuousListening();
   }
 
   Future<void> endSession() async {
-    _silenceTimer?.cancel();
-    _restartTimer?.cancel();
+    _shouldContinueListening = false;
+    _cleanupTimers();
     await speechService.stop();
     
     isInSession = false;
@@ -114,84 +124,141 @@ class ChatProvider extends ChangeNotifier {
     isSpeaking = false;
     isListening = false;
     currentBuffer = '';
-    _lastProcessedText = '';
-    _hasFinalResult = false;
+    lastProcessedText = '';
     _errorCount = 0;
     notifyListeners();
   }
 
-  Future<void> _startListening() async {
-    if (!isInSession || isProcessingResponse || isSpeaking) return;
-
-    try {
-      // Stop any existing listening session
-      await speechService.stop();
-      await Future.delayed(const Duration(milliseconds: 300));
-
-      isListening = true;
-      _hasFinalResult = false;
-      notifyListeners();
-
-      await speechService.startListening(
-        onResult: _onSpeechResult,
-        listenFor: const Duration(seconds: 30),
-        pauseFor: const Duration(seconds: 2),
-      );
-    } catch (e) {
-      debugPrint('Start listening error: $e');
-      _handleSpeechError(e);
-    }
+  void _cleanupTimers() {
+    _silenceTimer?.cancel();
+    _inactivityTimer?.cancel();
+    _restartTimer?.cancel();
   }
 
-  void _onSpeechResult(SpeechRecognitionResult result) {
-    if (!isInSession || isProcessingResponse || isSpeaking) return;
+  void _scheduleListeningRestart() {
+    if (!_shouldContinueListening) return;
+    
+    _restartTimer?.cancel();
+    _restartTimer = Timer(Duration(milliseconds: _restartDelay), () {
+      if (isInSession && !isProcessingResponse && !isSpeaking && _shouldContinueListening) {
+        _startContinuousListening();
+      }
+    });
+  }
 
-    bool isFinal = result.finalResult;
-    String text = result.recognizedWords;
+  void _startInactivityTimer() {
+    _inactivityTimer?.cancel();
+    _inactivityTimer = Timer(Duration(seconds: _inactivityThreshold), () {
+      if (isInSession && !isProcessingResponse && _shouldContinueListening) {
+        _checkOnUser();
+      }
+    });
+  }
 
-    // Only update buffer if we have text
-    if (text.isNotEmpty) {
-      currentBuffer = text;
+  Future<void> _checkOnUser() async {
+    if (!isInSession || !_shouldContinueListening) return;
+
+    await speechService.stop();
+    isProcessingResponse = true;
+    notifyListeners();
+
+    try {
+      final response = await llmService.getResponse(
+        "Are you still there? Please let me know if you want to continue our conversation."
+      );
+
+      addMessage(ChatMessage(text: response, isUser: false));
+      await ttsService.speak(response);
+    } finally {
+      isProcessingResponse = false;
       notifyListeners();
-
-      // Reset silence timer
-      _silenceTimer?.cancel();
-
-      if (isFinal) {
-        _hasFinalResult = true;
-        _processSpeechBuffer(text);
-      } else {
-        // Set timer for processing partial results after silence
-        _silenceTimer = Timer(Duration(milliseconds: _silenceThreshold), () {
-          if (!_hasFinalResult && currentBuffer.isNotEmpty && currentBuffer != _lastProcessedText) {
-            _processSpeechBuffer(currentBuffer);
-          }
-        });
+      if (isInSession && _shouldContinueListening) {
+        _scheduleListeningRestart();
       }
     }
   }
 
-  Future<void> _processSpeechBuffer(String text) async {
-    if (!isInSession || isProcessingResponse || text.isEmpty || text == _lastProcessedText) return;
+  Future<void> _startContinuousListening() async {
+    if (!isInSession || isProcessingResponse || isSpeaking || !_shouldContinueListening) return;
+
+    try {
+      // Always stop before starting new session
+      await speechService.stop();
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      if (!_shouldContinueListening) return; // Check again after delay
+
+      isListening = true;
+      notifyListeners();
+
+      await speechService.startListening(
+        onResult: _onContinuousSpeechResult,
+        listenFor: const Duration(seconds: 30),
+        pauseFor: Duration(seconds: _silenceThreshold + 1),
+      );
+    } catch (e) {
+      debugPrint('Continuous listening error: $e');
+      if (_shouldContinueListening) {
+        _attemptRecovery();
+      }
+    }
+  }
+
+  void _onContinuousSpeechResult(SpeechRecognitionResult result) {
+    if (!isInSession || isProcessingResponse || isSpeaking || !_shouldContinueListening) return;
+
+    // Reset error count on successful recognition
+    if (result.recognizedWords.isNotEmpty) {
+      _errorCount = 0;
+      
+      // Only update buffer if text has changed
+      if (result.recognizedWords != currentBuffer) {
+        currentBuffer = result.recognizedWords;
+        notifyListeners();
+
+        // Reset timers
+        _silenceTimer?.cancel();
+        _startInactivityTimer();
+
+        // Process immediately if final, otherwise wait for silence
+        if (result.finalResult) {
+          _processSpeechBuffer();
+        } else {
+          _silenceTimer = Timer(Duration(seconds: _silenceThreshold), () {
+            if (currentBuffer.isNotEmpty && currentBuffer != lastProcessedText) {
+              _processSpeechBuffer();
+            }
+          });
+        }
+      }
+    }
+  }
+
+  Future<void> _processSpeechBuffer() async {
+    if (!isInSession || isProcessingResponse || currentBuffer.isEmpty || 
+        currentBuffer == lastProcessedText || !_shouldContinueListening) return;
 
     isProcessingResponse = true;
-    _lastProcessedText = text;
+    final textToProcess = currentBuffer;
+    lastProcessedText = currentBuffer;
     currentBuffer = '';
     notifyListeners();
 
     try {
       await speechService.stop();
       
-      addMessage(ChatMessage(text: text, isUser: true));
-      final response = await llmService.getResponse(text);
+      addMessage(ChatMessage(text: textToProcess, isUser: true));
+      final response = await llmService.getResponse(textToProcess);
       addMessage(ChatMessage(text: response, isUser: false));
       await ttsService.speak(response);
     } catch (e) {
       debugPrint('Process speech error: $e');
     } finally {
+      if (!_shouldContinueListening) return;
+      
       isProcessingResponse = false;
       notifyListeners();
-      
+
       if (isInSession && !isSpeaking) {
         _scheduleListeningRestart();
       }
@@ -204,9 +271,29 @@ class ChatProvider extends ChangeNotifier {
 
     if (_errorCount >= _maxErrorsBeforeReset) {
       endSession();
-    } else {
-      _scheduleListeningRestart();
+    } else if (_shouldContinueListening) {
+      _attemptRecovery();
     }
+  }
+
+  void _attemptRecovery() {
+    if (!isInSession || !_shouldContinueListening) return;
+
+    _cleanupTimers();
+    
+    _restartTimer = Timer(Duration(milliseconds: _restartDelay), () async {
+      if (!isInSession || !_shouldContinueListening) return;
+
+      try {
+        await speechService.stop();
+        await _startContinuousListening();
+      } catch (e) {
+        debugPrint('Recovery failed: $e');
+        if (_shouldContinueListening) {
+          endSession();
+        }
+      }
+    });
   }
 
   void addMessage(ChatMessage message) {
@@ -217,8 +304,7 @@ class ChatProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _silenceTimer?.cancel();
-    _restartTimer?.cancel();
+    _cleanupTimers();
     _ttsSpeakingSubscription?.cancel();
     ttsService.dispose();
     super.dispose();

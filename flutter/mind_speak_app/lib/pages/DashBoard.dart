@@ -63,8 +63,9 @@ class _DashBoardState extends State<DashBoard> {
       setState(() {
         therapists = tempTherapists;
         totalPages = (therapists.length / itemsPerPage).ceil();
-        if (currentPage > totalPages)
+        if (currentPage > totalPages) {
           currentPage = totalPages > 0 ? totalPages : 1;
+        }
       });
     } catch (e) {
       print('Error fetching therapist requests: $e');
@@ -82,8 +83,9 @@ class _DashBoardState extends State<DashBoard> {
         therapists
             .removeWhere((therapist) => therapist['userid'] == therapistId);
         totalPages = (therapists.length / itemsPerPage).ceil();
-        if (currentPage > totalPages)
+        if (currentPage > totalPages) {
           currentPage = totalPages > 0 ? totalPages : 1;
+        }
       });
     } catch (e) {
       print('Error approving therapist: $e');
@@ -101,8 +103,9 @@ class _DashBoardState extends State<DashBoard> {
         therapists
             .removeWhere((therapist) => therapist['userid'] == therapistId);
         totalPages = (therapists.length / itemsPerPage).ceil();
-        if (currentPage > totalPages)
+        if (currentPage > totalPages) {
           currentPage = totalPages > 0 ? totalPages : 1;
+        }
       });
     } catch (e) {
       print('Error rejecting therapist: $e');

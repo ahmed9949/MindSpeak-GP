@@ -7,7 +7,8 @@ class ChildReportsPage extends StatelessWidget {
   final String childName;
   final List<Map<String, dynamic>> reports;
 
-  const ChildReportsPage({super.key, required this.childName, required this.reports});
+  const ChildReportsPage(
+      {super.key, required this.childName, required this.reports});
 
   @override
   Widget build(BuildContext context) {
@@ -17,16 +18,20 @@ class ChildReportsPage extends StatelessWidget {
       appBar: AppBar(
         actions: [
           IconButton(
-            icon: Icon(themeProvider.isDarkMode ? Icons.wb_sunny : Icons.nightlight_round),
+            icon: Icon(themeProvider.isDarkMode
+                ? Icons.wb_sunny
+                : Icons.nightlight_round),
             onPressed: () {
               themeProvider.toggleTheme(); // Toggle the theme
             },
           ),
         ],
-        backgroundColor: Colors.teal,
+        backgroundColor: Colors.blue,
         title: Text(
           "$childName's Reports",
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Color.fromARGB(255, 255, 255, 255)),
+          style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Color.fromARGB(255, 255, 255, 255)),
         ),
         centerTitle: true,
         elevation: 0,

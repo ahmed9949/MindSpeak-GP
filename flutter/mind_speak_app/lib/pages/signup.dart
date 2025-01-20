@@ -12,8 +12,9 @@ import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+
+import '../service/local_auth_service.dart';
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -34,6 +35,7 @@ class _SignUpState extends State<SignUp> {
   File? _nationalProofImage;
   File? _TherapistImage;
   bool isLoading = false;
+  bool biometricEnabled = false;
 
   TextEditingController usernamecontroller = TextEditingController();
   TextEditingController emailcontroller = TextEditingController();
@@ -234,8 +236,27 @@ class _SignUpState extends State<SignUp> {
           'password': password,
           'role': role,
           'userid': userId,
-          'username': username
+          'username': username,
+          'biometricEnabled': false,
         });
+        // Prompt for biometric authentication
+        bool enableBiometric = await LocalAuth
+            .hasBiometrics(); // Check if device supports biometrics
+        if (enableBiometric) {
+          bool biometricEnabled =
+              await LocalAuth.authenticate(); // Attempt biometric registration
+          if (biometricEnabled) {
+            await FirebaseFirestore.instance
+                .collection('user')
+                .doc(userId)
+                .update({
+              'biometricEnabled': true
+            }); // Update Firestore to enable biometrics
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text("Biometric authentication enabled successfully."),
+            ));
+          }
+        }
 
         // Save session data using SessionProvider
         final sessionProvider =

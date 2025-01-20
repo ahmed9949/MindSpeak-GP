@@ -11,7 +11,7 @@ class ReportListContainer extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.teal[50]!, Colors.teal[100]!],
+          colors: [Colors.blue[50]!, Colors.blue[100]!],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -21,7 +21,10 @@ class ReportListContainer extends StatelessWidget {
           ? const Center(
               child: Text(
                 "No reports to display",
-                style: TextStyle(fontSize: 22, color: Colors.grey, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    fontSize: 22,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.bold),
               ),
             )
           : ListView.builder(

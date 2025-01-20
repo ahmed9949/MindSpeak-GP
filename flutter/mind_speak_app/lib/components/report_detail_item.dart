@@ -4,7 +4,8 @@ class ReportDetailItem extends StatelessWidget {
   final String title;
   final String content;
 
-  const ReportDetailItem({super.key, required this.title, required this.content});
+  const ReportDetailItem(
+      {super.key, required this.title, required this.content});
 
   @override
   Widget build(BuildContext context) {
@@ -12,23 +13,23 @@ class ReportDetailItem extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16.0),
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: Colors.teal[50],
+        color: Colors.blue[50],
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
             spreadRadius: 2,
             blurRadius: 5,
-            offset: Offset(0, 3),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
+          const Icon(
             Icons.info_outline,
-            color: Colors.teal,
+            color: Colors.blue,
             size: 30,
           ),
           const SizedBox(width: 12),
@@ -41,7 +42,7 @@ class ReportDetailItem extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.teal,
+                    color: Colors.blue,
                   ),
                 ),
                 const SizedBox(height: 6),

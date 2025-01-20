@@ -1,14 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
-import 'package:google_fonts/google_fonts.dart';
-
 
 class ImageUploader {
   static Future<String?> uploadImage(File imageFile) async {
-    var url = 'http://192.168.1.24:5000/predict'; // Make sure to use the correct IP and port
+    var url = 'http://192.168.1.17:5000/predict'; // Make sure to use the correct IP and port
     var request = http.MultipartRequest('POST', Uri.parse(url));
     request.files.add(await http.MultipartFile.fromPath('file', imageFile.path));
 
@@ -28,14 +27,14 @@ class ImageUploader {
   }
 }
 
-class Predict extends StatefulWidget {
-  const Predict({super.key});
+class PredictScreen extends StatefulWidget {
+  const PredictScreen({Key? key}) : super(key: key);
 
   @override
-  State<Predict> createState() => _PredictScreenState();
+  State<PredictScreen> createState() => _PredictScreenState();
 }
 
-class _PredictScreenState extends State<Predict> {
+class _PredictScreenState extends State<PredictScreen> {
   File? _imageFile;
   String? _prediction;
   bool _isLoading = false;
@@ -121,6 +120,6 @@ class _PredictScreenState extends State<Predict> {
   }
 }
 
-// void main() {
-//   runApp(MaterialApp(home: PredictScreen()));
-// }
+void main() {
+  runApp(MaterialApp(home: PredictScreen()));
+}

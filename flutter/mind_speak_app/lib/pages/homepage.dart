@@ -123,7 +123,8 @@ class _HomePageState extends State<HomePage> {
       drawer: const NavigationDrawe(),
       appBar: AppBar(
         elevation: 0,
-    backgroundColor: themeProvider.isDarkMode ? Colors.grey[900] : Colors.blue,
+        backgroundColor:
+            themeProvider.isDarkMode ? Colors.grey[900] : Colors.blue,
         title: Row(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
@@ -147,9 +148,8 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(width: 20),
               CircleAvatar(
                 radius: 50,
-                backgroundImage: childPhoto != null
-                    ? NetworkImage(childPhoto!)
-                    : null,
+                backgroundImage:
+                    childPhoto != null ? NetworkImage(childPhoto!) : null,
                 child: childPhoto == null
                     ? const Icon(Icons.person, color: Colors.white, size: 40)
                     : null,
@@ -188,7 +188,7 @@ class _HomePageState extends State<HomePage> {
                           context,
                           "Prediction",
                           "assets/predict.png",
-                          const Predict(),
+                          const PredictScreen(),
                         ),
                         _buildTopCard(
                           context,
@@ -207,8 +207,8 @@ class _HomePageState extends State<HomePage> {
                             ? Colors.grey[900]
                             : Colors.white,
                         borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(30),
-                          topRight: Radius.circular(30),
+                          topLeft: Radius.circular(20),
+                          topRight: Radius.circular(20),
                         ),
                       ),
                       child: Padding(
@@ -250,35 +250,41 @@ class _HomePageState extends State<HomePage> {
       final sessionProvider = Provider.of<SessionProvider>(context, listen: false);
       final userId = sessionProvider.userId;
 
-      if (userId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('User not logged in.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
+                                  if (userId == null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('User not logged in.'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                    return;
+                                  }
 
-      try {
-        // Fetch child data for the current user
-        QuerySnapshot childSnapshot = await FirebaseFirestore.instance
-            .collection('child')
-            .where('userId', isEqualTo: userId)
-            .get();
+                                  try {
+                                    // Fetch child data for the current user
+                                    QuerySnapshot childSnapshot =
+                                        await FirebaseFirestore.instance
+                                            .collection('child')
+                                            .where('userId', isEqualTo: userId)
+                                            .get();
 
-        if (childSnapshot.docs.isNotEmpty) {
-          final childId = childSnapshot.docs.first['childId'];
+                                    if (childSnapshot.docs.isNotEmpty) {
+                                      final childId =
+                                          childSnapshot.docs.first['childId'];
 
-          // Check if the Cars form is completed
-          QuerySnapshot carsSnapshot = await FirebaseFirestore.instance
-              .collection('Cars')
-              .where('childId', isEqualTo: childId)
-              .get();
+                                      // Check if the Cars form is completed
+                                      QuerySnapshot carsSnapshot =
+                                          await FirebaseFirestore.instance
+                                              .collection('Cars')
+                                              .where('childId',
+                                                  isEqualTo: childId)
+                                              .get();
 
-          if (carsSnapshot.docs.isNotEmpty) {
-            final carsData = carsSnapshot.docs.first.data() as Map<String, dynamic>;
-            bool formStatus = carsData['status'] ?? false;
+                                      if (carsSnapshot.docs.isNotEmpty) {
+                                        final carsData = carsSnapshot.docs.first
+                                            .data() as Map<String, dynamic>;
+                                        bool formStatus =
+                                            carsData['status'] ?? false;
 
             if (formStatus) {
               Navigator.push(

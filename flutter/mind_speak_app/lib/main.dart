@@ -19,7 +19,7 @@ void main() async {
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
         ChangeNotifierProvider(
             create: (context) => SessionProvider()..loadSession()),
-       ],
+      ],
       child: const MyApp(),
     ),
   );

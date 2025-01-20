@@ -11,11 +11,10 @@ class DoctorDashboard extends StatefulWidget {
   final Map<String, dynamic> userInfo;
 
   const DoctorDashboard(
-      {Key? key,
+      {super.key,
       required this.sessionId,
       required this.therapistInfo,
-      required this.userInfo})
-      : super(key: key);
+      required this.userInfo});
 
   @override
   _DoctorDashboardState createState() => _DoctorDashboardState();

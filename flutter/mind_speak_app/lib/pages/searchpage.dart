@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
@@ -247,6 +248,8 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
+        final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -254,7 +257,7 @@ class _SearchPageState extends State<SearchPage> {
           style: TextStyle(color: Colors.white),
         ),
         centerTitle: true,
-        backgroundColor: Colors.blue,
+    backgroundColor: themeProvider.isDarkMode ? Colors.grey[900] : Colors.blue,
       ),
       body: SafeArea(
         child: isLoading

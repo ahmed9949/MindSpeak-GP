@@ -17,7 +17,7 @@ class TTSService {
       : text;
 
     const voiceId = '21m00Tcm4TlvDq8ikWAM';
-    final url = 'https://api.elevenlabs.io/v1/text-to-speech/$voiceId';
+    const url = 'https://api.elevenlabs.io/v1/text-to-speech/$voiceId';
 
     final startTime = DateTime.now();
     final response = await http

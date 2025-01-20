@@ -334,7 +334,7 @@ class _SignUpState extends State<SignUp> {
         ],
         centerTitle: true,
       ),
-      backgroundColor: Colors.white,
+    backgroundColor: themeProvider.isDarkMode ? Colors.grey[900] : Colors.white,
       // Use the `isLoading` flag to control what is shown
       body: isLoading
           ? const Center(

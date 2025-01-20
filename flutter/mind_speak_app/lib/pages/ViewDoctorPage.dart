@@ -191,7 +191,7 @@ class _ViewDoctorsState extends State<ViewDoctors> {
                                       _showImageDialog(
                                           context,
                                           _foundTherapist[index]
-                                              ['therapistImage']);
+                                              ['nationalProof']);
                                     },
                                   ),
                                   IconButton(

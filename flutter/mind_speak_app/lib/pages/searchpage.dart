@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
@@ -159,16 +160,23 @@ class _SearchPageState extends State<SearchPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Therapist Image
+                  // Therapist Image
                   if (therapist['therapistImage'] != null &&
                       therapist['therapistImage'].isNotEmpty)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.network(
-                        therapist['therapistImage'],
-                        height: 200,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        double imageHeight =
+                            constraints.maxWidth * 0.6; // Adjust height
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            therapist['therapistImage'],
+                            height: imageHeight,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
+                        );
+                      },
                     )
                   else
                     Container(
@@ -178,6 +186,7 @@ class _SearchPageState extends State<SearchPage> {
                       child: const Icon(Icons.person,
                           size: 100, color: Colors.grey),
                     ),
+
                   const SizedBox(height: 16),
                   // Therapist Name
                   Text(
@@ -247,6 +256,8 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -254,7 +265,8 @@ class _SearchPageState extends State<SearchPage> {
           style: TextStyle(color: Colors.white),
         ),
         centerTitle: true,
-        backgroundColor: Colors.blue,
+        backgroundColor:
+            themeProvider.isDarkMode ? Colors.grey[900] : Colors.blue,
       ),
       body: SafeArea(
         child: isLoading
@@ -309,17 +321,24 @@ class _SearchPageState extends State<SearchPage> {
                                       if (therapist['therapistImage'] != null &&
                                           therapist['therapistImage']
                                               .isNotEmpty)
-                                        ClipRRect(
-                                          borderRadius:
-                                              const BorderRadius.vertical(
-                                            top: Radius.circular(15),
-                                          ),
-                                          child: Image.network(
-                                            therapist['therapistImage'],
-                                            height: 120,
-                                            width: double.infinity,
-                                            fit: BoxFit.cover,
-                                          ),
+                                        LayoutBuilder(
+                                          builder: (context, constraints) {
+                                            double imageHeight =
+                                                constraints.maxWidth *
+                                                    0.75; // Adjust height
+                                            return ClipRRect(
+                                              borderRadius:
+                                                  const BorderRadius.vertical(
+                                                top: Radius.circular(15),
+                                              ),
+                                              child: Image.network(
+                                                therapist['therapistImage'],
+                                                height: imageHeight,
+                                                width: double.infinity,
+                                                fit: BoxFit.cover,
+                                              ),
+                                            );
+                                          },
                                         )
                                       else
                                         Container(
@@ -329,6 +348,7 @@ class _SearchPageState extends State<SearchPage> {
                                           child: const Icon(Icons.person,
                                               size: 60, color: Colors.grey),
                                         ),
+
                                       // Therapist Name
                                       Padding(
                                         padding: const EdgeInsets.all(8.0),

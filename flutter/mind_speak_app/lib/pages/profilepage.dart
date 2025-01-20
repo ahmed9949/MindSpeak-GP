@@ -127,7 +127,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     try {
       // Upload the image to Firebase Storage
-      final storageRef = FirebaseStorage.instance.ref().child('childPhotos/$childId.jpg');
+      final storageRef = FirebaseStorage.instance.ref().child('child_images/$childId.jpg');
       await storageRef.putFile(file);
 
       // Get the uploaded image URL

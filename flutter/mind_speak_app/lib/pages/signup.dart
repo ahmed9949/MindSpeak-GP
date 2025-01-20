@@ -12,7 +12,6 @@ import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 class SignUp extends StatefulWidget {

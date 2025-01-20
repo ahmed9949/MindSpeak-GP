@@ -29,7 +29,7 @@ class ImageUploader {
 }
 
 class Predict extends StatefulWidget {
-  const Predict({Key? key}) : super(key: key);
+  const Predict({super.key});
 
   @override
   State<Predict> createState() => _PredictScreenState();

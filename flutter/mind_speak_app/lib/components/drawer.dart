@@ -5,31 +5,47 @@ import 'package:mind_speak_app/pages/logout.dart';
 import 'package:mind_speak_app/pages/predict.dart';
 import 'package:mind_speak_app/pages/profilepage.dart';
 import 'package:mind_speak_app/pages/searchpage.dart';
+import 'package:provider/provider.dart';
+import 'package:mind_speak_app/providers/theme_provider.dart';
 
 class NavigationDrawe extends StatelessWidget {
   const NavigationDrawe({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Access the current theme provider
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
+    // Set colors dynamically based on the theme
+    final backgroundColor =
+        themeProvider.isDarkMode ? Colors.grey[900] : Colors.blue;
+    final textColor =
+        themeProvider.isDarkMode ? Colors.white : Colors.black;
+    final iconColor =
+        themeProvider.isDarkMode ? Colors.white : Colors.black;
+
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
         children: <Widget>[
-          const DrawerHeader(
+          DrawerHeader(
             decoration: BoxDecoration(
-              color: Colors.blue,
+              color: backgroundColor,
             ),
             child: Text(
               'Navigation Drawer',
               style: TextStyle(
-                color: Colors.white,
+                color: textColor,
                 fontSize: 24,
               ),
             ),
           ),
           ListTile(
-            leading: const Icon(Icons.home),
-            title: const Text('Home'),
+            leading: Icon(Icons.home, color: iconColor),
+            title: Text(
+              'Home',
+              style: TextStyle(color: textColor),
+            ),
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context,
@@ -37,8 +53,11 @@ class NavigationDrawe extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.person),
-            title: const Text('Profile'),
+            leading: Icon(Icons.person, color: iconColor),
+            title: Text(
+              'Profile',
+              style: TextStyle(color: textColor),
+            ),
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context,
@@ -46,15 +65,21 @@ class NavigationDrawe extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text('Settings'),
+            leading: Icon(Icons.settings, color: iconColor),
+            title: Text(
+              'Settings',
+              style: TextStyle(color: textColor),
+            ),
             onTap: () {
               Navigator.pop(context);
             },
           ),
           ListTile(
-            leading: const Icon(Icons.search),
-            title: const Text('Search therapist'),
+            leading: Icon(Icons.search, color: iconColor),
+            title: Text(
+              'Search therapist',
+              style: TextStyle(color: textColor),
+            ),
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context,
@@ -62,28 +87,35 @@ class NavigationDrawe extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.mobile_screen_share),
-            title: const Text('Prediction'),
+            leading: Icon(Icons.mobile_screen_share, color: iconColor),
+            title: Text(
+              'Prediction',
+              style: TextStyle(color: textColor),
+            ),
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context,
                   MaterialPageRoute(builder: (context) => const Predict()));
             },
-            
           ),
           ListTile(
-            leading: const Icon(Icons.info_sharp),
-            title: const Text('Cars Details'),
-           onTap: () {
+            leading: Icon(Icons.info_sharp, color: iconColor),
+            title: Text(
+              'Cars Details',
+              style: TextStyle(color: textColor),
+            ),
+            onTap: () {
               Navigator.pop(context);
               Navigator.push(context,
                   MaterialPageRoute(builder: (context) => carsform()));
             },
-            
           ),
           ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Logout'),
+            leading: Icon(Icons.logout, color: iconColor),
+            title: Text(
+              'Logout',
+              style: TextStyle(color: textColor),
+            ),
             onTap: () {
               logout(context);
             },

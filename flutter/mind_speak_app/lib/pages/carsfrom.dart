@@ -7,6 +7,8 @@ import 'package:mind_speak_app/components/drawer.dart';
 import 'package:mind_speak_app/pages/homepage.dart';
 // Second Page: UI Page
 class carsform extends StatefulWidget {
+  const carsform({super.key});
+
   @override
   _CategorySelectionPageState createState() => _CategorySelectionPageState();
 }
@@ -184,11 +186,11 @@ class _CategorySelectionPageState extends State<carsform> {
         child: Material(
           color: Colors.transparent,
           child: Container(
-            padding: EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8.0),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
                   color: Colors.black26,
                   blurRadius: 10,
@@ -199,29 +201,29 @@ class _CategorySelectionPageState extends State<carsform> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
+                const Text(
                   'نتيجة التشخيص',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
                   ),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Text(
                   message,
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
                     overlayEntry?.remove();
                     Navigator.pushAndRemoveUntil(
                       context,
-                      MaterialPageRoute(builder: (context) => HomePage()),
+                      MaterialPageRoute(builder: (context) => const HomePage()),
                       (route) => false,
                     );
                   },
-                  child: Text('حسنًا'),
+                  child: const Text('حسنًا'),
                 ),
               ],
             ),
@@ -230,7 +232,7 @@ class _CategorySelectionPageState extends State<carsform> {
       ),
     );
 
-    overlay?.insert(overlayEntry);
+    overlay.insert(overlayEntry);
   }
 
 
@@ -241,7 +243,7 @@ class _CategorySelectionPageState extends State<carsform> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('اختيار مستوى التوحد'),
+        title: const Text('اختيار مستوى التوحد'),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -249,15 +251,15 @@ class _CategorySelectionPageState extends State<carsform> {
               onPressed: () {
                 Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (context) => HomePage()),
+                  MaterialPageRoute(builder: (context) => const HomePage()),
                   (route) => false,
                 );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),
-              child: Text('تخطي', style: TextStyle(fontSize: 16)),
+              child: const Text('تخطي', style: TextStyle(fontSize: 16)),
             ),
           ),
         ],
@@ -291,7 +293,7 @@ class _CategorySelectionPageState extends State<carsform> {
           onPressed: () async {
             if (sessionProvider.childId == null) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
+                const SnackBar(
                   content: Text('لم يتم تحديد معرف الطفل.'),
                   backgroundColor: Colors.red,
                 ),
@@ -304,7 +306,7 @@ class _CategorySelectionPageState extends State<carsform> {
 
             if (!allSelected) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
+                const SnackBar(
                   content: Text(
                     'يرجى الإجابة على جميع الأسئلة.',
                     style: TextStyle(color: Colors.white),
@@ -344,7 +346,7 @@ class _CategorySelectionPageState extends State<carsform> {
               });
 
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
+                const SnackBar(
                   content: Text('تم حفظ الإجابات بنجاح.'),
                   backgroundColor: Colors.green,
                 ),
@@ -352,7 +354,7 @@ class _CategorySelectionPageState extends State<carsform> {
             } catch (e) {
               print('Error saving form data: $e');
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
+                const SnackBar(
                   content: Text('حدث خطأ أثناء حفظ البيانات. حاول مرة أخرى.'),
                   backgroundColor: Colors.red,
                 ),
@@ -361,9 +363,9 @@ class _CategorySelectionPageState extends State<carsform> {
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,
-            padding: EdgeInsets.symmetric(vertical: 16.0),
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
           ),
-          child: Text(
+          child: const Text(
             'إكمال',
             style: TextStyle(fontSize: 18),
           ),

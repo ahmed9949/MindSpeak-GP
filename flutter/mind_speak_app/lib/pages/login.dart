@@ -52,7 +52,7 @@ class _LogInState extends State<LogIn> {
 
     if (userCredential.user != null) {
       Navigator.of(context)
-          .push(MaterialPageRoute(builder: (context) => HomePage()));
+          .push(MaterialPageRoute(builder: (context) => const HomePage()));
     }
   }
 

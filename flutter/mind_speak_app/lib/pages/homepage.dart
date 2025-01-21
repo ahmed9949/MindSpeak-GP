@@ -154,7 +154,7 @@ class _HomePageState extends State<HomePage> {
                     ? const Icon(Icons.person, color: Colors.white, size: 40)
                     : null,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 5),
             ],
           ),
         ],
@@ -167,38 +167,43 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 30),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildTopCard(
-                          context,
-                          "Doctors",
-                          "assets/doctor.png",
-                          const SearchPage(),
-                        ),
-                        _buildTopCard(
-                          context,
-                          "Cars Form",
-                          "assets/cars.png",
-                          const carsform(),
-                        ),
-                        _buildTopCard(
-                          context,
-                          "Prediction",
-                          "assets/predict.png",
-                          const PredictScreen(),
-                        ),
-                        _buildTopCard(
-                          context,
-                          "Your Profile",
-                          "assets/profile.jpg",
-                          const ProfilePage(),
-                        ),
-                      ],
-                    ),
-                  ),
+                Padding(
+  padding: EdgeInsets.symmetric(
+      horizontal: MediaQuery.of(context).size.width * 0.04), // Dynamic padding
+  child: Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween, // Ensures even spacing between cards
+    children: [
+      _buildTopCard(
+        context,
+        "Doctors",
+        "assets/doctor.png",
+        const SearchPage(),
+      ),
+      _buildTopCard(
+        context,
+        "Cars",
+        "assets/cars.png",
+        const carsform(),
+      ),
+      _buildTopCard(
+        context,
+        "Prediction",
+        "assets/predict.png",
+        const PredictScreen(),
+      ),
+      _buildTopCard(
+        context,
+        "Profile",
+        "assets/profile.jpg",
+        const ProfilePage(),
+      ),
+    ],
+  ),
+),
+
+
+
+
                   const SizedBox(height: 35),
                   Expanded(
                     child: Container(

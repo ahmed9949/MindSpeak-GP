@@ -88,19 +88,24 @@ class _PredictScreenState extends State<PredictScreen> {
               const Text('No image selected'),
             const SizedBox(height: 20),
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: () => pickImageAndUpload(context, ImageSource.gallery),
-                  child: const Text('Select from Gallery'),
-                ),
-                const SizedBox(width: 20),
-                ElevatedButton(
-                  onPressed: () => pickImageAndUpload(context, ImageSource.camera),
-                  child: const Text('Take a Picture'),
-                ),
-              ],
-            ),
+  mainAxisAlignment: MainAxisAlignment.center,
+  children: [
+    Flexible(
+      child: ElevatedButton(
+        onPressed: () => pickImageAndUpload(context, ImageSource.gallery),
+        child: const Text('Select from Gallery'),
+      ),
+    ),
+    const SizedBox(width: 10), // Reduced spacing
+    Flexible(
+      child: ElevatedButton(
+        onPressed: () => pickImageAndUpload(context, ImageSource.camera),
+        child: const Text('Take a Picture'),
+      ),
+    ),
+  ],
+),
+
             const SizedBox(height: 20),
             if (_isLoading)
               const CircularProgressIndicator()

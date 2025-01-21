@@ -80,4 +80,49 @@ class DoctorDashboardService {
       throw Exception('Failed to fetch therapist info: ${e.toString()}');
     }
   }
+
+  // Update functions
+  Future<void> updateTherapistInfo(
+      String therapistId, Map<String, dynamic> updatedInfo) async {
+    try {
+      await _firestore
+          .collection('therapist')
+          .doc(therapistId)
+          .update(updatedInfo);
+    } catch (e) {
+      throw Exception('Failed to update therapist info: ${e.toString()}');
+    }
+  }
+
+  Future<void> updateUserInfo(
+      String userId, Map<String, dynamic> updatedInfo) async {
+    try {
+      await _firestore.collection('user').doc(userId).update(updatedInfo);
+    } catch (e) {
+      throw Exception('Failed to update user info: ${e.toString()}');
+    }
+  }
+
+  Future<void> deleteAccount(String userId, String therapistId) async {
+    try {
+      await _firestore.collection('user').doc(userId).delete();
+
+      await _firestore.collection('therapist').doc(therapistId).delete();
+
+      await _firestore
+          .collection('child')
+          .where('therapistId', isEqualTo: therapistId)
+          .get()
+          .then((snapshot) {
+        for (var doc in snapshot.docs) {
+          doc.reference.update({
+            'therapistId': "",
+            'assigned': false,
+          });
+        }
+      });
+    } catch (e) {
+      throw Exception('Failed to delete account: $e');
+    }
+  }
 }

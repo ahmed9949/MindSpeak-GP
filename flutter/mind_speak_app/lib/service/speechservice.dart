@@ -8,22 +8,25 @@ class STTService {
   bool get isInitialized => _isInitialized;
   bool get isListening => _speechToText.isListening;
 
-  Future<void> initialize({
-    required void Function(SpeechRecognitionError error)? onError,
-    required void Function(String status)? onStatus,
-  }) async {
-    if (_isInitialized) return;
-    _isInitialized = await _speechToText.initialize(
-      onError: onError,
-      onStatus: onStatus,
-      debugLogging: false,
-    );
+  
+Future<bool> initialize({
+  required void Function(SpeechRecognitionError error)? onError,
+  required void Function(String status)? onStatus,
+}) async {
+  if (_isInitialized) return true;
+  
+  _isInitialized = await _speechToText.initialize(
+    onError: onError,
+    onStatus: onStatus,
+    debugLogging: true, // Enable debug logging temporarily
+  );
 
-    if (!_isInitialized) {
-      throw Exception('Speech recognition not available on this device');
-    }
+  if (!_isInitialized) {
+    throw Exception('Speech recognition not available on this device');
   }
 
+  return _isInitialized;
+}
   Future<void> startListening({
     required void Function(
             String recognizedWords, double confidence, bool isFinal)

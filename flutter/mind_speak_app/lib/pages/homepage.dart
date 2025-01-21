@@ -5,11 +5,10 @@ import 'package:mind_speak_app/pages/profilepage.dart';
 import 'package:mind_speak_app/pages/searchpage.dart';
 import 'package:mind_speak_app/components/drawer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:mind_speak_app/pages/signup.dart';
 import 'package:mind_speak_app/pages/start_session.dart';
-import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
+import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -293,7 +292,7 @@ class _HomePageState extends State<HomePage> {
                                             context,
                                             MaterialPageRoute(
                                                 builder: (context) =>
-                                                    const SignUp()),
+                                                    const start_session()),
                                           );
                                         } else {
                                           // Display snackbar if the Cars form is incomplete

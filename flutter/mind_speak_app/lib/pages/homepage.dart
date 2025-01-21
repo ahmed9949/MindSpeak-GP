@@ -153,7 +153,7 @@ class _HomePageState extends State<HomePage> {
                     ? const Icon(Icons.person, color: Colors.white, size: 40)
                     : null,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 5),
             ],
           ),
         ],
@@ -166,38 +166,43 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 30),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildTopCard(
-                          context,
-                          "Doctors",
-                          "assets/doctor.png",
-                          const SearchPage(),
-                        ),
-                        _buildTopCard(
-                          context,
-                          "Cars Form",
-                          "assets/cars.png",
-                          const carsform(),
-                        ),
-                        _buildTopCard(
-                          context,
-                          "Prediction",
-                          "assets/predict.png",
-                          const PredictScreen(),
-                        ),
-                        _buildTopCard(
-                          context,
-                          "Your Profile",
-                          "assets/profile.jpg",
-                          const ProfilePage(),
-                        ),
-                      ],
-                    ),
-                  ),
+                Padding(
+  padding: EdgeInsets.symmetric(
+      horizontal: MediaQuery.of(context).size.width * 0.04), // Dynamic padding
+  child: Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween, // Ensures even spacing between cards
+    children: [
+      _buildTopCard(
+        context,
+        "Doctors",
+        "assets/doctor.png",
+        const SearchPage(),
+      ),
+      _buildTopCard(
+        context,
+        "Cars",
+        "assets/cars.png",
+        const carsform(),
+      ),
+      _buildTopCard(
+        context,
+        "Prediction",
+        "assets/predict.png",
+        const PredictScreen(),
+      ),
+      _buildTopCard(
+        context,
+        "Profile",
+        "assets/profile.jpg",
+        const ProfilePage(),
+      ),
+    ],
+  ),
+),
+
+
+
+
                   const SizedBox(height: 35),
                   Expanded(
                     child: Container(
@@ -226,29 +231,28 @@ class _HomePageState extends State<HomePage> {
                               ),
                             ),
                             const SizedBox(height: 10),
-                            Expanded(
-                              child: GridView.builder(
-                                physics: const BouncingScrollPhysics(),
-                                gridDelegate:
-                                    const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 3,
-                                  crossAxisSpacing: 10,
-                                  mainAxisSpacing: 10,
-                                ),
-                                itemCount: therapists.length,
-                                itemBuilder: (context, index) {
-                                  final therapist = therapists[index];
-                                  return _buildTherapistCard(therapist);
-                                },
-                              ),
+                            SizedBox(
+                             height: 150, // Set a fixed height for the ListView
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal, // Enable horizontal scrolling
+              physics: const BouncingScrollPhysics(),
+              itemCount: therapists.length,
+              itemBuilder: (context, index) {
+                final therapist = therapists[index];
+                return Padding(
+                  padding: const EdgeInsets.only(right: 10), // Add spacing between cards
+                  child: _buildTherapistCard(therapist),
+                );
+               },
+               ),
                             ),
-                            Center(
-                              child: ElevatedButton(
-                                onPressed: () async {
-                                  final sessionProvider =
-                                      Provider.of<SessionProvider>(context,
-                                          listen: false);
-                                  final userId = sessionProvider.userId;
+                            const SizedBox(height: 120), // Add a gap here
+
+                           Center(
+  child: ElevatedButton(
+    onPressed: () async {
+      final sessionProvider = Provider.of<SessionProvider>(context, listen: false);
+      final userId = sessionProvider.userId;
 
                                   if (userId == null) {
                                     ScaffoldMessenger.of(context).showSnackBar(
@@ -286,98 +290,84 @@ class _HomePageState extends State<HomePage> {
                                         bool formStatus =
                                             carsData['status'] ?? false;
 
-                                        if (formStatus) {
-                                          // Navigate to the SignUp page if the Cars form is completed
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (context) =>
-                                                    const start_session()),
-                                          );
-                                        } else {
-                                          // Display snackbar if the Cars form is incomplete
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              content: const Text(
-                                                'You should complete the Cars form first to start the session.',
-                                              ),
-                                              backgroundColor: Colors.red,
-                                              action: SnackBarAction(
-                                                label: 'Cars Form',
-                                                textColor: Colors.white,
-                                                onPressed: () {
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                        builder: (context) =>
-                                                            const carsform()),
-                                                  );
-                                                },
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      } else {
-                                        // No Cars form data found
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: const Text(
-                                                'You should complete the Cars form first to start the session.'),
-                                            backgroundColor: Colors.red,
-                                            action: SnackBarAction(
-                                              label:
-                                                  'Press Here to Complete Cars Form',
-                                              textColor: Colors.white,
-                                              onPressed: () {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                      builder: (context) =>
-                                                          const carsform()),
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    } else {
-                                      // No child data found for the current user
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                              'No child data found for the logged-in user.'),
-                                          backgroundColor: Colors.red,
-                                        ),
-                                      );
-                                    }
-                                  } catch (e) {
-                                    // Handle errors during the process
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error: $e'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 50, vertical: 20),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(30),
-                                  ),
-                                ),
-                                child: const Text(
-                                  "Start Session",
-                                  style: TextStyle(
-                                      fontSize: 18, color: Colors.white),
-                                ),
-                              ),
-                            ),
+            if (formStatus) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const start_session()),
+              );
+            } else {
+              // Display snackbar if the Cars form is incomplete
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text(
+                    'You should complete the Cars form first to start the session.',
+                  ),
+                  backgroundColor: Colors.red,
+                  action: SnackBarAction(
+                    label: 'Cars Form',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const carsform()),
+                      );
+                    },
+                  ),
+                ),
+              );
+            }
+          } else {
+            // No Cars form data found
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('You should complete the Cars form first to start the session.'),
+                backgroundColor: Colors.red,
+                 action: SnackBarAction(
+                    label: 'Press Here to Complete Cars Form',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const carsform()),
+                      );
+                    },
+                  ),
+              ),
+            );
+          }
+        } else {
+          // No child data found for the current user
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No child data found for the logged-in user.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
+        // Handle errors during the process
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    },
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Colors.green,
+      padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 20),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(30),
+      ),
+    ),
+    child: const Text(
+      "Start Session",
+      style: TextStyle(fontSize: 18, color: Colors.white),
+    ),
+  ),
+),
+
                           ],
                         ),
                       ),

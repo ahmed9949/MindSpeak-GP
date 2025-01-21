@@ -13,7 +13,6 @@ import 'dart:convert';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-
 import '../service/local_auth_service.dart';
 
 class SignUp extends StatefulWidget {
@@ -53,6 +52,16 @@ class _SignUpState extends State<SignUp> {
   final ImagePicker _picker = ImagePicker();
   final Uuid uuid = const Uuid();
 
+  // Check if a value exists in the database
+  Future<bool> isValueTaken(
+      String collection, String field, String value) async {
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection(collection)
+        .where(field, isEqualTo: value)
+        .get();
+    return querySnapshot.docs.isNotEmpty;
+  }
+
   Future<void> pickChildImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
@@ -79,22 +88,6 @@ class _SignUpState extends State<SignUp> {
       });
     }
   }
-
-  // Future<String> saveImageLocally(File image, String folderName) async {
-  //   try {
-  //     final directory = await getApplicationDocumentsDirectory();
-  //     final folderPath = Directory('${directory.path}/$folderName');
-  //     if (!folderPath.existsSync()) {
-  //       folderPath.createSync(recursive: true);
-  //     }
-  //     final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-  //     final localPath = '${folderPath.path}/$fileName';
-  //     final savedImage = await image.copy(localPath);
-  //     return savedImage.path;
-  //   } catch (e) {
-  //     throw Exception("Image save failed: $e");
-  //   }
-  // }
 
   Future<String> uploadImageToStorage(File image, String folderName) async {
     try {
@@ -159,6 +152,68 @@ class _SignUpState extends State<SignUp> {
             backgroundColor: Colors.red,
           ));
           return;
+        }
+
+        // Check for duplicate phone numbers
+        if (role == 'parent') {
+          parentPhonenumber =
+              int.parse(parentPhoneNumberController.text.trim());
+          QuerySnapshot parentQuery = await FirebaseFirestore.instance
+              .collection('child')
+              .where('parentnumber', isEqualTo: parentPhonenumber)
+              .get();
+
+          if (parentQuery.docs.isNotEmpty) {
+            setState(() {
+              isLoading = false; // Hide loading spinner
+            });
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content:
+                  Text("Phone number is already in use by another parent."),
+              backgroundColor: Colors.red,
+            ));
+            return;
+          }
+        }
+
+        if (role == 'therapist') {
+          therapistPhonenumber =
+              int.parse(therapistPhoneNumberController.text.trim());
+          QuerySnapshot therapistQuery = await FirebaseFirestore.instance
+              .collection('therapist')
+              .where('therapistnumber', isEqualTo: therapistPhonenumber)
+              .get();
+
+          if (therapistQuery.docs.isNotEmpty) {
+            setState(() {
+              isLoading = false; // Hide loading spinner
+            });
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content:
+                  Text("Phone number is already in use by another therapist."),
+              backgroundColor: Colors.red,
+            ));
+            return;
+          }
+        }
+
+        // Check for duplicate national ID (for therapists)
+        if (role == 'therapist') {
+          QuerySnapshot nationalIdQuery = await FirebaseFirestore.instance
+              .collection('therapist')
+              .where('nationalid', isEqualTo: nationalid)
+              .get();
+
+          if (nationalIdQuery.docs.isNotEmpty) {
+            setState(() {
+              isLoading = false; // Hide loading spinner
+            });
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text("National ID is already in use."),
+              backgroundColor: Colors.red,
+            ));
+            return;
+          }
         }
 
         // Register user with Firebase Auth
@@ -334,7 +389,8 @@ class _SignUpState extends State<SignUp> {
         ],
         centerTitle: true,
       ),
-    backgroundColor: themeProvider.isDarkMode ? Colors.grey[900] : Colors.white,
+      backgroundColor:
+          themeProvider.isDarkMode ? Colors.grey[900] : Colors.white,
       // Use the `isLoading` flag to control what is shown
       body: isLoading
           ? const Center(

@@ -199,12 +199,6 @@ class _HomePageState extends State<HomePage> {
                           "assets/profile.jpg",
                           const ProfilePage(),
                         ),
-                        _buildTopCard(
-                          context,
-                          "Profile",
-                          "assets/profile.jpg",
-                          const SessionDataPage(),
-                        ),
                       ],
                     ),
                   ),

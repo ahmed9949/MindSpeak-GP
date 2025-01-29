@@ -56,26 +56,44 @@ class _ProfilePageState extends State<ProfilePage> {
           .get();
 
       List<Map<String, dynamic>> childrenWithDetails = [];
-      List<Map<String, dynamic>> carsWithDetails = [];
 
       for (var child in childSnapshot.docs) {
-        final childId = child['childId'];
-        QuerySnapshot carDetailsSnapshot = await FirebaseFirestore.instance
-            .collection('Cars')
-            .where('childId', isEqualTo: childId)
-            .get();
+        final childData = child.data() as Map<String, dynamic>;
 
-        Map<String, dynamic> childData = child.data() as Map<String, dynamic>;
+        // Fetch therapist data if assigned
+        if (childData['assigned'] == true && childData['therapistId'] != null) {
+          // Fetch therapist data
+          final therapistSnapshot = await FirebaseFirestore.instance
+              .collection('therapist')
+              .doc(childData['therapistId'])
+              .get();
 
-        int trialCounter = 1;
-        for (var carDetails in carDetailsSnapshot.docs) {
-          carsWithDetails.add({
-            'trial': trialCounter++, // Add trial count
-            'childId': carDetails['childId'],
-            'totalScore': carDetails['totalScore'],
-            'selectedQuestions': carDetails['selectedQuestions'],
-            'status': carDetails['status'],
-          });
+          if (therapistSnapshot.exists) {
+            final therapistData =
+                therapistSnapshot.data() as Map<String, dynamic>;
+            final userIdOfTherapist = therapistData['userid'];
+
+            // Fetch username from the user collection using userId
+            if (userIdOfTherapist != null) {
+              final userSnapshot = await FirebaseFirestore.instance
+                  .collection('user')
+                  .doc(userIdOfTherapist)
+                  .get();
+
+              if (userSnapshot.exists) {
+                final userData = userSnapshot.data() as Map<String, dynamic>;
+                childData['therapistName'] = userData['username'] ?? 'N/A';
+              } else {
+                childData['therapistName'] = 'Unknown Therapist';
+              }
+            } else {
+              childData['therapistName'] = 'Unknown Therapist';
+            }
+          } else {
+            childData['therapistName'] = 'Unknown Therapist';
+          }
+        } else {
+          childData['therapistName'] = 'Not Assigned';
         }
 
         childrenWithDetails.add({...childData, 'id': child.id});
@@ -84,7 +102,6 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() {
         parentId = userId;
         childrenData = childrenWithDetails;
-        carsData = carsWithDetails;
         isLoading = false;
       });
     } catch (e) {
@@ -403,6 +420,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                       Text('Age: ${child['age']}'),
                                       Text(
                                           'Interest: ${child['childInterest']}'),
+                                      Text(
+                                          'Therapist: ${child['therapistName']}'),
                                     ],
                                   ),
                                   trailing: IconButton(

@@ -98,6 +98,24 @@ class _SearchPageState extends State<SearchPage> {
     }
 
     try {
+      // Check the number of children already assigned to this therapist
+      QuerySnapshot assignedChildrenSnapshot = await _firestore
+          .collection('child')
+          .where('therapistId', isEqualTo: therapistId)
+          .where('assigned', isEqualTo: true)
+          .get();
+
+      if (assignedChildrenSnapshot.docs.length >= 3) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'This therapist already has the maximum number of children assigned.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       // Ensure the therapist exists before proceeding
       DocumentSnapshot therapistDoc =
           await _firestore.collection('therapist').doc(therapistId).get();

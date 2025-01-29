@@ -7,7 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 class ImageUploader {
   static Future<String?> uploadImage(File imageFile) async {
-    var url = 'http://192.168.1.17:5000/predict'; // Make sure to use the correct IP and port
+    var url = 'http://172.20.10.3:5002/predict'; // Make sure to use the correct IP and port
     var request = http.MultipartRequest('POST', Uri.parse(url));
     request.files.add(await http.MultipartFile.fromPath('file', imageFile.path));
 

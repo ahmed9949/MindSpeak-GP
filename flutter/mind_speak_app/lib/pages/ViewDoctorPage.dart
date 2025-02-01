@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/controllers/View_Doctor_Controller.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/components/CustomBottomNavigationBar.dart';
-import 'package:mind_speak_app/service/DoctorRepository.dart';
+
 import 'package:provider/provider.dart';
 
 class ViewDoctors extends StatefulWidget {
@@ -12,51 +13,13 @@ class ViewDoctors extends StatefulWidget {
 }
 
 class _ViewDoctorsState extends State<ViewDoctors> {
-  final DoctorRepository _doctorRepository = DoctorRepository();
-  List<Map<String, dynamic>> _allTherapist = [];
-  List<Map<String, dynamic>> _foundTherapist = [];
-  bool _isLoading = true;
+  final ViewDoctorsController _controller = ViewDoctorsController();
 
   @override
   void initState() {
     super.initState();
-    fetchApprovedTherapist();
-  }
-
-  Future<void> fetchApprovedTherapist() async {
-    try {
-      List<Map<String, dynamic>> therapists =
-          await _doctorRepository.fetchApprovedTherapists();
-      setState(() {
-        _allTherapist = therapists;
-        _foundTherapist = therapists;
-        _isLoading = false;
-      });
-    } catch (e) {
-      print('Error fetching therapists: $e');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Error fetching therapists: $e'),
-        backgroundColor: Colors.red,
-      ));
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  void _runFilter(String searchNames) {
-    List<Map<String, dynamic>> results = [];
-    if (searchNames.isEmpty) {
-      results = _allTherapist;
-    } else {
-      results = _allTherapist
-          .where((user) =>
-              user["name"].toLowerCase().contains(searchNames.toLowerCase()))
-          .toList();
-    }
-
-    setState(() {
-      _foundTherapist = results;
+    _controller.fetchApprovedTherapists(() {
+      setState(() {});
     });
   }
 
@@ -97,9 +60,7 @@ class _ViewDoctorsState extends State<ViewDoctors> {
             icon: Icon(themeProvider.isDarkMode
                 ? Icons.wb_sunny
                 : Icons.nightlight_round),
-            onPressed: () {
-              themeProvider.toggleTheme(); // Toggle theme
-            },
+            onPressed: themeProvider.toggleTheme,
           ),
         ],
         centerTitle: true,
@@ -110,7 +71,7 @@ class _ViewDoctorsState extends State<ViewDoctors> {
           style: TextStyle(color: Colors.white),
         ),
       ),
-      body: _isLoading
+      body: _controller.isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.all(10.0),
@@ -119,95 +80,61 @@ class _ViewDoctorsState extends State<ViewDoctors> {
                 children: [
                   const SizedBox(height: 20),
                   TextField(
-                    onChanged: (value) => _runFilter(value),
+                    onChanged: (value) =>
+                        _controller.searchTherapists(value, () {
+                      setState(() {});
+                    }),
                     decoration: const InputDecoration(
                       labelText: 'Search',
                       suffixIcon: Icon(Icons.search),
                     ),
                   ),
                   const SizedBox(height: 20),
-                  _foundTherapist.isNotEmpty
+                  _controller.filteredTherapists.isNotEmpty
                       ? ListView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _foundTherapist.length,
-                          itemBuilder: (context, index) => Card(
-                            key: ValueKey(_foundTherapist[index]["id"]),
-                            color: Colors.blue,
-                            elevation: 4,
-                            margin: const EdgeInsets.symmetric(vertical: 10),
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                radius: 30, // Adjust the radius as needed
-                                backgroundImage: _foundTherapist[index]
-                                                ['therapistImage'] !=
-                                            null &&
-                                        _foundTherapist[index]['therapistImage']
-                                            .isNotEmpty
-                                    ? NetworkImage(_foundTherapist[index]
-                                        ['therapistImage'])
-                                    : null,
-                                child: _foundTherapist[index]
-                                                ['therapistImage'] ==
-                                            null ||
-                                        _foundTherapist[index]['therapistImage']
-                                            .isEmpty
-                                    ? const Icon(Icons.person,
-                                        size: 30, color: Colors.white)
-                                    : null,
+                          itemCount: _controller.filteredTherapists.length,
+                          itemBuilder: (context, index) {
+                            final therapist =
+                                _controller.filteredTherapists[index];
+                            return Card(
+                              key: ValueKey(therapist["id"]),
+                              color: Colors.blue,
+                              elevation: 4,
+                              margin: const EdgeInsets.symmetric(vertical: 10),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  radius: 30,
+                                  backgroundImage:
+                                      therapist['therapistImage'].isNotEmpty
+                                          ? NetworkImage(
+                                              therapist['therapistImage'])
+                                          : null,
+                                  child: therapist['therapistImage'].isEmpty
+                                      ? const Icon(Icons.person,
+                                          size: 30, color: Colors.white)
+                                      : null,
+                                ),
+                                title: Text(
+                                  therapist['name'],
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                subtitle: Text(
+                                  'Email: ${therapist['email']}',
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.image,
+                                      color: Colors.blue),
+                                  onPressed: () {
+                                    _showImageDialog(
+                                        context, therapist['nationalProof']);
+                                  },
+                                ),
                               ),
-                              title: Text(
-                                _foundTherapist[index]['name'],
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Email: ${_foundTherapist[index]['email']}',
-                                    style: const TextStyle(color: Colors.white),
-                                  ),
-                                  Text(
-                                    'National ID: ${_foundTherapist[index]['nationalid']}',
-                                    style: const TextStyle(color: Colors.white),
-                                  ),
-                                  Text(
-                                    'Bio: ${_foundTherapist[index]['bio'] ?? 'N/A'}',
-                                    style: const TextStyle(color: Colors.white),
-                                  ),
-                                  Text(
-                                    'Phone: ${_foundTherapist[index]['therapistPhoneNumber'] ?? 'N/A'}',
-                                    style: const TextStyle(color: Colors.white),
-                                  ),
-                                ],
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.image,
-                                        color: Colors.green),
-                                    onPressed: () {
-                                      _showImageDialog(
-                                          context,
-                                          _foundTherapist[index]
-                                              ['nationalProof']);
-                                    },
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.image,
-                                        color: Colors.blue),
-                                    onPressed: () {
-                                      _showImageDialog(
-                                          context,
-                                          _foundTherapist[index]
-                                              ['nationalProof']);
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                            );
+                          },
                         )
                       : const Center(
                           child: Text(

@@ -56,13 +56,14 @@ class _ProfilePageState extends State<ProfilePage> {
           .get();
 
       List<Map<String, dynamic>> childrenWithDetails = [];
+      List<Map<String, dynamic>> allCarsData = [];
 
       for (var child in childSnapshot.docs) {
         final childData = child.data() as Map<String, dynamic>;
+        final childId = child.id;
 
         // Fetch therapist data if assigned
         if (childData['assigned'] == true && childData['therapistId'] != null) {
-          // Fetch therapist data
           final therapistSnapshot = await FirebaseFirestore.instance
               .collection('therapist')
               .doc(childData['therapistId'])
@@ -73,7 +74,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 therapistSnapshot.data() as Map<String, dynamic>;
             final userIdOfTherapist = therapistData['userid'];
 
-            // Fetch username from the user collection using userId
             if (userIdOfTherapist != null) {
               final userSnapshot = await FirebaseFirestore.instance
                   .collection('user')
@@ -96,12 +96,35 @@ class _ProfilePageState extends State<ProfilePage> {
           childData['therapistName'] = 'Not Assigned';
         }
 
-        childrenWithDetails.add({...childData, 'id': child.id});
+        childrenWithDetails.add({...childData, 'id': childId});
+
+        // Fetch car trial forms for this child
+        QuerySnapshot carSnapshot = await FirebaseFirestore.instance
+            .collection('Cars')
+            .where('childId', isEqualTo: childId)
+            .get();
+
+        int trialNumber = 1; // Start with trial 1
+
+        for (var car in carSnapshot.docs) {
+          final carData = car.data() as Map<String, dynamic>;
+
+          allCarsData.add({
+            'id': car.id,
+            'childId': carData['childId'] ?? 'Unknown',
+            'trial': trialNumber++, // Assign an increasing trial number
+            'totalScore': carData['totalScore'] ?? 'N/A',
+            'selectedQuestions': carData['selectedQuestions'] ?? [],
+            'status': carData['status'] ?? 'Unknown',
+          });
+        }
       }
 
       setState(() {
         parentId = userId;
         childrenData = childrenWithDetails;
+        carsData =
+            allCarsData; // Update carsData with dynamically generated trial numbers
         isLoading = false;
       });
     } catch (e) {

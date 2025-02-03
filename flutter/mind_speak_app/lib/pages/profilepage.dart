@@ -285,10 +285,10 @@ class _ProfilePageState extends State<ProfilePage> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: Center(
+                      child: const Center(
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: const [
+                          children: [
                             Icon(Icons.delete, color: Colors.white),
                             SizedBox(width: 8),
                             Text(
@@ -301,7 +301,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     const Divider(height: 30),
                     Text(
-                      'Children',
+                      'child',
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 10),

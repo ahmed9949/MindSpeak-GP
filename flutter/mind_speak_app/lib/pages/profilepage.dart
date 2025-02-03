@@ -1,16 +1,18 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:mind_speak_app/controllers/ProfileController.dart';
+
 import 'package:mind_speak_app/pages/login.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'package:firebase_storage/firebase_storage.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final ProfileController controller;
+
+  const ProfilePage({
+    super.key,
+    required this.controller, // Make controller required
+  });
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -39,92 +41,13 @@ class _ProfilePageState extends State<ProfilePage> {
         throw Exception('User not logged in');
       }
 
-      // Fetch parent data
-      DocumentSnapshot parentSnapshot =
-          await FirebaseFirestore.instance.collection('user').doc(userId).get();
-
-      if (!parentSnapshot.exists) {
-        throw Exception('Parent not found');
-      }
-
-      parentData = parentSnapshot.data() as Map<String, dynamic>;
-
-      // Fetch child data
-      QuerySnapshot childSnapshot = await FirebaseFirestore.instance
-          .collection('child')
-          .where('userId', isEqualTo: userId)
-          .get();
-
-      List<Map<String, dynamic>> childrenWithDetails = [];
-      List<Map<String, dynamic>> allCarsData = [];
-
-      for (var child in childSnapshot.docs) {
-        final childData = child.data() as Map<String, dynamic>;
-        final childId = child.id;
-
-        // Fetch therapist data if assigned
-        if (childData['assigned'] == true && childData['therapistId'] != null) {
-          final therapistSnapshot = await FirebaseFirestore.instance
-              .collection('therapist')
-              .doc(childData['therapistId'])
-              .get();
-
-          if (therapistSnapshot.exists) {
-            final therapistData =
-                therapistSnapshot.data() as Map<String, dynamic>;
-            final userIdOfTherapist = therapistData['userid'];
-
-            if (userIdOfTherapist != null) {
-              final userSnapshot = await FirebaseFirestore.instance
-                  .collection('user')
-                  .doc(userIdOfTherapist)
-                  .get();
-
-              if (userSnapshot.exists) {
-                final userData = userSnapshot.data() as Map<String, dynamic>;
-                childData['therapistName'] = userData['username'] ?? 'N/A';
-              } else {
-                childData['therapistName'] = 'Unknown Therapist';
-              }
-            } else {
-              childData['therapistName'] = 'Unknown Therapist';
-            }
-          } else {
-            childData['therapistName'] = 'Unknown Therapist';
-          }
-        } else {
-          childData['therapistName'] = 'Not Assigned';
-        }
-
-        childrenWithDetails.add({...childData, 'id': childId});
-
-        // Fetch car trial forms for this child
-        QuerySnapshot carSnapshot = await FirebaseFirestore.instance
-            .collection('Cars')
-            .where('childId', isEqualTo: childId)
-            .get();
-
-        int trialNumber = 1; // Start with trial 1
-
-        for (var car in carSnapshot.docs) {
-          final carData = car.data() as Map<String, dynamic>;
-
-          allCarsData.add({
-            'id': car.id,
-            'childId': carData['childId'] ?? 'Unknown',
-            'trial': trialNumber++, // Assign an increasing trial number
-            'totalScore': carData['totalScore'] ?? 'N/A',
-            'selectedQuestions': carData['selectedQuestions'] ?? [],
-            'status': carData['status'] ?? 'Unknown',
-          });
-        }
-      }
+      await widget.controller.fetchParentAndChildData(userId);
 
       setState(() {
-        parentId = userId;
-        childrenData = childrenWithDetails;
-        carsData =
-            allCarsData; // Update carsData with dynamically generated trial numbers
+        parentId = widget.controller.parentId;
+        parentData = widget.controller.parentData;
+        childrenData = widget.controller.childrenData;
+        carsData = widget.controller.carsData;
         isLoading = false;
       });
     } catch (e) {
@@ -132,25 +55,28 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() {
         isLoading = false;
       });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error loading profile data'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   Future<void> updateChild(
       String childId, Map<String, dynamic> updatedData) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('child')
-          .doc(childId)
-          .update(updatedData);
-
+      await widget.controller.updateChild(childId, updatedData);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Child updated successfully!'),
         backgroundColor: Colors.green,
       ));
-
-      fetchParentAndChildData(); // Refresh data
+      fetchParentAndChildData();
     } catch (e) {
-      print('Error updating child: $e');
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Error updating child'),
         backgroundColor: Colors.red,
@@ -159,25 +85,11 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _pickImage(String childId) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
-    if (pickedFile != null) {
-      File file = File(pickedFile.path);
-
-      try {
-        // Upload the image to Firebase Storage
-        final storageRef =
-            FirebaseStorage.instance.ref().child('child_images/$childId.jpg');
-        await storageRef.putFile(file);
-
-        // Get the uploaded image URL
-        String imageUrl = await storageRef.getDownloadURL();
-
-        // Update Firestore with the new image URL
-        await updateChild(childId, {'childPhoto': imageUrl});
-      } catch (e) {
-        print('Error updating photo: $e');
+    try {
+      await widget.controller.updateChildPhoto(childId);
+      fetchParentAndChildData();
+    } catch (e) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Error uploading photo.'),
           backgroundColor: Colors.red,
@@ -202,7 +114,13 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               ElevatedButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text('Delete'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                ),
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ],
           );
@@ -219,59 +137,26 @@ class _ProfilePageState extends State<ProfilePage> {
         throw Exception('User not logged in');
       }
 
-      QuerySnapshot childSnapshot = await FirebaseFirestore.instance
-          .collection('child')
-          .where('userId', isEqualTo: userId)
-          .get();
+      await widget.controller.deleteParentAccount(userId);
 
-      for (var childDoc in childSnapshot.docs) {
-        final childId = childDoc.id;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Account deleted successfully.'),
+          backgroundColor: Colors.green,
+        ));
 
-        QuerySnapshot carSnapshot = await FirebaseFirestore.instance
-            .collection('Cars')
-            .where('childId', isEqualTo: childId)
-            .get();
-
-        for (var carDoc in carSnapshot.docs) {
-          await carDoc.reference.delete();
-        }
-
-        // Delete child document
-        await childDoc.reference.delete();
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LogIn()),
+        );
       }
-
-      // Delete parent data
-      await FirebaseFirestore.instance.collection('user').doc(userId).delete();
-
-      // Delete Firebase Auth user
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        await user.delete();
-      }
-
-      await Future.delayed(const Duration(seconds: 1));
-
-      if (FirebaseAuth.instance.currentUser == null) {
-        print("User successfully deleted and signed out.");
-      } else {
-        throw Exception('Error: User deletion not fully propagated.');
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Account deleted successfully.'),
-        backgroundColor: Colors.green,
-      ));
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LogIn()),
-      );
     } catch (e) {
-      print('Error deleting account: $e');
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Error deleting account. Please try again later.'),
-        backgroundColor: Colors.red,
-      ));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Error deleting account. Please try again later.'),
+          backgroundColor: Colors.red,
+        ));
+      }
     }
   }
 
@@ -315,8 +200,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             ElevatedButton(
               onPressed: () {
-                int age = int.tryParse(ageController.text) ?? -1;
-                if (age < 3 || age > 12) {
+                if (!widget.controller.isValidAge(ageController.text)) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                     content: Text('Age must be between 3 and 12'),
                     backgroundColor: Colors.red,
@@ -324,7 +208,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   return;
                 }
                 updateChild(child['id'], {
-                  'age': age,
+                  'age': int.parse(ageController.text),
                   'childInterest': interestController.text.trim(),
                 });
                 Navigator.pop(context);
@@ -346,16 +230,20 @@ class _ProfilePageState extends State<ProfilePage> {
       appBar: AppBar(
         backgroundColor:
             themeProvider.isDarkMode ? Colors.grey[900] : Colors.blue,
-        title: Center(
-            child: const Text(
-          'Profile Page',
-          style: TextStyle(color: Colors.white),
-        )),
+        title: const Center(
+          child: Text(
+            'Profile Page',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
         actions: [
           IconButton(
-            icon: Icon(themeProvider.isDarkMode
-                ? Icons.wb_sunny
-                : Icons.nightlight_round),
+            icon: Icon(
+              themeProvider.isDarkMode
+                  ? Icons.wb_sunny
+                  : Icons.nightlight_round,
+              color: Colors.white,
+            ),
             onPressed: () {
               themeProvider.toggleTheme();
             },
@@ -384,13 +272,15 @@ class _ProfilePageState extends State<ProfilePage> {
                             Text('Email: ${parentData?['email'] ?? 'N/A'}'),
                       ),
                     ),
-                    const SizedBox(height: 20), // Add some spacing
+                    const SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: deleteParentAccount,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
                         padding: const EdgeInsets.symmetric(
-                            vertical: 12, horizontal: 20),
+                          vertical: 12,
+                          horizontal: 20,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -401,8 +291,10 @@ class _ProfilePageState extends State<ProfilePage> {
                           children: const [
                             Icon(Icons.delete, color: Colors.white),
                             SizedBox(width: 8),
-                            Text('Delete Account',
-                                style: TextStyle(color: Colors.white)),
+                            Text(
+                              'Delete Account',
+                              style: TextStyle(color: Colors.white),
+                            ),
                           ],
                         ),
                       ),
@@ -427,12 +319,10 @@ class _ProfilePageState extends State<ProfilePage> {
                                 child: ListTile(
                                   leading: CircleAvatar(
                                     backgroundImage: child['childPhoto'] != null
-                                        ? NetworkImage(child[
-                                            'childPhoto']) // Display from URL
+                                        ? NetworkImage(child['childPhoto'])
                                         : null,
                                     child: child['childPhoto'] == null
-                                        ? const Icon(Icons
-                                            .person) // Fallback if no photo
+                                        ? const Icon(Icons.person)
                                         : null,
                                   ),
                                   title: Text(child['name']),
@@ -450,9 +340,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   trailing: IconButton(
                                     icon: const Icon(Icons.edit,
                                         color: Colors.blue),
-                                    onPressed: () {
-                                      _showUpdateDialog(child);
-                                    },
+                                    onPressed: () => _showUpdateDialog(child),
                                   ),
                                 ),
                               );
@@ -489,7 +377,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                           Text(
                                               'Total Score: ${car['totalScore']}'),
                                           Text(
-                                              'Selected Questions: ${(car['selectedQuestions'] as List<dynamic>?)?.join(", ") ?? 'N/A'}'),
+                                            'Selected Questions: ${(car['selectedQuestions'] as List<dynamic>?)?.join(", ") ?? 'N/A'}',
+                                          ),
                                           Text('Status: ${car['status']}'),
                                         ],
                                       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/controllers/ProfileController.dart';
 import 'package:mind_speak_app/pages/homepage.dart';
 import 'package:mind_speak_app/pages/profilepage.dart';
 import 'package:mind_speak_app/pages/searchpage.dart';
@@ -17,7 +18,7 @@ class _NavigationpageState extends State<Navigationpage> {
   List<Widget> mypages = [
     const HomePage(),
     const SearchPage(),
-    const ProfilePage(),
+    ProfilePage(controller: ProfileController()),
   ];
 
   @override

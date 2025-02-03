@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/controllers/ProfileController.dart';
 import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/homepage.dart';
 import 'package:mind_speak_app/pages/logout.dart';
@@ -61,7 +62,7 @@ class NavigationDrawe extends StatelessWidget {
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const ProfilePage()));
+                  MaterialPageRoute(builder: (context) =>  ProfilePage(controller: ProfileController())));
             },
           ),
           ListTile(

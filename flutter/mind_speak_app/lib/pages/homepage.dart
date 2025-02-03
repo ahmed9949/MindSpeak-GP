@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/controllers/ProfileController.dart';
 import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/predict.dart';
 import 'package:mind_speak_app/pages/profilepage.dart';
@@ -197,7 +198,7 @@ class _HomePageState extends State<HomePage> {
                           context,
                           "Profile",
                           "assets/profile.jpg",
-                          const ProfilePage(),
+                          ProfilePage(controller: ProfileController()),
                         ),
                       ],
                     ),

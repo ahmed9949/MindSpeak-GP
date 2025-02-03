@@ -1,23 +1,21 @@
-import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:crypto/crypto.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:mind_speak_app/pages/carsfrom.dart';
+import 'package:mind_speak_app/service/LoginRepository.dart';
+import 'package:provider/provider.dart';
+
+import 'package:mind_speak_app/providers/session_provider.dart';
+import 'package:mind_speak_app/service/local_auth_service.dart';
 import 'package:mind_speak_app/pages/homepage.dart';
+import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/doctor_dashboard.dart';
 import 'package:mind_speak_app/pages/DashBoard.dart';
 import 'package:mind_speak_app/service/doctor_dashboard_service.dart';
-import 'package:mind_speak_app/service/local_auth_service.dart';
-import 'package:provider/provider.dart';
-import 'package:mind_speak_app/providers/session_provider.dart';
 
 class LoginController {
   final BuildContext context;
   final TextEditingController mailController;
   final TextEditingController passwordController;
   final GlobalKey<FormState> formKey;
+  final LoginRepository _loginRepository = LoginRepository();
   final DoctorDashboardService _doctorServices = DoctorDashboardService();
 
   LoginController({
@@ -27,24 +25,13 @@ class LoginController {
     required this.formKey,
   });
 
-  // *Hashing Function*
-  String hashPassword(String password) {
-    final bytes = utf8.encode(password);
-    final hashed = sha256.convert(bytes);
-    return hashed.toString();
-  }
-
   Future<void> signInWithGoogle() async {
-    GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-    GoogleSignInAuthentication? googleAuth = await googleUser?.authentication;
-    AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth?.accessToken, idToken: googleAuth?.idToken);
-    UserCredential userCredential =
-        await FirebaseAuth.instance.signInWithCredential(credential);
-
-    if (userCredential.user != null) {
+    try {
+      await _loginRepository.signInWithGoogle();
       Navigator.of(context)
           .push(MaterialPageRoute(builder: (context) => const HomePage()));
+    } catch (e) {
+      _showErrorSnackBar(e.toString());
     }
   }
 
@@ -53,167 +40,142 @@ class LoginController {
 
     try {
       String email = mailController.text.trim();
-      String enteredPassword = passwordController.text.trim();
-      String hashedEnteredPassword = hashPassword(enteredPassword);
+      String password = passwordController.text.trim();
 
-      // Fetch user from Firestore by email
-      QuerySnapshot userSnapshot = await FirebaseFirestore.instance
-          .collection('user')
-          .where('email', isEqualTo: email)
-          .get();
+      // Authenticate user
+      var authResult = await _loginRepository.authenticateUser(email, password);
+      String userId = authResult['userId'];
+      var userData = authResult['userData'];
 
-      if (userSnapshot.docs.isEmpty) {
-        throw Exception("No user found with this email.");
-      }
-
-      var userData = userSnapshot.docs.first.data() as Map<String, dynamic>;
-      String storedPassword = userData['password'];
       String role = userData['role'];
       bool isApproved = userData['status'] ?? false;
       bool biometricEnabled = userData['biometricEnabled'] ?? false;
-      String userId = userSnapshot.docs.first.id;
 
-      if (hashedEnteredPassword == storedPassword) {
-        // Save session data using SessionProvider
-        final sessionProvider =
-            Provider.of<SessionProvider>(context, listen: false);
-        await sessionProvider.saveSession(userSnapshot.docs.first.id, role);
+      // Save session data
+      final sessionProvider =
+          Provider.of<SessionProvider>(context, listen: false);
+      await sessionProvider.saveSession(userId, role);
 
-        if (biometricEnabled) {
-          // Authenticate using biometrics
-          bool authenticated = await LocalAuth.authenticate();
+      // Handle biometric authentication
+      await _handleBiometricAuth(userId, biometricEnabled);
 
-          if (!authenticated) {
-            throw Exception("Biometric authentication failed.");
-          }
-        } else {
-          // Prompt to enable biometrics if not already enabled
-          bool enableBiometric = await LocalAuth.linkBiometrics();
-          if (enableBiometric) {
-            await FirebaseFirestore.instance
-                .collection('user')
-                .doc(userId)
-                .update({'biometricEnabled': true});
-          }
-        }
+      // Navigate based on user role
+      await _navigateBasedOnRole(role, userId, isApproved);
 
-        await _navigateBasedOnRole(userSnapshot, role, userId, isApproved);
-
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          backgroundColor: Colors.green,
-          content: Text(
-            "Logged in Successfully",
-            style: TextStyle(fontSize: 18.0),
-          ),
-        ));
-      } else {
-        throw Exception("Incorrect password.");
-      }
+      _showSuccessSnackBar("Logged in Successfully");
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        backgroundColor: Colors.redAccent,
-        content: Text(
-          e.toString(),
-          style: const TextStyle(fontSize: 18.0),
-        ),
-      ));
+      _showErrorSnackBar(e.toString());
     }
   }
 
-  Future<void> _navigateBasedOnRole(QuerySnapshot userSnapshot, String role,
-      String userId, bool isApproved) async {
-    if (role == 'parent') {
-      await _handleParentNavigation(userSnapshot);
-    } else if (role == 'therapist') {
-      await _handleTherapistNavigation(userSnapshot, isApproved);
-    } else if (role == 'admin') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const DashBoard()),
-      );
+  Future<void> _handleBiometricAuth(
+      String userId, bool biometricEnabled) async {
+    if (biometricEnabled) {
+      bool authenticated = await LocalAuth.authenticate();
+      if (!authenticated) {
+        throw Exception("Biometric authentication failed.");
+      }
     } else {
-      throw Exception("Unknown role detected.");
+      // Prompt to enable biometrics
+      bool enableBiometric = await LocalAuth.linkBiometrics();
+      if (enableBiometric) {
+        await _loginRepository.updateBiometricStatus(userId, true);
+      }
     }
   }
 
-  Future<void> _handleParentNavigation(QuerySnapshot userSnapshot) async {
-    // Fetch child data for the current user
-    QuerySnapshot childSnapshot = await FirebaseFirestore.instance
-        .collection('child')
-        .where('userId', isEqualTo: userSnapshot.docs.first.id)
-        .get();
+  Future<void> _navigateBasedOnRole(
+      String role, String userId, bool isApproved) async {
+    switch (role) {
+      case 'parent':
+        await _handleParentNavigation(userId);
+        break;
+      case 'therapist':
+        await _handleTherapistNavigation(userId, isApproved);
+        break;
+      case 'admin':
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const DashBoard()),
+        );
+        break;
+      default:
+        throw Exception("Unknown role detected.");
+    }
+  }
 
-    if (childSnapshot.docs.isNotEmpty) {
-      final childId = childSnapshot.docs.first['childId'];
+  Future<void> _handleParentNavigation(String userId) async {
+    try {
+      // Fetch child data
+      var childData = await _loginRepository.fetchChildData(userId);
+      String childId = childData['childId'];
 
-      // Check if the Cars form is completed
-      QuerySnapshot carsSnapshot = await FirebaseFirestore.instance
-          .collection('Cars')
-          .where('childId', isEqualTo: childId)
-          .get();
+      // Check Cars form status
+      var carsFormStatus = await _loginRepository.fetchCarsFormStatus(childId);
 
-      if (carsSnapshot.docs.isNotEmpty) {
-        final carsData = carsSnapshot.docs.first.data() as Map<String, dynamic>;
-        bool formStatus = carsData['status'] ?? false;
-
-        if (formStatus) {
-          // Navigate to HomePage if Cars form is completed
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const HomePage()),
-          );
-        } else {
-          // Navigate to carsform if Cars form is not completed
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const carsform()),
-          );
-        }
+      if (carsFormStatus['exists'] && carsFormStatus['status']) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
       } else {
-        // Navigate to carsform if no Cars form exists
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const carsform()),
         );
       }
-    } else {
-      throw Exception("No child associated with this parent.");
+    } catch (e) {
+      _showErrorSnackBar(e.toString());
     }
   }
 
   Future<void> _handleTherapistNavigation(
-      QuerySnapshot userSnapshot, bool isApproved) async {
-    if (isApproved) {
-      try {
-        Map<String, dynamic> therapistInfo =
-            await _doctorServices.getTherapistInfo(userSnapshot.docs.first.id);
-        Map<String, dynamic> userInfo =
-            await _doctorServices.getUserInfo(userSnapshot.docs.first.id);
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => DoctorDashboard(
-              sessionId: userSnapshot.docs.first.id,
-              therapistInfo: therapistInfo,
-              userInfo: userInfo,
-            ),
-          ),
-        );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          backgroundColor: Colors.redAccent,
-          content: Text(
-            e.toString(),
-            style: const TextStyle(fontSize: 18.0),
-          ),
-        ));
-      }
-    } else {
+      String userId, bool isApproved) async {
+    if (!isApproved) {
       throw Exception("Your account is not yet approved by the admin.");
+    }
+
+    try {
+      Map<String, dynamic> therapistInfo =
+          await _loginRepository.fetchTherapistInfo(userId);
+      Map<String, dynamic> userInfo = await _doctorServices.getUserInfo(userId);
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DoctorDashboard(
+            sessionId: userId,
+            therapistInfo: therapistInfo,
+            userInfo: userInfo,
+          ),
+        ),
+      );
+    } catch (e) {
+      _showErrorSnackBar(e.toString());
     }
   }
 
   Future<bool> authenticateWithBiometrics() async {
     return await LocalAuth.authenticate();
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      backgroundColor: Colors.redAccent,
+      content: Text(
+        message,
+        style: const TextStyle(fontSize: 18.0),
+      ),
+    ));
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      backgroundColor: Colors.green,
+      content: Text(
+        message,
+        style: const TextStyle(fontSize: 18.0),
+      ),
+    ));
   }
 }

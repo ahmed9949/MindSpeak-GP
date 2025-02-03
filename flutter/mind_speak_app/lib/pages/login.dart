@@ -4,7 +4,7 @@ import 'package:mind_speak_app/pages/signup.dart';
 import 'package:mind_speak_app/pages/forgot_password.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:mind_speak_app/service/local_auth_service.dart';
+
 
 class LogIn extends StatefulWidget {
   const LogIn({super.key});
@@ -14,7 +14,6 @@ class LogIn extends StatefulWidget {
 }
 
 class _LogInState extends State<LogIn> {
-  bool isLoading = false;
   final TextEditingController mailcontroller = TextEditingController();
   final TextEditingController passwordcontroller = TextEditingController();
   final _formkey = GlobalKey<FormState>();
@@ -50,7 +49,7 @@ class _LogInState extends State<LogIn> {
                 ? Icons.wb_sunny
                 : Icons.nightlight_round),
             onPressed: () {
-              themeProvider.toggleTheme(); // Toggle the theme
+              themeProvider.toggleTheme();
             },
           ),
         ],
@@ -64,14 +63,13 @@ class _LogInState extends State<LogIn> {
               ),
               child: IntrinsicHeight(
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0), // Adjusted padding
+                  padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       SizedBox(
                         width: MediaQuery.of(context).size.width * 0.6,
-                        height: MediaQuery.of(context).size.height *
-                            0.2, // Adjusted height
+                        height: MediaQuery.of(context).size.height * 0.2,
                         child: Image.asset(
                           "assets/logo.webp",
                           fit: BoxFit.contain,
@@ -83,6 +81,7 @@ class _LogInState extends State<LogIn> {
                           key: _formkey,
                           child: Column(
                             children: [
+                              
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                     vertical: 2.0, horizontal: 30.0),
@@ -105,6 +104,7 @@ class _LogInState extends State<LogIn> {
                                 ),
                               ),
                               const SizedBox(height: 20.0),
+                              
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                     vertical: 2.0, horizontal: 30.0),
@@ -128,6 +128,7 @@ class _LogInState extends State<LogIn> {
                                 ),
                               ),
                               const SizedBox(height: 20.0),
+                             
                               GestureDetector(
                                 onTap: () {
                                   if (_formkey.currentState!.validate()) {
@@ -154,6 +155,7 @@ class _LogInState extends State<LogIn> {
                                 ),
                               ),
                               const SizedBox(height: 20.0),
+                             
                               GestureDetector(
                                 onTap: () {
                                   Navigator.push(
@@ -173,6 +175,7 @@ class _LogInState extends State<LogIn> {
                                 ),
                               ),
                               const Spacer(),
+                              
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -196,6 +199,7 @@ class _LogInState extends State<LogIn> {
                                 ],
                               ),
                               const SizedBox(height: 20.0),
+                              // Biometric Login Button - No changes
                               ElevatedButton.icon(
                                 onPressed: () async {
                                   final authenticated = await _loginController
@@ -214,6 +218,7 @@ class _LogInState extends State<LogIn> {
                                 label: const Text('Login with Biometrics'),
                               ),
                               const SizedBox(height: 20.0),
+                            
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [

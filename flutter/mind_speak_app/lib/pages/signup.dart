@@ -1,19 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:mind_speak_app/components/navigationpage.dart';
-import 'package:mind_speak_app/pages/DashBoard.dart';
-import 'package:provider/provider.dart';
-import 'package:uuid/uuid.dart';
-import 'package:mind_speak_app/pages/login.dart';
-import 'package:crypto/crypto.dart';
-import 'dart:convert';
+import 'package:mind_speak_app/controllers/SignupController.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
-import 'package:mind_speak_app/providers/session_provider.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import '../service/local_auth_service.dart';
+import 'package:mind_speak_app/pages/login.dart';
+import 'package:provider/provider.dart';
+
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -23,357 +15,119 @@ class SignUp extends StatefulWidget {
 }
 
 class _SignUpState extends State<SignUp> {
-  String email = "", password = "", username = "", role = "parent";
-  String childname = "", nationalid = "", childInterest = "";
-  String bio = "";
-  int childAge = 0;
-  int parentPhonenumber = 0;
-  int therapistPhonenumber = 0;
-  bool status = false;
+  
+  final _formkey = GlobalKey<FormState>();
+
+ 
+  late TextEditingController usernamecontroller;
+  late TextEditingController emailcontroller;
+  late TextEditingController passwordcontroller;
+  late TextEditingController childNameController;
+  late TextEditingController childAgeController;
+  late TextEditingController childInterestController;
+  late TextEditingController nationalIdController;
+  late TextEditingController bioController;
+  late TextEditingController parentPhoneNumberController;
+  late TextEditingController therapistPhoneNumberController;
+
+  
+  String role = "parent";
   File? _childImage;
   File? _nationalProofImage;
-  File? _TherapistImage;
+  File? _therapistImage;
   bool isLoading = false;
-  bool biometricEnabled = false;
 
-  TextEditingController usernamecontroller = TextEditingController();
-  TextEditingController emailcontroller = TextEditingController();
-  TextEditingController passwordcontroller = TextEditingController();
-  TextEditingController childNameController = TextEditingController();
-  TextEditingController childAgeController = TextEditingController();
-  TextEditingController childInterestController = TextEditingController();
-  TextEditingController nationalIdController = TextEditingController();
-  TextEditingController bioController = TextEditingController();
-  TextEditingController parentPhoneNumberController = TextEditingController();
-  TextEditingController therapistPhoneNumberController =
-      TextEditingController();
+  
+  late SignUpController _signUpController;
 
-  final _formkey = GlobalKey<FormState>();
-  final ImagePicker _picker = ImagePicker();
-  final Uuid uuid = const Uuid();
+  @override
+  void initState() {
+    super.initState();
 
-  // Check if a value exists in the database
-  Future<bool> isValueTaken(
-      String collection, String field, String value) async {
-    final querySnapshot = await FirebaseFirestore.instance
-        .collection(collection)
-        .where(field, isEqualTo: value)
-        .get();
-    return querySnapshot.docs.isNotEmpty;
+    
+    usernamecontroller = TextEditingController();
+    emailcontroller = TextEditingController();
+    passwordcontroller = TextEditingController();
+    childNameController = TextEditingController();
+    childAgeController = TextEditingController();
+    childInterestController = TextEditingController();
+    nationalIdController = TextEditingController();
+    bioController = TextEditingController();
+    parentPhoneNumberController = TextEditingController();
+    therapistPhoneNumberController = TextEditingController();
+
+    
+    _signUpController = SignUpController(
+      context: context,
+      formKey: _formkey,
+      usernameController: usernamecontroller,
+      emailController: emailcontroller,
+      passwordController: passwordcontroller,
+      childNameController: childNameController,
+      childAgeController: childAgeController,
+      childInterestController: childInterestController,
+      nationalIdController: nationalIdController,
+      bioController: bioController,
+      parentPhoneNumberController: parentPhoneNumberController,
+      therapistPhoneNumberController: therapistPhoneNumberController,
+      role: role,
+      childImage: _childImage,
+      nationalProofImage: _nationalProofImage,
+      therapistImage: _therapistImage,
+    );
   }
 
+  @override
+  void dispose() {
+    
+    usernamecontroller.dispose();
+    emailcontroller.dispose();
+    passwordcontroller.dispose();
+    childNameController.dispose();
+    childAgeController.dispose();
+    childInterestController.dispose();
+    nationalIdController.dispose();
+    bioController.dispose();
+    parentPhoneNumberController.dispose();
+    therapistPhoneNumberController.dispose();
+    super.dispose();
+  }
+
+  
   Future<void> pickChildImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
+    File? pickedImage = await _signUpController.pickImage(ImageSource.gallery);
+    if (pickedImage != null) {
       setState(() {
-        _childImage = File(pickedFile.path);
+        _childImage = pickedImage;
+        _signUpController.childImage = pickedImage;
       });
     }
   }
 
   Future<void> pickNationalProofImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
+    File? pickedImage = await _signUpController.pickImage(ImageSource.gallery);
+    if (pickedImage != null) {
       setState(() {
-        _nationalProofImage = File(pickedFile.path);
+        _nationalProofImage = pickedImage;
+        _signUpController.nationalProofImage = pickedImage;
       });
     }
   }
 
   Future<void> pickTherapistImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
+    File? pickedImage = await _signUpController.pickImage(ImageSource.gallery);
+    if (pickedImage != null) {
       setState(() {
-        _TherapistImage = File(pickedFile.path);
+        _therapistImage = pickedImage;
+        _signUpController.therapistImage = pickedImage;
       });
     }
-  }
-
-  Future<String> uploadImageToStorage(File image, String folderName) async {
-    try {
-      // Generate a unique file name
-      String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-
-      // Define the storage reference
-      Reference storageRef =
-          FirebaseStorage.instance.ref().child('$folderName/$fileName');
-
-      // Upload the file to Firebase Storage
-      UploadTask uploadTask = storageRef.putFile(image);
-      TaskSnapshot snapshot = await uploadTask;
-
-      // Get the download URL
-      String downloadUrl = await snapshot.ref.getDownloadURL();
-
-      return downloadUrl;
-    } catch (e) {
-      throw Exception("Image upload failed: $e");
-    }
-  }
-
-  String hashPassword(String password) {
-    final bytes = utf8.encode(password);
-    final hashed = sha256.convert(bytes);
-    return hashed.toString();
-  }
-
-  registration() async {
-    setState(() {
-      isLoading = true; // Show loading spinner immediately
-    });
-    if (_formkey.currentState!.validate()) {
-      try {
-        email = emailcontroller.text.trim();
-        password = hashPassword(passwordcontroller.text.trim());
-        username = usernamecontroller.text.trim();
-        childname = childNameController.text.trim();
-        bio = bioController.text.trim();
-        nationalid = nationalIdController.text.trim();
-
-        if (role == 'parent' && _childImage == null) {
-          setState(() {
-            isLoading = false; // Hide loading spinner
-          });
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text("Please upload your child's image."),
-            backgroundColor: Colors.red,
-          ));
-          return;
-        }
-
-        if (role == 'therapist' &&
-            (_nationalProofImage == null || _TherapistImage == null)) {
-          setState(() {
-            isLoading = false; // Hide loading spinner
-          });
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content:
-                Text("Please upload your national proof and therapist image."),
-            backgroundColor: Colors.red,
-          ));
-          return;
-        }
-
-        // Check for duplicate phone numbers
-        if (role == 'parent') {
-          parentPhonenumber =
-              int.parse(parentPhoneNumberController.text.trim());
-          QuerySnapshot parentQuery = await FirebaseFirestore.instance
-              .collection('child')
-              .where('parentnumber', isEqualTo: parentPhonenumber)
-              .get();
-
-          if (parentQuery.docs.isNotEmpty) {
-            setState(() {
-              isLoading = false; // Hide loading spinner
-            });
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content:
-                  Text("Phone number is already in use by another parent."),
-              backgroundColor: Colors.red,
-            ));
-            return;
-          }
-        }
-
-        if (role == 'therapist') {
-          therapistPhonenumber =
-              int.parse(therapistPhoneNumberController.text.trim());
-          QuerySnapshot therapistQuery = await FirebaseFirestore.instance
-              .collection('therapist')
-              .where('therapistnumber', isEqualTo: therapistPhonenumber)
-              .get();
-
-          if (therapistQuery.docs.isNotEmpty) {
-            setState(() {
-              isLoading = false; // Hide loading spinner
-            });
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content:
-                  Text("Phone number is already in use by another therapist."),
-              backgroundColor: Colors.red,
-            ));
-            return;
-          }
-        }
-
-        // Check for duplicate national ID (for therapists)
-        if (role == 'therapist') {
-          QuerySnapshot nationalIdQuery = await FirebaseFirestore.instance
-              .collection('therapist')
-              .where('nationalid', isEqualTo: nationalid)
-              .get();
-
-          if (nationalIdQuery.docs.isNotEmpty) {
-            setState(() {
-              isLoading = false; // Hide loading spinner
-            });
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text("National ID is already in use."),
-              backgroundColor: Colors.red,
-            ));
-            return;
-          }
-        }
-
-        // Register user with Firebase Auth
-        UserCredential userCredential = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(email: email, password: password);
-
-        String userId = userCredential.user!.uid;
-
-        if (role == 'parent') {
-          String childImageUrl = "";
-          String childId = uuid.v4();
-          childname = childNameController.text.trim();
-          childAge = int.parse(childAgeController.text.trim());
-          parentPhonenumber =
-              int.parse(parentPhoneNumberController.text.trim());
-          childInterest = childInterestController.text.trim();
-
-          if (_childImage != null) {
-            // Upload child image to Firebase Storage and get the URL
-            childImageUrl =
-                await uploadImageToStorage(_childImage!, 'child_images');
-          }
-
-          // Save child details to Firestore
-          await FirebaseFirestore.instance
-              .collection('child')
-              .doc(childId)
-              .set({
-            'childId': childId,
-            'name': childname,
-            'age': childAge,
-            'childInterest': childInterest,
-            'childPhoto': childImageUrl,
-            'userId': userId,
-            'parentnumber': parentPhonenumber,
-            'therapistId': '',
-            'assigned': false,
-          });
-        } else if (role == 'therapist') {
-          String nationalProofUrl = "";
-          String TherpistImageUrl = "";
-          therapistPhonenumber =
-              int.parse(therapistPhoneNumberController.text.trim());
-
-          if (_nationalProofImage != null) {
-            // Upload national proof to Firebase Storage and get the URL
-            nationalProofUrl = await uploadImageToStorage(
-                _nationalProofImage!, 'national_proofs');
-          }
-          if (_TherapistImage != null) {
-            // Upload national proof to Firebase Storage and get the URL
-            TherpistImageUrl = await uploadImageToStorage(
-                _TherapistImage!, 'Therapists_images');
-          }
-
-          // Save therapist details to Firestore
-          await FirebaseFirestore.instance
-              .collection('therapist')
-              .doc(userId)
-              .set({
-            'bio': bio,
-            'nationalid': nationalid,
-            'nationalproof': nationalProofUrl,
-            'therapistimage': TherpistImageUrl,
-            'status': status,
-            'therapistnumber': therapistPhonenumber,
-            'therapistid': userId,
-            'userid': userId
-          });
-        }
-
-        // Save user details to Firestore
-        await FirebaseFirestore.instance.collection('user').doc(userId).set({
-          'email': email,
-          'password': password,
-          'role': role,
-          'userid': userId,
-          'username': username,
-          'biometricEnabled': false,
-        });
-        // Prompt for biometric authentication
-        bool enableBiometric = await LocalAuth
-            .hasBiometrics(); // Check if device supports biometrics
-        if (enableBiometric) {
-          bool biometricEnabled =
-              await LocalAuth.authenticate(); // Attempt biometric registration
-          if (biometricEnabled) {
-            await FirebaseFirestore.instance
-                .collection('user')
-                .doc(userId)
-                .update({
-              'biometricEnabled': true
-            }); // Update Firestore to enable biometrics
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text("Biometric authentication enabled successfully."),
-            ));
-          }
-        }
-
-        // Save session data using SessionProvider
-        final sessionProvider =
-            Provider.of<SessionProvider>(context, listen: false);
-        await sessionProvider.saveSession(userId, role);
-
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text(
-          "Registered Successfully",
-          style: TextStyle(fontSize: 20.0),
-        )));
-
-        // Navigate based on Role
-        if (role == 'parent') {
-          Navigator.push(context,
-              MaterialPageRoute(builder: (context) => const Navigationpage()));
-        } else if (role == 'therapist') {
-          Navigator.push(
-              context, MaterialPageRoute(builder: (context) => const LogIn()));
-
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text(
-                "Your account is pending approval. Please wait until the admin approves your request."),
-            backgroundColor: Colors.orangeAccent,
-          ));
-        } else if (role == 'admin') {
-          Navigator.push(context,
-              MaterialPageRoute(builder: (context) => const DashBoard()));
-        }
-      } on FirebaseAuthException catch (e) {
-        setState(() {
-          isLoading = false; // Hide loading spinner
-        });
-        if (e.code == 'weak-password') {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              backgroundColor: Colors.orangeAccent,
-              content: Text(
-                "Password Provided is too Weak",
-                style: TextStyle(fontSize: 18.0),
-              )));
-        } else if (e.code == "email-already-in-use") {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              backgroundColor: Colors.orangeAccent,
-              content: Text(
-                "Account Already exists",
-                style: TextStyle(fontSize: 18.0),
-              )));
-        } else {
-          print("Error: ${e.toString()}");
-        }
-      } catch (e) {
-        print("Error: ${e.toString()}");
-      }
-    }
-    setState(() {
-      isLoading = false; // Hide loading spinner when done
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Sign Up"),
@@ -383,7 +137,7 @@ class _SignUpState extends State<SignUp> {
                 ? Icons.wb_sunny
                 : Icons.nightlight_round),
             onPressed: () {
-              themeProvider.toggleTheme(); // Toggle the theme
+              themeProvider.toggleTheme();
             },
           ),
         ],
@@ -391,10 +145,9 @@ class _SignUpState extends State<SignUp> {
       ),
       backgroundColor:
           themeProvider.isDarkMode ? Colors.grey[900] : Colors.white,
-      // Use the `isLoading` flag to control what is shown
       body: isLoading
           ? const Center(
-              child: CircularProgressIndicator(), // Show loading spinner
+              child: CircularProgressIndicator(),
             )
           : SingleChildScrollView(
               child: Padding(
@@ -440,8 +193,10 @@ class _SignUpState extends State<SignUp> {
                             .map((role) => DropdownMenuItem(
                                 value: role, child: Text(role)))
                             .toList(),
-                        onChanged: (value) =>
-                            setState(() => role = value.toString()),
+                        onChanged: (value) => setState(() {
+                          role = value.toString();
+                          _signUpController.role = role;
+                        }),
                         decoration: InputDecoration(
                           labelText: 'Role',
                           border: OutlineInputBorder(
@@ -604,10 +359,10 @@ class _SignUpState extends State<SignUp> {
                           onTap: pickTherapistImage,
                           child: CircleAvatar(
                             radius: 50,
-                            backgroundImage: _TherapistImage != null
-                                ? FileImage(_TherapistImage!)
+                            backgroundImage: _therapistImage != null
+                                ? FileImage(_therapistImage!)
                                 : null,
-                            child: _TherapistImage == null
+                            child: _therapistImage == null
                                 ? const Icon(Icons.camera_alt, size: 50)
                                 : null,
                           ),
@@ -615,7 +370,20 @@ class _SignUpState extends State<SignUp> {
                       ],
                       const SizedBox(height: 30.0),
                       ElevatedButton(
-                        onPressed: registration,
+                        onPressed: () {
+                          setState(() {
+                            isLoading = true;
+                          });
+                          _signUpController.registration().then((_) {
+                            setState(() {
+                              isLoading = false;
+                            });
+                          }).catchError((error) {
+                            setState(() {
+                              isLoading = false;
+                            });
+                          });
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blueAccent,
                           padding: const EdgeInsets.symmetric(

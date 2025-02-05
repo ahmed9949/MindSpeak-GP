@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class DoctorRepository {
+class ViewDoctorRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   

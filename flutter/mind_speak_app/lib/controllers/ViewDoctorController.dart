@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mind_speak_app/Repositories/ViewDoctorRepository.dart';
 
 class ViewDoctorsController {
-  final DoctorRepository _doctorRepository = DoctorRepository();
-  
+  final ViewDoctorRepository _doctorRepository = ViewDoctorRepository();
+
   List<Map<String, dynamic>> allTherapists = [];
   List<Map<String, dynamic>> filteredTherapists = [];
   bool isLoading = true;

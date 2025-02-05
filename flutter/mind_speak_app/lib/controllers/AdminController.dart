@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mind_speak_app/service/AdminRepository.dart';
+import 'package:mind_speak_app/Repositories/AdminRepository.dart';
 
 class AdminController with ChangeNotifier {
   final AdminRepository _adminRepository = AdminRepository();

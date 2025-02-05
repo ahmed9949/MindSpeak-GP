@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mind_speak_app/service/DoctorRepository.dart';
+import 'package:mind_speak_app/Repositories/ViewDoctorRepository.dart';
 
 class ViewDoctorsController {
   final DoctorRepository _doctorRepository = DoctorRepository();

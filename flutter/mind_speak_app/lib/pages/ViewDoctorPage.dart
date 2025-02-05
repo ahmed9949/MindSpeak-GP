@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mind_speak_app/controllers/View_Doctor_Controller.dart';
+import 'package:mind_speak_app/controllers/ViewDoctorController.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/components/CustomBottomNavigationBar.dart';
 

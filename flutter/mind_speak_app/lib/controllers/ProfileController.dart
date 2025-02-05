@@ -1,7 +1,7 @@
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
-import 'package:mind_speak_app/service/ProfileRepository.dart';
+import 'package:mind_speak_app/Repositories/ProfileRepository.dart';
 
 class ProfileController {
   final ProfileRepository _repository;

@@ -1,6 +1,5 @@
-// search_page_controller.dart
 import 'package:flutter/foundation.dart';
-import 'package:mind_speak_app/service/SearchRepository.dart';
+import 'package:mind_speak_app/Repositories/SearchRepository.dart';
 
 
 class SearchPageController {

@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class DoctorRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Fetch all approved therapists
+  
   Future<List<Map<String, dynamic>>> fetchApprovedTherapists() async {
     try {
       QuerySnapshot therapistSnapshot = await _firestore

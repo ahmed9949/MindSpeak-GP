@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mind_speak_app/service/LoginRepository.dart';
+import 'package:mind_speak_app/Repositories/LoginRepository.dart';
 import 'package:provider/provider.dart';
 
 import 'package:mind_speak_app/providers/session_provider.dart';

@@ -1,22 +1,19 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mind_speak_app/components/navigationpage.dart';
 import 'package:mind_speak_app/pages/DashBoard.dart';
-import 'package:provider/provider.dart';
-import 'package:uuid/uuid.dart';
 import 'package:mind_speak_app/pages/login.dart';
-import 'package:crypto/crypto.dart';
-import 'dart:convert';
+import 'package:mind_speak_app/service/SignupRepository.dart';
+import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import '../service/local_auth_service.dart';
 
 class SignUpController {
   final BuildContext context;
   final GlobalKey<FormState> formKey;
+  final SignupRepository _repository = SignupRepository();
 
   final TextEditingController usernameController;
   final TextEditingController emailController;
@@ -28,7 +25,6 @@ class SignUpController {
   final TextEditingController bioController;
   final TextEditingController parentPhoneNumberController;
   final TextEditingController therapistPhoneNumberController;
-
 
   String role;
   File? childImage;
@@ -55,66 +51,71 @@ class SignUpController {
     this.therapistImage,
   });
 
-  
   Future<File?> pickImage(ImageSource source) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: source);
     return pickedFile != null ? File(pickedFile.path) : null;
   }
 
-  
-  Future<String> uploadImageToStorage(File image, String folderName) async {
-    try {
-      String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-      Reference storageRef =
-          FirebaseStorage.instance.ref().child('$folderName/$fileName');
-      UploadTask uploadTask = storageRef.putFile(image);
-      TaskSnapshot snapshot = await uploadTask;
-      return await snapshot.ref.getDownloadURL();
-    } catch (e) {
-      throw Exception("Image upload failed: $e");
-    }
-  }
-
-  
-  String hashPassword(String password) {
-    final bytes = utf8.encode(password);
-    final hashed = sha256.convert(bytes);
-    return hashed.toString();
-  }
-
- 
-  Future<bool> isValueTaken(
-      String collection, String field, String value) async {
-    final querySnapshot = await FirebaseFirestore.instance
-        .collection(collection)
-        .where(field, isEqualTo: value)
-        .get();
-    return querySnapshot.docs.isNotEmpty;
-  }
-
-  
   Future<void> registration() async {
     if (!formKey.currentState!.validate()) return;
 
     try {
-      
       if (!_validateImageUploads()) return;
-
-      
       if (!await _checkDuplicateEntries()) return;
 
-      
-      UserCredential userCredential = await _createFirebaseUser();
+      // Create Firebase user
+      UserCredential userCredential = await _repository.createFirebaseUser(
+        emailController.text.trim(),
+        passwordController.text.trim(),
+      );
       String userId = userCredential.user!.uid;
 
-      
-      await _saveUserDetails(userId);
+      // Upload images and save details based on role
+      if (role == 'parent') {
+        String childImageUrl = childImage != null
+            ? await _repository.uploadImage(childImage!, 'child_images')
+            : '';
 
-      
+        await _repository.saveParentAndChildDetails(
+          userId: userId,
+          childName: childNameController.text.trim(),
+          childAge: int.parse(childAgeController.text.trim()),
+          childInterest: childInterestController.text.trim(),
+          childImageUrl: childImageUrl,
+          parentPhoneNumber: int.parse(parentPhoneNumberController.text.trim()),
+        );
+      } else if (role == 'therapist') {
+        String nationalProofUrl = nationalProofImage != null
+            ? await _repository.uploadImage(
+                nationalProofImage!, 'national_proofs')
+            : '';
+        String therapistImageUrl = therapistImage != null
+            ? await _repository.uploadImage(
+                therapistImage!, 'Therapists_images')
+            : '';
+
+        await _repository.saveTherapistDetails(
+          userId: userId,
+          bio: bioController.text.trim(),
+          nationalId: nationalIdController.text.trim(),
+          nationalProofUrl: nationalProofUrl,
+          therapistImageUrl: therapistImageUrl,
+          therapistPhoneNumber:
+              int.parse(therapistPhoneNumberController.text.trim()),
+        );
+      }
+
+      // Save user details
+      await _repository.saveUserDetails(
+        userId: userId,
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
+        role: role,
+        username: usernameController.text.trim(),
+      );
+
       await _handleBiometricAuth(userId);
-
-      
       _navigateBasedOnRole();
     } on FirebaseAuthException catch (e) {
       _handleFirebaseAuthError(e);
@@ -142,12 +143,7 @@ class SignUpController {
     if (role == 'parent') {
       int parentPhoneNumber =
           int.parse(parentPhoneNumberController.text.trim());
-      QuerySnapshot parentQuery = await FirebaseFirestore.instance
-          .collection('child')
-          .where('parentnumber', isEqualTo: parentPhoneNumber)
-          .get();
-
-      if (parentQuery.docs.isNotEmpty) {
+      if (await _repository.isParentPhoneNumberTaken(parentPhoneNumber)) {
         _showErrorSnackBar("Phone number is already in use by another parent.");
         return false;
       }
@@ -156,24 +152,14 @@ class SignUpController {
     if (role == 'therapist') {
       int therapistPhoneNumber =
           int.parse(therapistPhoneNumberController.text.trim());
-      QuerySnapshot therapistQuery = await FirebaseFirestore.instance
-          .collection('therapist')
-          .where('therapistnumber', isEqualTo: therapistPhoneNumber)
-          .get();
-
-      if (therapistQuery.docs.isNotEmpty) {
+      if (await _repository.isTherapistPhoneNumberTaken(therapistPhoneNumber)) {
         _showErrorSnackBar(
             "Phone number is already in use by another therapist.");
         return false;
       }
 
       String nationalId = nationalIdController.text.trim();
-      QuerySnapshot nationalIdQuery = await FirebaseFirestore.instance
-          .collection('therapist')
-          .where('nationalid', isEqualTo: nationalId)
-          .get();
-
-      if (nationalIdQuery.docs.isNotEmpty) {
+      if (await _repository.isNationalIdTaken(nationalId)) {
         _showErrorSnackBar("National ID is already in use.");
         return false;
       }
@@ -182,79 +168,16 @@ class SignUpController {
     return true;
   }
 
-  Future<UserCredential> _createFirebaseUser() async {
-    String email = emailController.text.trim();
-    String password = hashPassword(passwordController.text.trim());
-    return await FirebaseAuth.instance
-        .createUserWithEmailAndPassword(email: email, password: password);
-  }
-
-  Future<void> _saveUserDetails(String userId) async {
-    final Uuid uuid = const Uuid();
-
-    if (role == 'parent') {
-      String childImageUrl = childImage != null
-          ? await uploadImageToStorage(childImage!, 'child_images')
-          : '';
-      String childId = uuid.v4();
-
-      await FirebaseFirestore.instance.collection('child').doc(childId).set({
-        'childId': childId,
-        'name': childNameController.text.trim(),
-        'age': int.parse(childAgeController.text.trim()),
-        'childInterest': childInterestController.text.trim(),
-        'childPhoto': childImageUrl,
-        'userId': userId,
-        'parentnumber': int.parse(parentPhoneNumberController.text.trim()),
-        'therapistId': '',
-        'assigned': false,
-      });
-    } else if (role == 'therapist') {
-      String nationalProofUrl = nationalProofImage != null
-          ? await uploadImageToStorage(nationalProofImage!, 'national_proofs')
-          : '';
-      String therapistImageUrl = therapistImage != null
-          ? await uploadImageToStorage(therapistImage!, 'Therapists_images')
-          : '';
-
-      await FirebaseFirestore.instance.collection('therapist').doc(userId).set({
-        'bio': bioController.text.trim(),
-        'nationalid': nationalIdController.text.trim(),
-        'nationalproof': nationalProofUrl,
-        'therapistimage': therapistImageUrl,
-        'status': false,
-        'therapistnumber':
-            int.parse(therapistPhoneNumberController.text.trim()),
-        'therapistid': userId,
-        'userid': userId
-      });
-    }
-
-    
-    await FirebaseFirestore.instance.collection('user').doc(userId).set({
-      'email': emailController.text.trim(),
-      'password': hashPassword(passwordController.text.trim()),
-      'role': role,
-      'userid': userId,
-      'username': usernameController.text.trim(),
-      'biometricEnabled': false,
-    });
-  }
-
   Future<void> _handleBiometricAuth(String userId) async {
     bool enableBiometric = await LocalAuth.hasBiometrics();
     if (enableBiometric) {
       bool biometricEnabled = await LocalAuth.authenticate();
       if (biometricEnabled) {
-        await FirebaseFirestore.instance
-            .collection('user')
-            .doc(userId)
-            .update({'biometricEnabled': true});
+        await _repository.updateBiometricStatus(userId, true);
         _showSuccessSnackBar("Biometric authentication enabled successfully.");
       }
     }
 
-    
     final sessionProvider =
         Provider.of<SessionProvider>(context, listen: false);
     await sessionProvider.saveSession(userId, role);
@@ -294,7 +217,6 @@ class SignUpController {
     }
   }
 
-  
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message),

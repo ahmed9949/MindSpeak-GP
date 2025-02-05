@@ -6,7 +6,6 @@ import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/pages/login.dart';
 import 'package:provider/provider.dart';
 
-
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
 
@@ -15,10 +14,8 @@ class SignUp extends StatefulWidget {
 }
 
 class _SignUpState extends State<SignUp> {
-  
   final _formkey = GlobalKey<FormState>();
 
- 
   late TextEditingController usernamecontroller;
   late TextEditingController emailcontroller;
   late TextEditingController passwordcontroller;
@@ -30,21 +27,18 @@ class _SignUpState extends State<SignUp> {
   late TextEditingController parentPhoneNumberController;
   late TextEditingController therapistPhoneNumberController;
 
-  
   String role = "parent";
   File? _childImage;
   File? _nationalProofImage;
   File? _therapistImage;
   bool isLoading = false;
 
-  
   late SignUpController _signUpController;
 
   @override
   void initState() {
     super.initState();
 
-    
     usernamecontroller = TextEditingController();
     emailcontroller = TextEditingController();
     passwordcontroller = TextEditingController();
@@ -56,7 +50,6 @@ class _SignUpState extends State<SignUp> {
     parentPhoneNumberController = TextEditingController();
     therapistPhoneNumberController = TextEditingController();
 
-    
     _signUpController = SignUpController(
       context: context,
       formKey: _formkey,
@@ -79,7 +72,6 @@ class _SignUpState extends State<SignUp> {
 
   @override
   void dispose() {
-    
     usernamecontroller.dispose();
     emailcontroller.dispose();
     passwordcontroller.dispose();
@@ -93,7 +85,6 @@ class _SignUpState extends State<SignUp> {
     super.dispose();
   }
 
-  
   Future<void> pickChildImage() async {
     File? pickedImage = await _signUpController.pickImage(ImageSource.gallery);
     if (pickedImage != null) {

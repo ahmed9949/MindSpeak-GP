@@ -47,4 +47,43 @@ class TherapistModel {
       'status': status,
     };
   }
+
+  TherapistModel copyWith({
+    String? therapistId,
+    String? userId,
+    String? bio,
+    String? nationalId,
+    String? nationalProof,
+    String? therapistImage,
+    int? therapistPhoneNumber,
+    bool? status,
+    String? username,
+    String? email,
+  }) {
+    return TherapistModel(
+      therapistId: therapistId ?? this.therapistId,
+      userId: userId ?? this.userId,
+      bio: bio ?? this.bio,
+      nationalId: nationalId ?? this.nationalId,
+      nationalProof: nationalProof ?? this.nationalProof,
+      therapistImage: therapistImage ?? this.therapistImage,
+      therapistPhoneNumber: therapistPhoneNumber ?? this.therapistPhoneNumber,
+      status: status ?? this.status,
+      username: username ?? this.username,
+      email: email ?? this.email,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TherapistModel &&
+          runtimeType == other.runtimeType &&
+          therapistId == other.therapistId &&
+          userId == other.userId;
+
+  @override
+  int get hashCode => therapistId.hashCode ^ userId.hashCode;
+
+  bool get isApproved => status;
 }

@@ -1,12 +1,16 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:mind_speak_app/Repositories/ViewDoctorRepository.dart';
+import 'package:mind_speak_app/models/Therapist.dart';
 
-class ViewDoctorsController {
-  final ViewDoctorRepository _doctorRepository = ViewDoctorRepository();
 
-  List<Map<String, dynamic>> allTherapists = [];
-  List<Map<String, dynamic>> filteredTherapists = [];
+class ViewDoctorController {
+  final ITherapistRepository _doctorRepository;
+  List<TherapistModel> allTherapists = [];
+  List<TherapistModel> filteredTherapists = [];
   bool isLoading = true;
+
+  ViewDoctorController({ITherapistRepository? repository})
+      : _doctorRepository = repository ?? DoctorRepository();
 
   Future<void> fetchApprovedTherapists(Function updateUI) async {
     try {
@@ -29,9 +33,23 @@ class ViewDoctorsController {
     } else {
       filteredTherapists = allTherapists
           .where((therapist) =>
-              therapist["name"].toLowerCase().contains(query.toLowerCase()))
+              therapist.username?.toLowerCase().contains(query.toLowerCase()) ??
+              false)
           .toList();
     }
     updateUI();
+  }
+
+  Map<String, dynamic> therapistToMap(TherapistModel therapist) {
+    return {
+      'id': therapist.therapistId,
+      'name': therapist.username ?? 'N/A',
+      'email': therapist.email ?? 'N/A',
+      'nationalid': therapist.nationalId,
+      'bio': therapist.bio,
+      'therapistPhoneNumber': therapist.therapistPhoneNumber.toString(),
+      'therapistImage': therapist.therapistImage,
+      'nationalProof': therapist.nationalProof,
+    };
   }
 }

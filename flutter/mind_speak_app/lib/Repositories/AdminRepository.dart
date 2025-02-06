@@ -1,6 +1,8 @@
-import'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:mind_speak_app/models/Therapist.dart';
+import 'package:mind_speak_app/models/User.dart';
 
 class AdminRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -26,7 +28,7 @@ class AdminRepository {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getPendingTherapistRequests() async {
+  Future<List<TherapistModel>> getPendingTherapistRequests() async {
     try {
       QuerySnapshot therapistSnapshot = await _firestore
           .collection('therapist')
@@ -43,31 +45,35 @@ class AdminRepository {
           .where(FieldPath.documentId, whereIn: userIds)
           .get();
 
-      Map<String, Map<String, dynamic>> userDataMap = {
+      Map<String, UserModel> userMap = {
         for (var doc in userSnapshot.docs)
-          doc.id: doc.data() as Map<String, dynamic>
+          doc.id: UserModel.fromFirestore(
+            doc.data() as Map<String, dynamic>,
+            doc.id,
+          )
       };
 
-      List<Map<String, dynamic>> therapists = therapistSnapshot.docs.map((doc) {
-        var therapistData = doc.data() as Map<String, dynamic>;
-        var userData = userDataMap[therapistData['userid']] ?? {};
+      List<TherapistModel> therapists = therapistSnapshot.docs.map((doc) {
+        String userId = doc['userid'] as String;
+        UserModel? user = userMap[userId];
 
-        return {
-          'username': userData['username'] ?? 'N/A',
-          'email': userData['email'] ?? 'N/A',
-          'nationalid': therapistData['nationalid'] ?? 'N/A',
-          'bio': therapistData['bio'] ?? 'N/A',
-          'therapistPhoneNumber':
-              therapistData['therapistnumber']?.toString() ?? 'N/A',
-          'nationalProof': therapistData['nationalproof'] ?? '',
-          'therapistImage': therapistData['therapistimage'] ?? '',
-          'userid': doc.id,
-        };
+        return TherapistModel(
+          therapistId: doc.id,
+          userId: userId,
+          bio: doc['bio'] ?? '',
+          nationalId: doc['nationalid'] ?? '',
+          nationalProof: doc['nationalproof'] ?? '',
+          therapistImage: doc['therapistimage'] ?? '',
+          therapistPhoneNumber: doc['therapistnumber'] ?? 0,
+          status: doc['status'] ?? false,
+          username: user?.username,
+          email: user?.email,
+        );
       }).toList();
 
       return therapists;
     } catch (e) {
-      debugPrint(' Error fetching therapist requests: $e');
+      debugPrint('Error fetching therapist requests: $e');
       return [];
     }
   }
@@ -87,12 +93,12 @@ class AdminRepository {
       await batch.commit();
       return true;
     } catch (e) {
-      debugPrint(' Error approving therapist: $e');
+      debugPrint('Error approving therapist: $e');
       return false;
     }
   }
 
-  Future<bool> rejectTherapist(String therapistId, String email) async {
+  Future<bool> rejectTherapist(String therapistId) async {
     try {
       WriteBatch batch = _firestore.batch();
 
@@ -104,19 +110,15 @@ class AdminRepository {
       batch.delete(therapistRef);
       batch.delete(userRef);
 
-      await batch.commit(); 
-
-     
-      await _deleteUserFromAuth(email);
-
+      await batch.commit();
       return true;
     } catch (e) {
-      debugPrint(' Error rejecting therapist: $e');
+      debugPrint('Error rejecting therapist: $e');
       return false;
     }
   }
 
-  Future<void> _deleteUserFromAuth(String email) async {
+  Future<void> deleteUserFromAuth(String email) async {
     try {
       List<String> signInMethods =
           await _auth.fetchSignInMethodsForEmail(email);
@@ -126,16 +128,16 @@ class AdminRepository {
 
         if (user != null && user.email == email) {
           await user.delete();
-          debugPrint(' Therapist deleted from Firebase Authentication.');
+          debugPrint('Therapist deleted from Firebase Authentication.');
         } else {
           debugPrint(
-              ' Therapist is not the currently signed-in user. Re-authentication needed.');
+              'Therapist is not the currently signed-in user. Re-authentication needed.');
         }
       } else {
-        debugPrint(' Therapist not found in Authentication.');
+        debugPrint('Therapist not found in Authentication.');
       }
     } catch (e) {
-      debugPrint(' Error deleting therapist from Authentication: $e');
+      debugPrint('Error deleting therapist from Authentication: $e');
     }
   }
 }

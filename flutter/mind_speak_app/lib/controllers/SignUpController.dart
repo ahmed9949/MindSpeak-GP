@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mind_speak_app/Repositories/SignupRepository.dart';
 import 'package:mind_speak_app/components/navigationpage.dart';
-import 'package:mind_speak_app/pages/DashBoard.dart';
+import 'package:mind_speak_app/pages/adminDashboard.dart';
 import 'package:mind_speak_app/pages/login.dart';
 import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
@@ -199,7 +199,7 @@ class SignUpController {
         break;
       case 'admin':
         Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const DashBoard()));
+            MaterialPageRoute(builder: (context) => const AdminDashboardView()));
         break;
     }
   }

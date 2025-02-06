@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-
-import 'package:mind_speak_app/pages/DashBoard.dart';
 import 'package:mind_speak_app/pages/ViewDoctorPage.dart';
+import 'package:mind_speak_app/pages/adminDashboard.dart';
 
 import 'package:mind_speak_app/pages/login.dart';
 
@@ -17,7 +16,7 @@ class CustomBottomNavigationBar extends StatelessWidget {
     if (index == 0 && currentIndex != 0) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const DashBoard()),
+        MaterialPageRoute(builder: (context) => const AdminDashboardView()),
       );
     } else if (index == 1 && currentIndex != 1) {
       Navigator.push(

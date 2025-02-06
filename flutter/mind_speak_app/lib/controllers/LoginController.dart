@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/Repositories/LoginRepository.dart';
+import 'package:mind_speak_app/pages/adminDashboard.dart';
 import 'package:provider/provider.dart';
 
 import 'package:mind_speak_app/providers/session_provider.dart';
@@ -7,7 +8,6 @@ import 'package:mind_speak_app/service/local_auth_service.dart';
 import 'package:mind_speak_app/pages/homepage.dart';
 import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/doctor_dashboard.dart';
-import 'package:mind_speak_app/pages/DashBoard.dart';
 import 'package:mind_speak_app/service/doctor_dashboard_service.dart';
 
 class LoginController {
@@ -96,7 +96,7 @@ class LoginController {
       case 'admin':
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const DashBoard()),
+          MaterialPageRoute(builder: (context) => const AdminDashboardView()),
         );
         break;
       default:

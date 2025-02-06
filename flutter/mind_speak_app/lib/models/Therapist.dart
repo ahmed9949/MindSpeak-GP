@@ -7,8 +7,8 @@ class TherapistModel {
   final String therapistImage;
   final int therapistPhoneNumber;
   final bool status;
-  final String? username; // Added from UserModel
-  final String? email; // Added from UserModel
+  final String? username;
+  final String? email;
 
   TherapistModel({
     required this.therapistId,
@@ -48,6 +48,7 @@ class TherapistModel {
     };
   }
 
+ 
   TherapistModel copyWith({
     String? therapistId,
     String? userId,
@@ -74,16 +75,38 @@ class TherapistModel {
     );
   }
 
+  
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is TherapistModel &&
-          runtimeType == other.runtimeType &&
-          therapistId == other.therapistId &&
-          userId == other.userId;
+  String toString() {
+    return 'TherapistModel(therapistId: $therapistId, userId: $userId, bio: $bio, nationalId: $nationalId, nationalProof: $nationalProof, therapistImage: $therapistImage, therapistPhoneNumber: $therapistPhoneNumber, status: $status, username: $username, email: $email)';
+  }
 
+  
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is TherapistModel &&
+        therapistId == other.therapistId &&
+        userId == other.userId;
+  }
+
+  
   @override
   int get hashCode => therapistId.hashCode ^ userId.hashCode;
 
-  bool get isApproved => status;
+ 
+  Map<String, dynamic> toMap() {
+    return {
+      'therapistId': therapistId,
+      'userId': userId,
+      'bio': bio,
+      'nationalId': nationalId,
+      'nationalProof': nationalProof,
+      'therapistImage': therapistImage,
+      'therapistPhoneNumber': therapistPhoneNumber,
+      'status': status,
+      'username': username,
+      'email': email,
+    };
+  }
 }

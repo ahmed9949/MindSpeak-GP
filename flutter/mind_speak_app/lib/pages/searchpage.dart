@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/controllers/SearchController.dart';
+import 'package:mind_speak_app/models/Therapist.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
-
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -28,27 +28,27 @@ class _SearchPageState extends State<SearchPage> {
     super.dispose();
   }
 
-  void _showTherapistDetails(Map<String, dynamic> therapist) {
+  void _showTherapistDetails(TherapistModel therapist) {
     showDialog(
       context: context,
       builder: (context) {
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           child: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (therapist['therapistImage'] != null &&
-                      therapist['therapistImage'].isNotEmpty)
+                  if (therapist.therapistImage.isNotEmpty)
                     LayoutBuilder(
                       builder: (context, constraints) {
                         double imageHeight = constraints.maxWidth * 0.6;
                         return ClipRRect(
                           borderRadius: BorderRadius.circular(10),
                           child: Image.network(
-                            therapist['therapistImage'],
+                            therapist.therapistImage,
                             height: imageHeight,
                             width: double.infinity,
                             fit: BoxFit.cover,
@@ -61,11 +61,12 @@ class _SearchPageState extends State<SearchPage> {
                       height: 200,
                       width: double.infinity,
                       color: Colors.grey[300],
-                      child: const Icon(Icons.person, size: 100, color: Colors.grey),
+                      child: const Icon(Icons.person,
+                          size: 100, color: Colors.grey),
                     ),
                   const SizedBox(height: 16),
                   Text(
-                    therapist['name'] ?? 'Unknown',
+                    therapist.username ?? 'Unknown',
                     style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -78,7 +79,7 @@ class _SearchPageState extends State<SearchPage> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          therapist['email'] ?? 'N/A',
+                          therapist.email ?? 'N/A',
                           style: const TextStyle(fontSize: 16),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -91,27 +92,28 @@ class _SearchPageState extends State<SearchPage> {
                       const Icon(Icons.phone, color: Colors.green),
                       const SizedBox(width: 8),
                       Text(
-                        therapist['therapistPhoneNumber'] ?? 'N/A',
+                        therapist.therapistPhoneNumber.toString(),
                         style: const TextStyle(fontSize: 16),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    therapist['bio'] ?? 'No bio available',
+                    therapist.bio,
                     style: const TextStyle(fontSize: 16, color: Colors.grey),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () async {
-                      final sessionProvider = Provider.of<SessionProvider>(context, listen: false);
+                      final sessionProvider =
+                          Provider.of<SessionProvider>(context, listen: false);
                       final result = await _controller.assignTherapistToChild(
-                        therapist['therapistId'],
+                        therapist.therapistId,
                         sessionProvider.userId,
                       );
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(result ?? 'An error occurred')),
+                        SnackBar(content: Text(result)),
                       );
                       Navigator.pop(context);
                     },
@@ -142,7 +144,8 @@ class _SearchPageState extends State<SearchPage> {
           style: TextStyle(color: Colors.white),
         ),
         centerTitle: true,
-        backgroundColor: themeProvider.isDarkMode ? Colors.grey[900] : Colors.blue,
+        backgroundColor:
+            themeProvider.isDarkMode ? Colors.grey[900] : Colors.blue,
       ),
       body: SafeArea(
         child: ValueListenableBuilder<bool>(
@@ -167,13 +170,14 @@ class _SearchPageState extends State<SearchPage> {
                   ),
                 ),
                 Expanded(
-                  child: ValueListenableBuilder<List<Map<String, dynamic>>>(
+                  child: ValueListenableBuilder<List<TherapistModel>>(
                     valueListenable: _controller.filteredTherapistsNotifier,
                     builder: (context, filteredTherapists, _) {
                       return filteredTherapists.isNotEmpty
                           ? GridView.builder(
                               padding: const EdgeInsets.all(16.0),
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 2,
                                 crossAxisSpacing: 16,
                                 mainAxisSpacing: 16,
@@ -191,17 +195,18 @@ class _SearchPageState extends State<SearchPage> {
                                     elevation: 4,
                                     child: Column(
                                       children: [
-                                        if (therapist['therapistImage'] != null &&
-                                            therapist['therapistImage'].isNotEmpty)
+                                        if (therapist.therapistImage.isNotEmpty)
                                           LayoutBuilder(
                                             builder: (context, constraints) {
-                                              double imageHeight = constraints.maxWidth * 0.75;
+                                              double imageHeight =
+                                                  constraints.maxWidth * 0.75;
                                               return ClipRRect(
-                                                borderRadius: const BorderRadius.vertical(
+                                                borderRadius:
+                                                    const BorderRadius.vertical(
                                                   top: Radius.circular(15),
                                                 ),
                                                 child: Image.network(
-                                                  therapist['therapistImage'],
+                                                  therapist.therapistImage,
                                                   height: imageHeight,
                                                   width: double.infinity,
                                                   fit: BoxFit.cover,
@@ -220,7 +225,7 @@ class _SearchPageState extends State<SearchPage> {
                                         Padding(
                                           padding: const EdgeInsets.all(8.0),
                                           child: Text(
-                                            therapist['name'] ?? 'Unknown',
+                                            therapist.username ?? 'Unknown',
                                             style: const TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,

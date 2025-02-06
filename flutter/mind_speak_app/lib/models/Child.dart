@@ -47,4 +47,28 @@ class ChildModel {
       'assigned': assigned,
     };
   }
+
+  ChildModel copyWith({
+    String? childId,
+    String? userId,
+    String? name,
+    int? age,
+    String? childInterest,
+    String? childPhoto,
+    int? parentNumber,
+    String? therapistId,
+    bool? assigned,
+  }) {
+    return ChildModel(
+      childId: childId ?? this.childId,
+      userId: userId ?? this.userId,
+      name: name ?? this.name,
+      age: age ?? this.age,
+      childInterest: childInterest ?? this.childInterest,
+      childPhoto: childPhoto ?? this.childPhoto,
+      parentNumber: parentNumber ?? this.parentNumber,
+      therapistId: therapistId ?? this.therapistId,
+      assigned: assigned ?? this.assigned,
+    );
+  }
 }

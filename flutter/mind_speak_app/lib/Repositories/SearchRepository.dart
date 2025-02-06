@@ -1,26 +1,27 @@
-// search_repository.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:mind_speak_app/models/Therapist.dart';
 
-abstract class SearchRepository {
-  Future<List<Map<String, dynamic>>> getTherapists();
+
+abstract class ISearchRepository {
+  Future<List<TherapistModel>> getTherapists();
   Future<String> assignTherapistToChild(String therapistId, String userId);
 }
 
-class FirebaseSearchRepository implements SearchRepository {
+class SearchRepository implements ISearchRepository {
   final FirebaseFirestore _firestore;
 
-  FirebaseSearchRepository({FirebaseFirestore? firestore})
+  SearchRepository({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
   @override
-  Future<List<Map<String, dynamic>>> getTherapists() async {
+  Future<List<TherapistModel>> getTherapists() async {
     try {
       final therapistSnapshot = await _firestore
           .collection('therapist')
           .where('status', isEqualTo: true)
           .get();
 
-      List<Map<String, dynamic>> therapists = [];
+      List<TherapistModel> therapists = [];
 
       for (var doc in therapistSnapshot.docs) {
         var therapistData = doc.data();
@@ -39,15 +40,18 @@ class FirebaseSearchRepository implements SearchRepository {
         if (userDoc.exists) {
           var userData = userDoc.data() as Map<String, dynamic>;
 
-          therapists.add({
-            'therapistId': doc.id,
-            'name': userData['username'] ?? 'Unknown',
-            'email': userData['email'] ?? 'N/A',
-            'therapistPhoneNumber':
-                therapistData['therapistnumber']?.toString() ?? 'N/A',
-            'bio': therapistData['bio'] ?? 'N/A',
-            'therapistImage': therapistData['therapistimage'] ?? '',
-          });
+          therapists.add(TherapistModel(
+            therapistId: doc.id,
+            userId: therapistData['userid'],
+            bio: therapistData['bio'] ?? '',
+            nationalId: therapistData['nationalid'] ?? '',
+            nationalProof: therapistData['nationalproof'] ?? '',
+            therapistImage: therapistData['therapistimage'] ?? '',
+            therapistPhoneNumber: therapistData['therapistnumber'] ?? 0,
+            status: therapistData['status'] ?? false,
+            username: userData['username'],
+            email: userData['email'],
+          ));
         }
       }
 
@@ -62,7 +66,7 @@ class FirebaseSearchRepository implements SearchRepository {
   Future<String> assignTherapistToChild(
       String therapistId, String userId) async {
     try {
-      // Check therapist's current assigned children
+      
       final assignedChildrenSnapshot = await _firestore
           .collection('child')
           .where('therapistId', isEqualTo: therapistId)
@@ -73,7 +77,7 @@ class FirebaseSearchRepository implements SearchRepository {
         return 'This therapist already has the maximum number of children assigned.';
       }
 
-      // Verify therapist exists
+      
       final therapistDoc =
           await _firestore.collection('therapist').doc(therapistId).get();
 
@@ -81,7 +85,7 @@ class FirebaseSearchRepository implements SearchRepository {
         return 'Selected therapist does not exist.';
       }
 
-      // Check and update child document
+     
       final childQuery = await _firestore
           .collection('child')
           .where('userId', isEqualTo: userId)

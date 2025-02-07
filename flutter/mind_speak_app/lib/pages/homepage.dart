@@ -8,6 +8,9 @@ import 'package:mind_speak_app/pages/searchpage.dart';
 import 'package:mind_speak_app/components/drawer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mind_speak_app/pages/start_session.dart';
+import 'package:mind_speak_app/pages/sttpage.dart';
+import 'package:mind_speak_app/pages/tts.dart';
+import 'package:mind_speak_app/pages/voicechat.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
@@ -182,6 +185,13 @@ class _HomePageState extends State<HomePage> {
                           "assets/doctor.png",
                           const SearchPage(),
                         ),
+                        // _buildTopCard(
+                        //     context, "tts", "assets/cars.png", const TTSPage()),
+                        // _buildTopCard(
+                        //     context, "stt", "assets/cars.png", const STTPage()),
+
+                        _buildTopCard(context, "voicechat", "assets/cars.png",
+                            const VoiceChatPage()),
                         _buildTopCard(
                           context,
                           "Cars",

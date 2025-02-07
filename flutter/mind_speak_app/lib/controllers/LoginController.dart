@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/Repositories/LoginRepository.dart';
+import 'package:mind_speak_app/models/CarsFrom.dart';
+import 'package:mind_speak_app/models/Child.dart';
+import 'package:mind_speak_app/models/Therapist.dart';
+import 'package:mind_speak_app/models/User.dart';
 import 'package:mind_speak_app/pages/adminDashboard.dart';
 import 'package:provider/provider.dart';
-
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:mind_speak_app/service/local_auth_service.dart';
 import 'package:mind_speak_app/pages/homepage.dart';
@@ -27,7 +30,7 @@ class LoginController {
 
   Future<void> signInWithGoogle() async {
     try {
-      await _loginRepository.signInWithGoogle();
+      UserModel user = await _loginRepository.signInWithGoogle();
       Navigator.of(context)
           .push(MaterialPageRoute(builder: (context) => const HomePage()));
     } catch (e) {
@@ -42,25 +45,13 @@ class LoginController {
       String email = mailController.text.trim();
       String password = passwordController.text.trim();
 
-      // Authenticate user
-      var authResult = await _loginRepository.authenticateUser(email, password);
-      String userId = authResult['userId'];
-      var userData = authResult['userData'];
+      UserModel user = await _loginRepository.authenticateUser(email, password);
+      
+      final sessionProvider = Provider.of<SessionProvider>(context, listen: false);
+      await sessionProvider.saveSession(user.userId, user.role);
 
-      String role = userData['role'];
-      bool isApproved = userData['status'] ?? false;
-      bool biometricEnabled = userData['biometricEnabled'] ?? false;
-
-      // Save session data
-      final sessionProvider =
-          Provider.of<SessionProvider>(context, listen: false);
-      await sessionProvider.saveSession(userId, role);
-
-      // Handle biometric authentication
-      await _handleBiometricAuth(userId, biometricEnabled);
-
-      // Navigate based on user role
-      await _navigateBasedOnRole(role, userId, isApproved);
+      await _handleBiometricAuth(user.userId, user.biometricEnabled);
+      await _navigateBasedOnRole(user.role, user.userId);
 
       _showSuccessSnackBar("Logged in Successfully");
     } catch (e) {
@@ -68,15 +59,13 @@ class LoginController {
     }
   }
 
-  Future<void> _handleBiometricAuth(
-      String userId, bool biometricEnabled) async {
+  Future<void> _handleBiometricAuth(String userId, bool biometricEnabled) async {
     if (biometricEnabled) {
       bool authenticated = await LocalAuth.authenticate();
       if (!authenticated) {
         throw Exception("Biometric authentication failed.");
       }
     } else {
-      // Prompt to enable biometrics
       bool enableBiometric = await LocalAuth.linkBiometrics();
       if (enableBiometric) {
         await _loginRepository.updateBiometricStatus(userId, true);
@@ -84,14 +73,14 @@ class LoginController {
     }
   }
 
-  Future<void> _navigateBasedOnRole(
-      String role, String userId, bool isApproved) async {
+  Future<void> _navigateBasedOnRole(String role, String userId) async {
     switch (role) {
       case 'parent':
         await _handleParentNavigation(userId);
         break;
       case 'therapist':
-        await _handleTherapistNavigation(userId, isApproved);
+        TherapistModel therapist = await _loginRepository.fetchTherapistInfo(userId);
+        await _handleTherapistNavigation(userId, therapist.status);
         break;
       case 'admin':
         Navigator.pushReplacement(
@@ -106,14 +95,10 @@ class LoginController {
 
   Future<void> _handleParentNavigation(String userId) async {
     try {
-      // Fetch child data
-      var childData = await _loginRepository.fetchChildData(userId);
-      String childId = childData['childId'];
+      ChildModel child = await _loginRepository.fetchChildData(userId);
+      CarsFormModel? carsForm = await _loginRepository.fetchCarsFormStatus(child.childId);
 
-      // Check Cars form status
-      var carsFormStatus = await _loginRepository.fetchCarsFormStatus(childId);
-
-      if (carsFormStatus['exists'] && carsFormStatus['status']) {
+      if (carsForm != null && carsForm.status) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const HomePage()),
@@ -129,15 +114,13 @@ class LoginController {
     }
   }
 
-  Future<void> _handleTherapistNavigation(
-      String userId, bool isApproved) async {
+  Future<void> _handleTherapistNavigation(String userId, bool isApproved) async {
     if (!isApproved) {
       throw Exception("Your account is not yet approved by the admin.");
     }
 
     try {
-      Map<String, dynamic> therapistInfo =
-          await _loginRepository.fetchTherapistInfo(userId);
+      TherapistModel therapist = await _loginRepository.fetchTherapistInfo(userId);
       Map<String, dynamic> userInfo = await _doctorServices.getUserInfo(userId);
 
       Navigator.pushReplacement(
@@ -145,7 +128,7 @@ class LoginController {
         MaterialPageRoute(
           builder: (context) => DoctorDashboard(
             sessionId: userId,
-            therapistInfo: therapistInfo,
+            therapistInfo: therapist.toMap(),
             userInfo: userInfo,
           ),
         ),
@@ -162,20 +145,14 @@ class LoginController {
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       backgroundColor: Colors.redAccent,
-      content: Text(
-        message,
-        style: const TextStyle(fontSize: 18.0),
-      ),
+      content: Text(message, style: const TextStyle(fontSize: 18.0)),
     ));
   }
 
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       backgroundColor: Colors.green,
-      content: Text(
-        message,
-        style: const TextStyle(fontSize: 18.0),
-      ),
+      content: Text(message, style: const TextStyle(fontSize: 18.0)),
     ));
   }
 }

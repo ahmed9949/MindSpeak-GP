@@ -3,24 +3,39 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:mind_speak_app/models/CarsFrom.dart';
+import 'package:mind_speak_app/models/Child.dart';
+import 'package:mind_speak_app/models/Therapist.dart';
+import 'package:mind_speak_app/models/User.dart';
 
-class LoginRepository {
+abstract class ILoginRepository {
+  Future<UserModel> authenticateUser(String email, String password);
+
+  Future<UserModel> signInWithGoogle();
+
+  Future<ChildModel> fetchChildData(String userId);
+
+  Future<CarsFormModel?> fetchCarsFormStatus(String childId);
+
+  Future<TherapistModel> fetchTherapistInfo(String userId);
+
+  Future<void> updateBiometricStatus(String userId, bool status);
+}
+
+class LoginRepository implements ILoginRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
-  
   String hashPassword(String password) {
     final bytes = utf8.encode(password);
     final hashed = sha256.convert(bytes);
     return hashed.toString();
   }
 
- 
-  Future<Map<String, dynamic>> authenticateUser(
-      String email, String password) async {
+  @override
+  Future<UserModel> authenticateUser(String email, String password) async {
     try {
-     
       QuerySnapshot userSnapshot = await _firestore
           .collection('user')
           .where('email', isEqualTo: email)
@@ -38,32 +53,58 @@ class LoginRepository {
         throw Exception("Incorrect password.");
       }
 
-      return {
-        'userData': userData,
-        'userId': userSnapshot.docs.first.id,
-      };
+      return UserModel.fromFirestore(userData, userSnapshot.docs.first.id);
     } catch (e) {
       rethrow;
     }
   }
 
-  
-  Future<UserCredential> signInWithGoogle() async {
+  @override
+  Future<UserModel> signInWithGoogle() async {
     try {
-      GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      GoogleSignInAuthentication? googleAuth = await googleUser?.authentication;
+      UserCredential credential = await _performGoogleSignIn();
+      User? user = credential.user;
 
-      AuthCredential credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth?.accessToken, idToken: googleAuth?.idToken);
+      if (user == null) throw Exception("Google sign in failed");
 
-      return await _auth.signInWithCredential(credential);
+      DocumentSnapshot userDoc =
+          await _firestore.collection('user').doc(user.uid).get();
+
+      if (!userDoc.exists) {
+        await _createNewUser(user);
+        userDoc = await _firestore.collection('user').doc(user.uid).get();
+      }
+
+      return UserModel.fromFirestore(
+          userDoc.data() as Map<String, dynamic>, userDoc.id);
     } catch (e) {
       rethrow;
     }
   }
 
- 
-  Future<Map<String, dynamic>> fetchChildData(String userId) async {
+  @override
+  Future<UserCredential> _performGoogleSignIn() async {
+    GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+    GoogleSignInAuthentication? googleAuth = await googleUser?.authentication;
+
+    AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth?.accessToken, idToken: googleAuth?.idToken);
+
+    return await _auth.signInWithCredential(credential);
+  }
+
+  @override
+  Future<void> _createNewUser(User user) async {
+    await _firestore.collection('user').doc(user.uid).set({
+      'email': user.email,
+      'username': user.displayName,
+      'role': 'user',
+      'biometricEnabled': false,
+    });
+  }
+
+  @override
+  Future<ChildModel> fetchChildData(String userId) async {
     try {
       QuerySnapshot childSnapshot = await _firestore
           .collection('child')
@@ -74,36 +115,34 @@ class LoginRepository {
         throw Exception("No child associated with this parent.");
       }
 
-      return {
-        'childId': childSnapshot.docs.first['childId'],
-        'childData': childSnapshot.docs.first.data() as Map<String, dynamic>
-      };
+      return ChildModel.fromFirestore(
+          childSnapshot.docs.first.data() as Map<String, dynamic>,
+          childSnapshot.docs.first.id);
     } catch (e) {
       rethrow;
     }
   }
 
-  
-  Future<Map<String, dynamic>> fetchCarsFormStatus(String childId) async {
+  @override
+  Future<CarsFormModel?> fetchCarsFormStatus(String childId) async {
     try {
       QuerySnapshot carsSnapshot = await _firestore
           .collection('Cars')
           .where('childId', isEqualTo: childId)
           .get();
 
-      if (carsSnapshot.docs.isEmpty) {
-        return {'exists': false, 'status': false};
-      }
+      if (carsSnapshot.docs.isEmpty) return null;
 
-      var carsData = carsSnapshot.docs.first.data() as Map<String, dynamic>;
-      return {'exists': true, 'status': carsData['status'] ?? false};
+      return CarsFormModel.fromFirestore(
+          carsSnapshot.docs.first.data() as Map<String, dynamic>,
+          carsSnapshot.docs.first.id);
     } catch (e) {
       rethrow;
     }
   }
 
-  
-  Future<Map<String, dynamic>> fetchTherapistInfo(String userId) async {
+  @override
+  Future<TherapistModel> fetchTherapistInfo(String userId) async {
     try {
       DocumentSnapshot therapistDoc =
           await _firestore.collection('therapist').doc(userId).get();
@@ -112,13 +151,14 @@ class LoginRepository {
         throw Exception("Therapist information not found.");
       }
 
-      return therapistDoc.data() as Map<String, dynamic>;
+      return TherapistModel.fromFirestore(
+          therapistDoc.data() as Map<String, dynamic>, therapistDoc.id);
     } catch (e) {
       rethrow;
     }
   }
 
-  // Update Biometric Status
+  @override
   Future<void> updateBiometricStatus(String userId, bool status) async {
     try {
       await _firestore

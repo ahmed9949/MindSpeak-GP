@@ -2,17 +2,49 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:mind_speak_app/models/Child.dart';
+import 'package:mind_speak_app/models/Therapist.dart';
+import 'package:mind_speak_app/models/User.dart';
 import 'package:uuid/uuid.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 
-class SignupRepository {
+abstract class ISignUpRepository {
+  // Image handling
+  Future<String> uploadImage(File image, String folderName);
+
+  // Password handling
+  String hashPassword(String password);
+
+  // Duplicate checks
+  Future<bool> isValueTaken(String collection, String field, String value);
+  Future<bool> isParentPhoneNumberTaken(int phoneNumber);
+  Future<bool> isTherapistPhoneNumberTaken(int phoneNumber);
+  Future<bool> isNationalIdTaken(String nationalId);
+
+  // User creation and management
+  Future<UserCredential> createFirebaseUser(UserModel user);
+  Future<void> saveParentAndChildDetails(ChildModel child);
+  Future<void> saveTherapistDetails(TherapistModel therapist);
+  Future<void> saveUserDetails(UserModel user);
+  Future<void> updateBiometricStatus(String userId, bool enabled);
+
+  // Utility
+  String generateChildId();
+}
+class SignupRepository implements ISignUpRepository {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final Uuid _uuid = const Uuid();
 
+  @override
+  String generateChildId() {
+    return _uuid.v4(); 
+  }
+
   // Upload image to Firebase Storage
+  @override
   Future<String> uploadImage(File image, String folderName) async {
     try {
       String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
@@ -26,6 +58,7 @@ class SignupRepository {
   }
 
   // Hash password
+  @override
   String hashPassword(String password) {
     final bytes = utf8.encode(password);
     final hashed = sha256.convert(bytes);
@@ -33,6 +66,7 @@ class SignupRepository {
   }
 
   // Check if value exists in collection
+  @override
   Future<bool> isValueTaken(
       String collection, String field, String value) async {
     final querySnapshot = await _firestore
@@ -43,6 +77,7 @@ class SignupRepository {
   }
 
   // Check for duplicate parent phone number
+  @override
   Future<bool> isParentPhoneNumberTaken(int phoneNumber) async {
     QuerySnapshot parentQuery = await _firestore
         .collection('child')
@@ -52,6 +87,7 @@ class SignupRepository {
   }
 
   // Check for duplicate therapist phone number
+  @override
   Future<bool> isTherapistPhoneNumberTaken(int phoneNumber) async {
     QuerySnapshot therapistQuery = await _firestore
         .collection('therapist')
@@ -61,6 +97,7 @@ class SignupRepository {
   }
 
   // Check for duplicate national ID
+  @override
   Future<bool> isNationalIdTaken(String nationalId) async {
     QuerySnapshot nationalIdQuery = await _firestore
         .collection('therapist')
@@ -70,78 +107,61 @@ class SignupRepository {
   }
 
   // Create Firebase user
-  Future<UserCredential> createFirebaseUser(
-      String email, String password) async {
+  @override
+  Future<UserCredential> createFirebaseUser(UserModel user) async {
     return await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: hashPassword(password),
+      email: user.email,
+      password: hashPassword(user.password), // Hash the password
     );
   }
 
   // Save parent and child details
-  Future<void> saveParentAndChildDetails({
-    required String userId,
-    required String childName,
-    required int childAge,
-    required String childInterest,
-    required String childImageUrl,
-    required int parentPhoneNumber,
-  }) async {
-    String childId = _uuid.v4();
-    await _firestore.collection('child').doc(childId).set({
-      'childId': childId,
-      'name': childName,
-      'age': childAge,
-      'childInterest': childInterest,
-      'childPhoto': childImageUrl,
-      'userId': userId,
-      'parentnumber': parentPhoneNumber,
-      'therapistId': '',
-      'assigned': false,
+  @override
+  Future<void> saveParentAndChildDetails(ChildModel child) async {
+    await _firestore.collection('child').doc(child.childId).set({
+      'childId': child.childId,
+      'name': child.name,
+      'age': child.age,
+      'childInterest': child.childInterest,
+      'childPhoto': child.childPhoto,
+      'userId': child.userId,
+      'parentnumber': child.parentNumber,
+      'therapistId': child.therapistId,
+      'assigned': child.assigned,
     });
   }
 
   // Save therapist details
-  Future<void> saveTherapistDetails({
-    required String userId,
-    required String bio,
-    required String nationalId,
-    required String nationalProofUrl,
-    required String therapistImageUrl,
-    required int therapistPhoneNumber,
-  }) async {
-    await _firestore.collection('therapist').doc(userId).set({
-      'bio': bio,
-      'nationalid': nationalId,
-      'nationalproof': nationalProofUrl,
-      'therapistimage': therapistImageUrl,
-      'status': false,
-      'therapistnumber': therapistPhoneNumber,
-      'therapistid': userId,
-      'userid': userId
+  @override
+  Future<void> saveTherapistDetails(TherapistModel therapist) async {
+    await _firestore.collection('therapist').doc(therapist.therapistId).set({
+      'bio': therapist.bio,
+      'nationalid': therapist.nationalId,
+      'nationalproof': therapist.nationalProof,
+      'therapistimage': therapist.therapistImage,
+      'status': therapist.status,
+      'therapistnumber': therapist.therapistPhoneNumber,
+      'therapistid': therapist.therapistId,
+      'userid': therapist.userId,
     });
   }
 
   // Save user details
-  Future<void> saveUserDetails({
-    required String userId,
-    required String email,
-    required String password,
-    required String role,
-    required String username,
-    bool biometricEnabled = false,
-  }) async {
-    await _firestore.collection('user').doc(userId).set({
-      'email': email,
-      'password': hashPassword(password),
-      'role': role,
-      'userid': userId,
-      'username': username,
-      'biometricEnabled': biometricEnabled,
+  @override
+  Future<void> saveUserDetails(UserModel user) async {
+    await _firestore.collection('user').doc(user.userId).set({
+      'email': user.email,
+      'password':
+          hashPassword(user.password), // Use the password from UserModel
+      'role': user.role,
+      'userid': user.userId,
+      'username': user.username,
+      'biometricEnabled': user.biometricEnabled,
     });
   }
 
   // Update biometric status
+  @override
   Future<void> updateBiometricStatus(String userId, bool enabled) async {
     await _firestore
         .collection('user')

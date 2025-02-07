@@ -4,11 +4,17 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mind_speak_app/Repositories/SignupRepository.dart';
 import 'package:mind_speak_app/components/navigationpage.dart';
+import 'package:mind_speak_app/models/Child.dart';
+import 'package:mind_speak_app/models/Therapist.dart';
+import 'package:mind_speak_app/models/User.dart';
 import 'package:mind_speak_app/pages/adminDashboard.dart';
 import 'package:mind_speak_app/pages/login.dart';
 import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import '../service/local_auth_service.dart';
+
+
+
 
 class SignUpController {
   final BuildContext context;
@@ -51,12 +57,14 @@ class SignUpController {
     this.therapistImage,
   });
 
+  // Method to pick an image from the gallery or camera
   Future<File?> pickImage(ImageSource source) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: source);
     return pickedFile != null ? File(pickedFile.path) : null;
   }
 
+  // Main registration method
   Future<void> registration() async {
     if (!formKey.currentState!.validate()) return;
 
@@ -65,11 +73,21 @@ class SignUpController {
       if (!await _checkDuplicateEntries()) return;
 
       // Create Firebase user
-      UserCredential userCredential = await _repository.createFirebaseUser(
-        emailController.text.trim(),
-        passwordController.text.trim(),
+      final user = UserModel(
+        userId: '', // Will be set after Firebase user creation
+        email: emailController.text.trim(),
+        username: usernameController.text.trim(),
+        role: role,
+        password: passwordController.text.trim(), // Plain password
+        biometricEnabled: false,
       );
+
+      UserCredential userCredential =
+          await _repository.createFirebaseUser(user);
       String userId = userCredential.user!.uid;
+
+      // Update user ID in the UserModel using copyWith
+      final updatedUser = user.copyWith(userId: userId);
 
       // Upload images and save details based on role
       if (role == 'parent') {
@@ -77,43 +95,45 @@ class SignUpController {
             ? await _repository.uploadImage(childImage!, 'child_images')
             : '';
 
-        await _repository.saveParentAndChildDetails(
+        final child = ChildModel(
+          childId: _repository.generateChildId(), // Generate a unique child ID
           userId: userId,
-          childName: childNameController.text.trim(),
-          childAge: int.parse(childAgeController.text.trim()),
+          name: childNameController.text.trim(),
+          age: int.parse(childAgeController.text.trim()),
           childInterest: childInterestController.text.trim(),
-          childImageUrl: childImageUrl,
-          parentPhoneNumber: int.parse(parentPhoneNumberController.text.trim()),
+          childPhoto: childImageUrl,
+          parentNumber: int.parse(parentPhoneNumberController.text.trim()),
+          therapistId: '', // Initially unassigned
+          assigned: false,
         );
+
+        await _repository.saveParentAndChildDetails(child);
       } else if (role == 'therapist') {
         String nationalProofUrl = nationalProofImage != null
             ? await _repository.uploadImage(
                 nationalProofImage!, 'national_proofs')
             : '';
         String therapistImageUrl = therapistImage != null
-            ? await _repository.uploadImage(
-                therapistImage!, 'Therapists_images')
+            ? await _repository.uploadImage(therapistImage!, 'therapist_images')
             : '';
 
-        await _repository.saveTherapistDetails(
+        final therapist = TherapistModel(
+          therapistId: userId,
           userId: userId,
           bio: bioController.text.trim(),
           nationalId: nationalIdController.text.trim(),
-          nationalProofUrl: nationalProofUrl,
-          therapistImageUrl: therapistImageUrl,
+          nationalProof: nationalProofUrl,
+          therapistImage: therapistImageUrl,
           therapistPhoneNumber:
               int.parse(therapistPhoneNumberController.text.trim()),
+          status: false, // Initially unapproved
         );
+
+        await _repository.saveTherapistDetails(therapist);
       }
 
       // Save user details
-      await _repository.saveUserDetails(
-        userId: userId,
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
-        role: role,
-        username: usernameController.text.trim(),
-      );
+      await _repository.saveUserDetails(updatedUser);
 
       await _handleBiometricAuth(userId);
       _navigateBasedOnRole();
@@ -124,6 +144,7 @@ class SignUpController {
     }
   }
 
+  // Validate image uploads based on role
   bool _validateImageUploads() {
     if (role == 'parent' && childImage == null) {
       _showErrorSnackBar("Please upload your child's image.");
@@ -139,6 +160,7 @@ class SignUpController {
     return true;
   }
 
+  // Check for duplicate entries (phone numbers, national ID, etc.)
   Future<bool> _checkDuplicateEntries() async {
     if (role == 'parent') {
       int parentPhoneNumber =
@@ -168,6 +190,7 @@ class SignUpController {
     return true;
   }
 
+  // Handle biometric authentication
   Future<void> _handleBiometricAuth(String userId) async {
     bool enableBiometric = await LocalAuth.hasBiometrics();
     if (enableBiometric) {
@@ -183,6 +206,7 @@ class SignUpController {
     await sessionProvider.saveSession(userId, role);
   }
 
+  // Navigate to the appropriate screen based on the user's role
   void _navigateBasedOnRole() {
     _showSuccessSnackBar("Registered Successfully");
 
@@ -198,12 +222,15 @@ class SignUpController {
             "Your account is pending approval. Please wait until the admin approves your request.");
         break;
       case 'admin':
-        Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const AdminDashboardView()));
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const AdminDashboardView()));
         break;
     }
   }
 
+  // Handle Firebase authentication errors
   void _handleFirebaseAuthError(FirebaseAuthException e) {
     switch (e.code) {
       case 'weak-password':
@@ -217,6 +244,7 @@ class SignUpController {
     }
   }
 
+  // Show an error snackbar
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message),
@@ -224,6 +252,7 @@ class SignUpController {
     ));
   }
 
+  // Show a success snackbar
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message, style: const TextStyle(fontSize: 20.0)),
@@ -231,6 +260,7 @@ class SignUpController {
     ));
   }
 
+  // Show an info snackbar
   void _showInfoSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message),

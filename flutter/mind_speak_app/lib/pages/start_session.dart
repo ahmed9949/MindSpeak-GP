@@ -388,32 +388,17 @@ class _StartSessionState extends State<start_session> {
   }
 
   Future<void> _playTextToSpeech(String text) async {
-    await _player.stop();
-    _playerSubscription?.cancel();
-    _playerSubscription = null;
-
     try {
-      final bytes = await _ttsService.synthesizeSpeech(text);
-      await _player.setAudioSource(CustomAudioSource(bytes));
+      _triggerAction(_talkController); // Start talk animation
+      await _ttsService.speak(text);
 
-      _playerSubscription = _player.playerStateStream.listen((playerState) {
-        if (!mounted) return;
+      // Wait for speech to complete
+      while (_ttsService.isSpeaking()) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
 
-        switch (playerState.processingState) {
-          case ProcessingState.ready:
-            _triggerAction(_talkController);
-            break;
-          case ProcessingState.completed:
-            _triggerAction(_stopHearController);
-            _playerSubscription?.cancel();
-            _playerSubscription = null;
-            break;
-          default:
-            break;
-        }
-      });
-
-      await _player.play();
+      if (!mounted) return;
+      _triggerAction(_stopHearController);
     } catch (e) {
       _handleError('TTS error: $e');
       _triggerAction(_stopHearController);
@@ -422,7 +407,7 @@ class _StartSessionState extends State<start_session> {
 
   // If user wants to skip TTS mid-response
   void _interruptSpeech() async {
-    await _player.stop();
+    await _ttsService.stop();
     if (!mounted) return;
 
     if (_isInSession) {
@@ -465,7 +450,6 @@ class _StartSessionState extends State<start_session> {
         'therapistId': therapistId,
         'date': DateTime.now().toIso8601String(),
         'conversation': conversationText,
-        'detectionduringsession': detectionData,
       });
 
       debugPrint('Session saved successfully to Firestore.');
@@ -545,6 +529,7 @@ class _StartSessionState extends State<start_session> {
     // Stop detection if running
     _stopDetectionLoop();
     _cameraController?.dispose();
+    _ttsService.dispose();
 
     // Cancel TTS subscription
     _playerSubscription?.cancel();

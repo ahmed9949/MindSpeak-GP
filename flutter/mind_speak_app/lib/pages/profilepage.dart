@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/controllers/ProfileController.dart';
-
 import 'package:mind_speak_app/pages/login.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
@@ -11,7 +10,7 @@ class ProfilePage extends StatefulWidget {
 
   const ProfilePage({
     super.key,
-    required this.controller, // Make controller required
+    required this.controller, // Controller is required.
   });
 
   @override

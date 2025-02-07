@@ -1,14 +1,18 @@
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-
 import 'package:mind_speak_app/Repositories/ProfileRepository.dart';
+import 'package:mind_speak_app/models/User.dart';
 
 class ProfileController {
   final ProfileRepository _repository;
   final ImagePicker _imagePicker;
 
   String? parentId;
+  // Store the parent model (UserModel) internally.
+  UserModel? _parentDataModel;
+  // Expose parent data to the UI as a Map using toFirestore().
   Map<String, dynamic>? parentData;
+
   List<Map<String, dynamic>> childrenData = [];
   List<Map<String, dynamic>> carsData = [];
 
@@ -20,43 +24,42 @@ class ProfileController {
 
   Future<void> fetchParentAndChildData(String userId) async {
     try {
-      // Fetch parent data
-      parentData = await _repository.getParentData(userId);
+      // Fetch parent data as a UserModel.
+      _parentDataModel = await _repository.getParentData(userId);
       parentId = userId;
+      // Convert the UserModel to a Map for the UI.
+      parentData = _parentDataModel?.toFirestore();
 
-      // Fetch children data
-      final childDocs = await _repository.getChildrenData(userId);
-
+      // Fetch children data (List<ChildModel>).
+      final childModels = await _repository.getChildrenData(userId);
       List<Map<String, dynamic>> childrenWithDetails = [];
       List<Map<String, dynamic>> allCarsData = [];
 
-      for (var childDoc in childDocs) {
-        final childData = childDoc.data() as Map<String, dynamic>;
-        final childId = childDoc.id;
+      for (var childModel in childModels) {
+        // Convert ChildModel to a map.
+        final childData = childModel.toFirestore();
+        final childId = childModel.childId;
 
-        // Get therapist name
+        // Get therapist name using child data.
         String therapistName = await _getTherapistName(childData);
         childData['therapistName'] = therapistName;
 
         childrenWithDetails.add({...childData, 'id': childId});
 
-        // Fetch CARS forms
-        final carsDocs = await _repository.getCarsForms(childId);
+        // Fetch CARS forms (List<CarsFormModel>) for this child.
+        final carsModels = await _repository.getCarsForms(childId);
         int trialNumber = 1;
-
-        for (var carsDoc in carsDocs) {
-          final carsData = carsDoc.data() as Map<String, dynamic>;
+        for (var carsModel in carsModels) {
           allCarsData.add({
-            'id': carsDoc.id,
-            'childId': carsData['childId'] ?? 'Unknown',
+            'id': carsModel.formId,
+            'childId': carsModel.childId,
             'trial': trialNumber++,
-            'totalScore': carsData['totalScore'] ?? 'N/A',
-            'selectedQuestions': carsData['selectedQuestions'] ?? [],
-            'status': carsData['status'] ?? 'Unknown',
+            'totalScore': carsModel.totalScore, // This is a double.
+            'selectedQuestions': carsModel.selectedQuestions,
+            'status': carsModel.status,
           });
         }
       }
-
       childrenData = childrenWithDetails;
       carsData = allCarsData;
     } catch (e) {
@@ -65,29 +68,26 @@ class ProfileController {
   }
 
   Future<String> _getTherapistName(Map<String, dynamic> childData) async {
-    if (childData['assigned'] != true || childData['therapistId'] == null) {
+    if (childData['assigned'] != true ||
+        childData['therapistId'] == null ||
+        childData['therapistId'] == '') {
       return 'Not Assigned';
     }
-
     try {
-      final therapistData =
+      final therapistModel =
           await _repository.getTherapistData(childData['therapistId']);
-
-      if (therapistData == null) {
+      if (therapistModel == null) {
         return 'Unknown Therapist';
       }
-
-      final userIdOfTherapist = therapistData['userid'];
-      if (userIdOfTherapist == null) {
+      final String userIdOfTherapist = therapistModel.userId;
+      if (userIdOfTherapist.isEmpty) {
         return 'Unknown Therapist';
       }
-
-      final userData = await _repository.getUserData(userIdOfTherapist);
-      if (userData == null) {
+      final userModel = await _repository.getUserData(userIdOfTherapist);
+      if (userModel == null) {
         return 'Unknown Therapist';
       }
-
-      return userData['username'] ?? 'N/A';
+      return userModel.username;
     } catch (e) {
       return 'Unknown Therapist';
     }

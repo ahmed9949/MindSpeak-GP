@@ -80,16 +80,39 @@ class AdminRepository {
 
   Future<bool> approveTherapist(String therapistId) async {
     try {
-      WriteBatch batch = _firestore.batch();
-
+      // Reference the therapist document.
       DocumentReference therapistRef =
           _firestore.collection('therapist').doc(therapistId);
-      DocumentReference userRef =
-          _firestore.collection('user').doc(therapistId);
 
+      // Fetch the therapist document to verify it exists.
+      DocumentSnapshot therapistSnapshot = await therapistRef.get();
+      if (!therapistSnapshot.exists) {
+        debugPrint("Therapist document not found for id: $therapistId");
+        return false;
+      }
+
+      // Extract the user ID from the therapist document.
+      // If the 'userid' field isn't available, fallback to using therapistId.
+      Map<String, dynamic>? therapistData =
+          therapistSnapshot.data() as Map<String, dynamic>?;
+      String userId = therapistData?['userid'] ?? therapistId;
+
+      // Reference the corresponding user document.
+      DocumentReference userRef = _firestore.collection('user').doc(userId);
+
+      // Optionally, verify that the user document exists:
+      DocumentSnapshot userSnapshot = await userRef.get();
+      if (!userSnapshot.exists) {
+        debugPrint("User document not found for id: $userId");
+        return false;
+      }
+
+      // Create a batch update.
+      WriteBatch batch = _firestore.batch();
       batch.update(therapistRef, {'status': true});
       batch.update(userRef, {'status': true});
 
+      // Commit the batch.
       await batch.commit();
       return true;
     } catch (e) {

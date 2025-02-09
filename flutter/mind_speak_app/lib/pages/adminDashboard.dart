@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/Repositories/AdminRepository.dart';
 import 'package:mind_speak_app/components/CustomBottomNavigationBar.dart';
 import 'package:mind_speak_app/controllers/AdminController.dart';
 import 'package:mind_speak_app/models/Therapist.dart';
@@ -28,7 +29,9 @@ class AdminDashboardView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => AdminController(),
+      create: (_) => AdminController(
+        repository: AdminRepository(),
+      ),
       child: Consumer<AdminController>(
         builder: (context, controller, _) {
           return Scaffold(

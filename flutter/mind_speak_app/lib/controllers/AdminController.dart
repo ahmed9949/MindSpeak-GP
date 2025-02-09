@@ -4,12 +4,13 @@ import 'package:mind_speak_app/models/Therapist.dart';
 import 'package:mind_speak_app/models/admin_state.dart';
 
 class AdminController with ChangeNotifier {
-  final AdminRepository _repository;
+  final IAdminRepository _repository;
+
   AdminState _state = const AdminState();
   static const int itemsPerPage = 5;
 
-  AdminController({AdminRepository? repository})
-      : _repository = repository ?? AdminRepository() {
+  AdminController({required IAdminRepository repository})
+      : _repository = repository {
     _initializeData();
   }
   AdminState get state => _state;

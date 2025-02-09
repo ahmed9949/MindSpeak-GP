@@ -4,10 +4,19 @@ import 'package:flutter/foundation.dart';
 import 'package:mind_speak_app/models/Therapist.dart';
 import 'package:mind_speak_app/models/User.dart';
 
-class AdminRepository {
+abstract class IAdminRepository {
+  Future<int> getUsersCount();
+  Future<int> getTherapistsCount();
+  Future<List<TherapistModel>> getPendingTherapistRequests();
+  Future<bool> approveTherapist(String therapistId);
+  Future<bool> rejectTherapist(String therapistId);
+  Future<void> deleteUserFromAuth(String email);
+}
+
+class AdminRepository implements IAdminRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-
+  @override
   Future<int> getUsersCount() async {
     try {
       QuerySnapshot snapshot = await _firestore.collection('user').get();
@@ -18,6 +27,7 @@ class AdminRepository {
     }
   }
 
+  @override
   Future<int> getTherapistsCount() async {
     try {
       QuerySnapshot snapshot = await _firestore.collection('therapist').get();
@@ -28,6 +38,7 @@ class AdminRepository {
     }
   }
 
+  @override
   Future<List<TherapistModel>> getPendingTherapistRequests() async {
     try {
       QuerySnapshot therapistSnapshot = await _firestore
@@ -78,6 +89,7 @@ class AdminRepository {
     }
   }
 
+  @override
   Future<bool> approveTherapist(String therapistId) async {
     try {
       // Reference the therapist document.
@@ -121,6 +133,7 @@ class AdminRepository {
     }
   }
 
+  @override
   Future<bool> rejectTherapist(String therapistId) async {
     try {
       WriteBatch batch = _firestore.batch();
@@ -141,6 +154,7 @@ class AdminRepository {
     }
   }
 
+  @override
   Future<void> deleteUserFromAuth(String email) async {
     try {
       List<String> signInMethods =

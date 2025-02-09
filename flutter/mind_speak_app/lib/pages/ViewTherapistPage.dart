@@ -5,20 +5,21 @@ import 'package:mind_speak_app/controllers/ViewTherapistController.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/components/CustomBottomNavigationBar.dart';
 
-class ViewDoctors extends StatefulWidget {
-  const ViewDoctors({super.key});
+class ViewTherapist extends StatefulWidget {
+  const ViewTherapist({super.key});
 
   @override
-  State<ViewDoctors> createState() => _ViewDoctorsState();
+  State<ViewTherapist> createState() => _ViewTherapistState();
 }
 
-class _ViewDoctorsState extends State<ViewDoctors> {
-  final ViewTherapistController _controller = ViewTherapistController();
+class _ViewTherapistState extends State<ViewTherapist> {
+  late ViewTherapistController _controller = ViewTherapistController();
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    
     _loadTherapists();
   }
 

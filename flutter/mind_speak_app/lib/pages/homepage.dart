@@ -259,7 +259,71 @@ class _HomePageState extends State<HomePage> {
                                 },
                               ),
                             ),
-                            const SizedBox(height: 120), // Add a gap here
+                            // Add Quick Tips Section
+                            const SizedBox(height: 20),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: themeProvider.isDarkMode
+                                    ? Colors.grey[850]
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black12,
+                                    blurRadius: 10,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "Quick Tips for Parents",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 18,
+                                          color: themeProvider.isDarkMode
+                                              ? Colors.white
+                                              : Colors.black,
+                                        ),
+                                      ),
+                                      Icon(Icons.tips_and_updates,
+                                          color: Colors.blueAccent, size: 24),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+
+                                  // Using Flutter's Built-in Carousel
+                                  SizedBox(
+                                    height: 120,
+                                    child: PageView(
+                                      scrollDirection: Axis.horizontal,
+                                      children: [
+                                        _buildTipCard(Icons.visibility,
+                                            "Encourage eye contact with interactive games."),
+                                        _buildTipCard(Icons.schedule,
+                                            "Use visual schedules to reduce anxiety."),
+                                        _buildTipCard(Icons.emoji_events,
+                                            "Reward small achievements with positive reinforcement."),
+                                        _buildTipCard(Icons.hearing,
+                                            "Use clear and slow speech when communicating."),
+                                        _buildTipCard(Icons.groups,
+                                            "Encourage social interactions through storytelling."),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(
+                                height:
+                                    20), // Add spacing before the Start Session button // Add spacing before the Start Session button
 
                             Center(
                               child: ElevatedButton(
@@ -478,4 +542,34 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+}
+
+Widget _buildTipCard(IconData icon, String text) {
+  return Container(
+    margin: const EdgeInsets.symmetric(horizontal: 8),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.blueAccent.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(15),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black12,
+          blurRadius: 8,
+          offset: Offset(0, 4),
+        ),
+      ],
+    ),
+    child: Row(
+      children: [
+        Icon(icon, size: 30, color: Colors.blueAccent),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+        ),
+      ],
+    ),
+  );
 }

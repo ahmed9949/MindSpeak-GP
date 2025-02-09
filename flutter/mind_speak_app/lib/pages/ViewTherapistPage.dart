@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/models/Therapist.dart';
 import 'package:provider/provider.dart';
-import 'package:mind_speak_app/controllers/ViewDoctorController.dart';
+import 'package:mind_speak_app/controllers/ViewTherapistController.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/components/CustomBottomNavigationBar.dart';
 
@@ -13,7 +13,7 @@ class ViewDoctors extends StatefulWidget {
 }
 
 class _ViewDoctorsState extends State<ViewDoctors> {
-  final ViewDoctorController _controller = ViewDoctorController();
+  final ViewTherapistController _controller = ViewTherapistController();
   final TextEditingController _searchController = TextEditingController();
 
   @override

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mind_speak_app/pages/ViewDoctorPage.dart';
+import 'package:mind_speak_app/pages/ViewTherapistPage.dart';
 import 'package:mind_speak_app/pages/adminDashboard.dart';
 
 import 'package:mind_speak_app/pages/login.dart';

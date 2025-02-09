@@ -7,7 +7,7 @@ abstract class ITherapistRepository {
   Future<List<TherapistModel>> fetchApprovedTherapists();
 }
 
-class DoctorRepository implements ITherapistRepository {
+class ViewTherapistrepository implements ITherapistRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override

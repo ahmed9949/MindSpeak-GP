@@ -1,16 +1,15 @@
 import 'package:flutter/foundation.dart';
-import 'package:mind_speak_app/Repositories/ViewDoctorRepository.dart';
+import 'package:mind_speak_app/Repositories/ViewTherapistRepository.dart';
 import 'package:mind_speak_app/models/Therapist.dart';
 
-
-class ViewDoctorController {
+class ViewTherapistController {
   final ITherapistRepository _doctorRepository;
   List<TherapistModel> allTherapists = [];
   List<TherapistModel> filteredTherapists = [];
   bool isLoading = true;
 
-  ViewDoctorController({ITherapistRepository? repository})
-      : _doctorRepository = repository ?? DoctorRepository();
+  ViewTherapistController({ITherapistRepository? repository})
+      : _doctorRepository = repository ?? ViewTherapistrepository();
 
   Future<void> fetchApprovedTherapists(Function updateUI) async {
     try {

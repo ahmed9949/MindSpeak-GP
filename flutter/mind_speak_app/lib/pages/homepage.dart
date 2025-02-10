@@ -3,14 +3,11 @@ import 'package:mind_speak_app/controllers/ProfileController.dart';
 import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/predict.dart';
 import 'package:mind_speak_app/pages/profilepage.dart';
-import 'package:mind_speak_app/pages/report_Page.dart';
 import 'package:mind_speak_app/pages/searchpage.dart';
 import 'package:mind_speak_app/components/drawer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mind_speak_app/pages/start_session.dart';
-import 'package:mind_speak_app/pages/sttpage.dart';
-import 'package:mind_speak_app/pages/tts.dart';
-import 'package:mind_speak_app/pages/voicechat.dart';
+import 'package:mind_speak_app/pages/startsession.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
@@ -190,8 +187,8 @@ class _HomePageState extends State<HomePage> {
                         // _buildTopCard(
                         //     context, "stt", "assets/cars.png", const STTPage()),
 
-                        _buildTopCard(context, "voicechat", "assets/cars.png",
-                            const VoiceChatPage()),
+                        _buildTopCard(context, "3d session", "assets/cars.png",
+                            StartSessionPage()),
                         _buildTopCard(
                           context,
                           "Cars",

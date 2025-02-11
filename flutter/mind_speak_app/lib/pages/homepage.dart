@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/controllers/ProfileController.dart';
 import 'package:mind_speak_app/pages/carsfrom.dart';
+import 'package:mind_speak_app/pages/detections.dart';
 import 'package:mind_speak_app/pages/predict.dart';
 import 'package:mind_speak_app/pages/profilepage.dart';
 import 'package:mind_speak_app/pages/searchpage.dart';
@@ -199,7 +200,7 @@ class _HomePageState extends State<HomePage> {
                           context,
                           "Prediction",
                           "assets/predict.png",
-                          const PredictScreen(),
+                          const detection(),
                         ),
                         _buildTopCard(
                           context,

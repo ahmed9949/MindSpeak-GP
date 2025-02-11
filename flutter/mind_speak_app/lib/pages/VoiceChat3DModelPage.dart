@@ -222,7 +222,7 @@ class _VoiceChat3DModelPageState extends State<VoiceChat3DModelPage> {
   Future<void> _initTts() async {
     await _flutterTts.setLanguage("ar-EG");
     await _flutterTts.setPitch(1.0);
-    await _flutterTts.setSpeechRate(0.9);
+    await _flutterTts.setSpeechRate(0.5);
     _flutterTts.setCompletionHandler(() {
       if (mounted) {
         setState(() => _isSpeaking = false);
@@ -398,43 +398,44 @@ class _VoiceChat3DModelPageState extends State<VoiceChat3DModelPage> {
   }
 
 // In voice_chat_3d_model_page.dart
- Future<void> _generateAndSaveRecommendations() async {
-  final sessionProvider = Provider.of<SessionProvider>(context, listen: false);
-  final childId = sessionProvider.childId;
+  Future<void> _generateAndSaveRecommendations() async {
+    final sessionProvider =
+        Provider.of<SessionProvider>(context, listen: false);
+    final childId = sessionProvider.childId;
 
-  if (childId == null) return;
+    if (childId == null) return;
 
-  try {
-    // Get recent sessions
-    final sessions = await FirebaseFirestore.instance
-        .collection('sessions')
-        .where('childId', isEqualTo: childId)
-        .orderBy('sessionNumber', descending: true)
-        .limit(5)  // Get last 5 sessions
-        .get();
+    try {
+      // Get recent sessions
+      final sessions = await FirebaseFirestore.instance
+          .collection('sessions')
+          .where('childId', isEqualTo: childId)
+          .orderBy('sessionNumber', descending: true)
+          .limit(5) // Get last 5 sessions
+          .get();
 
-    if (sessions.docs.isEmpty) {
-      print('No sessions found for recommendations');
-      return;
-    }
+      if (sessions.docs.isEmpty) {
+        print('No sessions found for recommendations');
+        return;
+      }
 
-    // Get child data for recommendations
-    final childDoc = await FirebaseFirestore.instance
-        .collection('child')
-        .doc(childId)
-        .get();
+      // Get child data for recommendations
+      final childDoc = await FirebaseFirestore.instance
+          .collection('child')
+          .doc(childId)
+          .get();
 
-    if (!childDoc.exists) {
-      print('Child document not found');
-      return;
-    }
+      if (!childDoc.exists) {
+        print('Child document not found');
+        return;
+      }
 
-    final childData = childDoc.data()!;
-    final sessionData = sessions.docs.map((doc) => doc.data()).toList();
-    final aggregateStats = childData['aggregateStats'] ?? {};
+      final childData = childDoc.data()!;
+      final sessionData = sessions.docs.map((doc) => doc.data()).toList();
+      final aggregateStats = childData['aggregateStats'] ?? {};
 
-    // Generate recommendations with more specific prompt
-    final prompt = '''
+      // Generate recommendations with more specific prompt
+      final prompt = '''
 Based on the session data for ${childData['name']}, aged ${childData['age']}, with interest in ${childData['childInterest']},
 please provide two specific recommendations in Arabic:
 
@@ -449,47 +450,45 @@ please provide two specific recommendations in Arabic:
 - Focus areas for next session
 ''';
 
-    final chat = _model.startChat();
-    final response = await chat.sendMessage(Content.text(prompt));
-    
-    if (response.text == null) {
-      print('No recommendations generated');
-      return;
+      final chat = _model.startChat();
+      final response = await chat.sendMessage(Content.text(prompt));
+
+      if (response.text == null) {
+        print('No recommendations generated');
+        return;
+      }
+
+      // Split recommendations
+      final recommendationsText = response.text!;
+      final parts = recommendationsText.split('2.');
+      final parentRecs = parts[0].replaceAll('1.', '').trim();
+      final therapistRecs = parts.length > 1 ? parts[1].trim() : '';
+
+      final recommendations = {
+        'parents': parentRecs,
+        'therapists': therapistRecs,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+      // Save to session document
+      await FirebaseFirestore.instance
+          .collection('sessions')
+          .doc(_sessionId)
+          .update({
+        'recommendations': recommendations,
+      });
+
+      // Save to child document
+      await FirebaseFirestore.instance.collection('child').doc(childId).update({
+        'latestRecommendations': recommendations,
+      });
+
+      print('Recommendations saved successfully');
+    } catch (e) {
+      print('Error generating recommendations: $e');
     }
-
-    // Split recommendations
-    final recommendationsText = response.text!;
-    final parts = recommendationsText.split('2.');
-    final parentRecs = parts[0].replaceAll('1.', '').trim();
-    final therapistRecs = parts.length > 1 ? parts[1].trim() : '';
-
-    final recommendations = {
-      'parents': parentRecs,
-      'therapists': therapistRecs,
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-
-    // Save to session document
-    await FirebaseFirestore.instance
-        .collection('sessions')
-        .doc(_sessionId)
-        .update({
-          'recommendations': recommendations,
-        });
-
-    // Save to child document
-    await FirebaseFirestore.instance
-        .collection('child')
-        .doc(childId)
-        .update({
-          'latestRecommendations': recommendations,
-        });
-
-    print('Recommendations saved successfully');
-  } catch (e) {
-    print('Error generating recommendations: $e');
   }
-}
+
   Future<void> _endCall() async {
     if (_isListening) {
       await _speech.stop();
@@ -505,7 +504,6 @@ please provide two specific recommendations in Arabic:
 
     // Save ending message
     await _saveMessageToDatabase('dr', endingMessage);
- 
 
     setState(() {
       _messages.add(ChatMessage(text: endingMessage, isUser: false));
@@ -524,11 +522,10 @@ please provide two specific recommendations in Arabic:
     _playAnimation('Rig|idle');
 
     // Save statistics first
-  await _saveSessionStatistics();
-  
-  // Then generate and save recommendations
-  await _generateAndSaveRecommendations();
+    await _saveSessionStatistics();
 
+    // Then generate and save recommendations
+    await _generateAndSaveRecommendations();
 
     if (mounted) {
       // Show session summary dialog
@@ -663,59 +660,103 @@ please provide two specific recommendations in Arabic:
             ),
           ),
           // Control Buttons Section
+
+// Control Buttons Section
           Container(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                if (!_callStarted)
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _callStarted = true;
-                      });
-                      _startCall();
-                    },
-                    child: const Text("Start Call"),
-                  )
-                else ...[
-                  // Record Button
-                  ElevatedButton.icon(
-                    onPressed: _isSpeaking ? null : _toggleListening,
-                    icon: Icon(_isListening ? Icons.mic : Icons.mic_none),
-                    label: Text(_isListening ? 'Recording...' : 'Record'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _isListening ? Colors.red : Colors.blue,
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (!_callStarted) {
+                  // Single Start Call button
+                  return Center(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _callStarted = true;
+                        });
+                        _startCall();
+                      },
+                      child: const Text("Start Call"),
                     ),
-                  ),
-                  // Stop TTS Button
-                  ElevatedButton.icon(
-                    onPressed: _isSpeaking
-                        ? () async {
-                            await _flutterTts.stop();
-                            setState(() => _isSpeaking = false);
-                            _playAnimation('Rig|idle');
-                          }
-                        : null,
-                    icon: const Icon(Icons.stop),
-                    label: const Text('Stop TTS'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
+                  );
+                }
+
+                // Control buttons when call is started
+                return Wrap(
+                  spacing: 8.0, // horizontal space between buttons
+                  runSpacing: 8.0, // vertical space between lines
+                  alignment: WrapAlignment.spaceEvenly,
+                  children: [
+                    // Record Button
+                    SizedBox(
+                      width: constraints.maxWidth > 600
+                          ? (constraints.maxWidth - 32) / 3
+                          : // For larger screens
+                          (constraints.maxWidth - 16) /
+                              2, // For smaller screens
+                      child: ElevatedButton.icon(
+                        onPressed: _isSpeaking ? null : _toggleListening,
+                        icon: Icon(_isListening ? Icons.mic : Icons.mic_none),
+                        label: Text(_isListening ? 'Recording...' : 'Record'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              _isListening ? Colors.red : Colors.blue,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  // End Call Button
-                  ElevatedButton.icon(
-                    onPressed: () => _endCall(),
-                    icon: const Icon(Icons.call_end),
-                    label: const Text('End Call'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
+
+                    // Stop TTS Button
+                    SizedBox(
+                      width: constraints.maxWidth > 600
+                          ? (constraints.maxWidth - 32) / 3
+                          : (constraints.maxWidth - 16) / 2,
+                      child: ElevatedButton.icon(
+                        onPressed: _isSpeaking
+                            ? () async {
+                                await _flutterTts.stop();
+                                setState(() => _isSpeaking = false);
+                                _playAnimation('Rig|idle');
+                              }
+                            : null,
+                        icon: const Icon(Icons.stop),
+                        label: const Text('Stop TTS'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
-              ],
+
+                    // End Call Button
+                    SizedBox(
+                      width: constraints.maxWidth > 600
+                          ? (constraints.maxWidth - 32) / 3
+                          : constraints.maxWidth - 16,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _endCall(),
+                        icon: const Icon(Icons.call_end),
+                        label: const Text('End Call'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
-          ),
+          )
         ],
       ),
     );

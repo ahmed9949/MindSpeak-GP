@@ -1,7 +1,7 @@
 // lib/screens/start_session_page.dart
 
 import 'package:flutter/material.dart';
-import 'package:mind_speak_app/pages/VoiceChat3DModelPage.dart';
+import 'package:mind_speak_app/pages/avatarpages/VoiceChat3DModelPage.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';

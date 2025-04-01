@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/controllers/ProfileController.dart';
-import 'package:mind_speak_app/pages/aggregatestats.dart';
-import 'package:mind_speak_app/pages/carsfrom.dart';
+import 'package:mind_speak_app/pages/avatarpages/aggregatestats.dart';
+ import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/homepage.dart';
 import 'package:mind_speak_app/pages/logout.dart';
 import 'package:mind_speak_app/pages/predict.dart';
 import 'package:mind_speak_app/pages/profilepage.dart';
 import 'package:mind_speak_app/pages/searchpage.dart';
-import 'package:mind_speak_app/pages/sessionreport.dart';
+import 'package:mind_speak_app/pages/avatarpages/sessionreport.dart';
 import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 

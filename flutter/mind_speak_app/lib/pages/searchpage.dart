@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/controllers/SearchController.dart';
 import 'package:mind_speak_app/models/Therapist.dart';
+import 'package:mind_speak_app/models/User.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
@@ -29,6 +30,10 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   void _showTherapistDetails(TherapistModel therapist) {
+    // Get associated user information
+    UserModel? userInfo =
+        _controller.getUserForTherapist(therapist.therapistId);
+
     showDialog(
       context: context,
       builder: (context) {
@@ -52,6 +57,15 @@ class _SearchPageState extends State<SearchPage> {
                             height: imageHeight,
                             width: double.infinity,
                             fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                height: imageHeight,
+                                width: double.infinity,
+                                color: Colors.grey[300],
+                                child: const Icon(Icons.person,
+                                    size: 100, color: Colors.grey),
+                              );
+                            },
                           ),
                         );
                       },
@@ -66,7 +80,7 @@ class _SearchPageState extends State<SearchPage> {
                     ),
                   const SizedBox(height: 16),
                   Text(
-                    therapist.username ?? 'Unknown',
+                    userInfo?.username ?? 'Unknown',
                     style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -79,24 +93,27 @@ class _SearchPageState extends State<SearchPage> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          therapist.email ?? 'N/A',
+                          userInfo?.email ?? 'N/A',
                           style: const TextStyle(fontSize: 16),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Icons.phone, color: Colors.green),
-                      const SizedBox(width: 8),
-                      Text(
-                        therapist.therapistPhoneNumber.toString(),
-                        style: const TextStyle(fontSize: 16),
+                  if (userInfo != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.phone, color: Colors.green),
+                          const SizedBox(width: 8),
+                          Text(
+                            userInfo.phoneNumber.toString(),
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
                   const SizedBox(height: 16),
                   Text(
                     therapist.bio,
@@ -112,6 +129,7 @@ class _SearchPageState extends State<SearchPage> {
                         therapist.therapistId,
                         sessionProvider.userId,
                       );
+                      if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(result)),
                       );
@@ -186,6 +204,10 @@ class _SearchPageState extends State<SearchPage> {
                               itemCount: filteredTherapists.length,
                               itemBuilder: (context, index) {
                                 final therapist = filteredTherapists[index];
+                                // Get user information for this therapist
+                                final userInfo = _controller
+                                    .getUserForTherapist(therapist.therapistId);
+
                                 return GestureDetector(
                                   onTap: () => _showTherapistDetails(therapist),
                                   child: Card(
@@ -210,6 +232,18 @@ class _SearchPageState extends State<SearchPage> {
                                                   height: imageHeight,
                                                   width: double.infinity,
                                                   fit: BoxFit.cover,
+                                                  errorBuilder: (context, error,
+                                                      stackTrace) {
+                                                    return Container(
+                                                      height: imageHeight,
+                                                      width: double.infinity,
+                                                      color: Colors.grey[300],
+                                                      child: const Icon(
+                                                          Icons.person,
+                                                          size: 60,
+                                                          color: Colors.grey),
+                                                    );
+                                                  },
                                                 ),
                                               );
                                             },
@@ -225,12 +259,13 @@ class _SearchPageState extends State<SearchPage> {
                                         Padding(
                                           padding: const EdgeInsets.all(8.0),
                                           child: Text(
-                                            therapist.username ?? 'Unknown',
+                                            userInfo?.username ?? 'Unknown',
                                             style: const TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,
                                             ),
                                             textAlign: TextAlign.center,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                       ],

@@ -10,15 +10,10 @@ import 'package:mind_speak_app/models/User.dart';
 
 abstract class ILoginRepository {
   Future<UserModel> authenticateUser(String email, String password);
-
   Future<UserModel> signInWithGoogle();
-
   Future<ChildModel> fetchChildData(String userId);
-
   Future<CarsFormModel?> fetchCarsFormStatus(String childId);
-
   Future<TherapistModel> fetchTherapistInfo(String userId);
-
   Future<void> updateBiometricStatus(String userId, bool status);
 }
 
@@ -36,24 +31,33 @@ class LoginRepository implements ILoginRepository {
   @override
   Future<UserModel> authenticateUser(String email, String password) async {
     try {
-      QuerySnapshot userSnapshot = await _firestore
-          .collection('user')
-          .where('email', isEqualTo: email)
-          .get();
+      // Use Firebase Auth for authentication
+      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-      if (userSnapshot.docs.isEmpty) {
-        throw Exception("No user found with this email.");
+      String userId = userCredential.user!.uid;
+
+      // After successful authentication, fetch the user details
+      DocumentSnapshot userDoc =
+          await _firestore.collection('users').doc(userId).get();
+
+      if (!userDoc.exists) {
+        throw Exception("User details not found in database.");
       }
 
-      var userData = userSnapshot.docs.first.data() as Map<String, dynamic>;
-      String storedPassword = userData['password'];
-      String hashedEnteredPassword = hashPassword(password);
-
-      if (hashedEnteredPassword != storedPassword) {
-        throw Exception("Incorrect password.");
+      return UserModel.fromFirestore(
+          userDoc.data() as Map<String, dynamic>, userDoc.id);
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'user-not-found':
+          throw Exception("No user found with this email.");
+        case 'wrong-password':
+          throw Exception("Incorrect password.");
+        default:
+          throw Exception("Authentication failed: ${e.message}");
       }
-
-      return UserModel.fromFirestore(userData, userSnapshot.docs.first.id);
     } catch (e) {
       rethrow;
     }
@@ -68,11 +72,11 @@ class LoginRepository implements ILoginRepository {
       if (user == null) throw Exception("Google sign in failed");
 
       DocumentSnapshot userDoc =
-          await _firestore.collection('user').doc(user.uid).get();
+          await _firestore.collection('users').doc(user.uid).get();
 
       if (!userDoc.exists) {
         await _createNewUser(user);
-        userDoc = await _firestore.collection('user').doc(user.uid).get();
+        userDoc = await _firestore.collection('users').doc(user.uid).get();
       }
 
       return UserModel.fromFirestore(
@@ -82,7 +86,6 @@ class LoginRepository implements ILoginRepository {
     }
   }
 
-  @override
   Future<UserCredential> _performGoogleSignIn() async {
     GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
     GoogleSignInAuthentication? googleAuth = await googleUser?.authentication;
@@ -93,13 +96,14 @@ class LoginRepository implements ILoginRepository {
     return await _auth.signInWithCredential(credential);
   }
 
-  @override
   Future<void> _createNewUser(User user) async {
-    await _firestore.collection('user').doc(user.uid).set({
+    await _firestore.collection('users').doc(user.uid).set({
       'email': user.email,
       'username': user.displayName,
       'role': 'user',
       'biometricEnabled': false,
+      'phoneNumber': 0,
+      'password': '', // Empty since we're using Google Auth
     });
   }
 
@@ -162,7 +166,7 @@ class LoginRepository implements ILoginRepository {
   Future<void> updateBiometricStatus(String userId, bool status) async {
     try {
       await _firestore
-          .collection('user')
+          .collection('users')
           .doc(userId)
           .update({'biometricEnabled': status});
     } catch (e) {

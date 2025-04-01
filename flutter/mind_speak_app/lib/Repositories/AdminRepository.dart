@@ -7,7 +7,7 @@ import 'package:mind_speak_app/models/User.dart';
 abstract class IAdminRepository {
   Future<int> getUsersCount();
   Future<int> getTherapistsCount();
-  Future<List<TherapistModel>> getPendingTherapistRequests();
+  Future<List<Map<String, dynamic>>> getPendingTherapistRequests();
   Future<bool> approveTherapist(String therapistId);
   Future<bool> rejectTherapist(String therapistId);
   Future<void> deleteUserFromAuth(String email);
@@ -16,10 +16,11 @@ abstract class IAdminRepository {
 class AdminRepository implements IAdminRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
   @override
   Future<int> getUsersCount() async {
     try {
-      QuerySnapshot snapshot = await _firestore.collection('user').get();
+      QuerySnapshot snapshot = await _firestore.collection('users').get();
       return snapshot.size;
     } catch (e) {
       debugPrint(' Error fetching users count: $e');
@@ -39,8 +40,9 @@ class AdminRepository implements IAdminRepository {
   }
 
   @override
-  Future<List<TherapistModel>> getPendingTherapistRequests() async {
+  Future<List<Map<String, dynamic>>> getPendingTherapistRequests() async {
     try {
+      // Get all pending therapist documents
       QuerySnapshot therapistSnapshot = await _firestore
           .collection('therapist')
           .where('status', isEqualTo: false)
@@ -48,14 +50,17 @@ class AdminRepository implements IAdminRepository {
 
       if (therapistSnapshot.docs.isEmpty) return [];
 
+      // The therapist IDs are also the user IDs
       List<String> userIds =
-          therapistSnapshot.docs.map((doc) => doc['userid'] as String).toList();
+          therapistSnapshot.docs.map((doc) => doc.id).toList();
 
+      // Get corresponding user documents
       QuerySnapshot userSnapshot = await _firestore
-          .collection('user')
+          .collection('users')
           .where(FieldPath.documentId, whereIn: userIds)
           .get();
 
+      // Create a map of user documents for quick lookup
       Map<String, UserModel> userMap = {
         for (var doc in userSnapshot.docs)
           doc.id: UserModel.fromFirestore(
@@ -64,25 +69,31 @@ class AdminRepository implements IAdminRepository {
           )
       };
 
-      List<TherapistModel> therapists = therapistSnapshot.docs.map((doc) {
-        String userId = doc['userid'] as String;
-        UserModel? user = userMap[userId];
+      // Create combined results with both user and therapist data
+      List<Map<String, dynamic>> combinedResults =
+          therapistSnapshot.docs.map((doc) {
+        String id = doc.id; // This is both the therapist ID and user ID
+        UserModel? user = userMap[id];
+        TherapistModel therapist = TherapistModel.fromFirestore(
+            doc.data() as Map<String, dynamic>, id);
 
-        return TherapistModel(
-          therapistId: doc.id,
-          userId: userId,
-          bio: doc['bio'] ?? '',
-          nationalId: doc['nationalid'] ?? '',
-          nationalProof: doc['nationalproof'] ?? '',
-          therapistImage: doc['therapistimage'] ?? '',
-          therapistPhoneNumber: doc['therapistnumber'] ?? 0,
-          status: doc['status'] ?? false,
-          username: user?.username,
-          email: user?.email,
-        );
+        // Return a combined map with both user and therapist data
+        return {
+          'therapist': therapist,
+          'user': user,
+          'therapistId': id,
+          'bio': doc['bio'] ?? '',
+          'nationalId': doc['nationalid'] ?? '',
+          'nationalProof': doc['nationalproof'] ?? '',
+          'therapistImage': doc['therapistimage'] ?? '',
+          'therapistPhoneNumber': user?.phoneNumber ?? 0,
+          'status': doc['status'] ?? false,
+          'username': user?.username ?? '',
+          'email': user?.email ?? '',
+        };
       }).toList();
 
-      return therapists;
+      return combinedResults;
     } catch (e) {
       debugPrint('Error fetching therapist requests: $e');
       return [];
@@ -103,14 +114,11 @@ class AdminRepository implements IAdminRepository {
         return false;
       }
 
-      // Extract the user ID from the therapist document.
-      // If the 'userid' field isn't available, fallback to using therapistId.
-      Map<String, dynamic>? therapistData =
-          therapistSnapshot.data() as Map<String, dynamic>?;
-      String userId = therapistData?['userid'] ?? therapistId;
+      // Since therapistId is the same as userId
+      String userId = therapistId;
 
       // Reference the corresponding user document.
-      DocumentReference userRef = _firestore.collection('user').doc(userId);
+      DocumentReference userRef = _firestore.collection('users').doc(userId);
 
       // Optionally, verify that the user document exists:
       DocumentSnapshot userSnapshot = await userRef.get();
@@ -136,12 +144,16 @@ class AdminRepository implements IAdminRepository {
   @override
   Future<bool> rejectTherapist(String therapistId) async {
     try {
+      // Since therapistId is the same as userId, we can use it directly
       WriteBatch batch = _firestore.batch();
 
+      // Delete the therapist document
       DocumentReference therapistRef =
           _firestore.collection('therapist').doc(therapistId);
+
+      // Delete the user document using the same ID
       DocumentReference userRef =
-          _firestore.collection('user').doc(therapistId);
+          _firestore.collection('users').doc(therapistId);
 
       batch.delete(therapistRef);
       batch.delete(userRef);

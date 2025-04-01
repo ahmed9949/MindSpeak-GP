@@ -19,7 +19,7 @@ class _ViewTherapistState extends State<ViewTherapist> {
   @override
   void initState() {
     super.initState();
-    
+
     _loadTherapists();
   }
 
@@ -35,30 +35,43 @@ class _ViewTherapistState extends State<ViewTherapist> {
     });
   }
 
-  Widget _buildTherapistCard(TherapistModel therapist) {
-    final Map<String, dynamic> therapistMap =
-        _controller.therapistToMap(therapist);
+  Widget _buildTherapistCard(Map<String, dynamic> therapistData, int index) {
+    TherapistModel? therapist = _controller.getTherapist(index);
 
     return Card(
-      key: ValueKey(therapistMap["id"]),
+      key: ValueKey(therapist?.therapistId ?? 'unknown-$index'),
       color: Colors.blue,
       elevation: 4,
       margin: const EdgeInsets.symmetric(vertical: 10),
       child: ListTile(
-        leading: _buildTherapistAvatar(therapistMap['therapistImage']),
+        leading: _buildTherapistAvatar(_controller.getTherapistImage(index)),
         title: Text(
-          therapistMap['name'],
+          _controller.getTherapistName(index),
           style: const TextStyle(color: Colors.white),
         ),
-        subtitle: Text(
-          'Email: ${therapistMap['email']}',
-          style: const TextStyle(color: Colors.white),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Email: ${_controller.getTherapistEmail(index)}',
+              style: const TextStyle(color: Colors.white),
+            ),
+            Text(
+              'Phone: ${_controller.getTherapistPhoneNumber(index)}',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ],
         ),
         trailing: IconButton(
           icon: const Icon(Icons.image, color: Colors.white),
-          onPressed: () =>
-              _showImageDialog(context, therapistMap['nationalProof']),
+          onPressed: () {
+            if (therapist != null) {
+              _showImageDialog(context, therapist.nationalProof);
+            }
+          },
         ),
+        isThreeLine: true,
+        onTap: () => _showTherapistDetails(index),
       ),
     );
   }
@@ -119,6 +132,38 @@ class _ViewTherapistState extends State<ViewTherapist> {
     );
   }
 
+  void _showTherapistDetails(int index) {
+    final therapist = _controller.getTherapist(index);
+    final user = _controller.getUser(index);
+
+    if (therapist != null) {
+      showModalBottomSheet(
+        context: context,
+        builder: (context) => Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Therapist Details',
+                  style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              Text('Name: ${user?.username ?? 'Unknown'}'),
+              Text('Email: ${user?.email ?? 'N/A'}'),
+              Text('Phone: ${user?.phoneNumber.toString() ?? 'N/A'}'),
+              Text('Bio: ${therapist.bio}'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -153,18 +198,18 @@ class _ViewTherapistState extends State<ViewTherapist> {
                     const SizedBox(height: 20),
                     _buildSearchField(),
                     const SizedBox(height: 20),
-                    if (_controller.filteredTherapists.isNotEmpty)
+                    if (_controller.filteredTherapistData.isNotEmpty)
                       ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _controller.filteredTherapists.length,
+                        itemCount: _controller.filteredTherapistData.length,
                         itemBuilder: (context, index) => _buildTherapistCard(
-                            _controller.filteredTherapists[index]),
+                            _controller.filteredTherapistData[index], index),
                       )
                     else
                       const Center(
                         child: Text(
-                          'No approved doctors found.',
+                          'No approved therapists found.',
                           style: TextStyle(fontSize: 20),
                         ),
                       ),

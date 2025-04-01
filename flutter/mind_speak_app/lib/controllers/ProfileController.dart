@@ -79,11 +79,9 @@ class ProfileController {
       if (therapistModel == null) {
         return 'Unknown Therapist';
       }
-      final String userIdOfTherapist = therapistModel.userId;
-      if (userIdOfTherapist.isEmpty) {
-        return 'Unknown Therapist';
-      }
-      final userModel = await _repository.getUserData(userIdOfTherapist);
+
+      final userModel =
+          await _repository.getUserData(therapistModel.therapistId);
       if (userModel == null) {
         return 'Unknown Therapist';
       }

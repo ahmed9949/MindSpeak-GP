@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/Repositories/AdminRepository.dart';
-import 'package:mind_speak_app/models/Therapist.dart';
 import 'package:mind_speak_app/models/admin_state.dart';
 
 class AdminController with ChangeNotifier {
@@ -34,14 +33,14 @@ class AdminController with ChangeNotifier {
   }
 
   Future<void> fetchTherapistRequests() async {
-    final therapists = await _repository.getPendingTherapistRequests();
-    final totalPages = (therapists.length / itemsPerPage).ceil();
+    final therapistData = await _repository.getPendingTherapistRequests();
+    final totalPages = (therapistData.length / itemsPerPage).ceil();
     final currentPage = _state.currentPage > totalPages
         ? (totalPages > 0 ? totalPages : 1)
         : _state.currentPage;
 
     _state = _state.copyWith(
-      therapists: therapists,
+      therapistData: therapistData,
       totalPages: totalPages,
       currentPage: currentPage,
     );
@@ -53,11 +52,11 @@ class AdminController with ChangeNotifier {
     final success = await _repository.approveTherapist(therapistId);
 
     if (success) {
-      final updatedTherapists = _state.therapists
-          .where((therapist) => therapist.therapistId != therapistId)
+      final updatedTherapistData = _state.therapistData
+          .where((data) => data['therapistId'] != therapistId)
           .toList();
 
-      _updateTherapistsList(updatedTherapists);
+      _updateTherapistsList(updatedTherapistData);
       _showMessage(context, 'Therapist approved successfully!', Colors.green);
     } else {
       _showMessage(context, 'Failed to approve therapist', Colors.red);
@@ -74,25 +73,25 @@ class AdminController with ChangeNotifier {
     if (success) {
       await _repository.deleteUserFromAuth(email);
 
-      final updatedTherapists = _state.therapists
-          .where((therapist) => therapist.therapistId != therapistId)
+      final updatedTherapistData = _state.therapistData
+          .where((data) => data['therapistId'] != therapistId)
           .toList();
 
-      _updateTherapistsList(updatedTherapists);
+      _updateTherapistsList(updatedTherapistData);
       _showMessage(context, 'Therapist permanently deleted!', Colors.red);
     } else {
       _showMessage(context, 'Failed to delete therapist', Colors.red);
     }
   }
 
-  void _updateTherapistsList(List<TherapistModel> updatedTherapists) {
-    final totalPages = (updatedTherapists.length / itemsPerPage).ceil();
+  void _updateTherapistsList(List<Map<String, dynamic>> updatedTherapistData) {
+    final totalPages = (updatedTherapistData.length / itemsPerPage).ceil();
     final currentPage = _state.currentPage > totalPages
         ? (totalPages > 0 ? totalPages : 1)
         : _state.currentPage;
 
     _state = _state.copyWith(
-      therapists: updatedTherapists,
+      therapistData: updatedTherapistData,
       totalPages: totalPages,
       currentPage: currentPage,
     );

@@ -1,0 +1,2 @@
+D:/MindSpeak-GP1/flutter/mind_speak_app/android/app/.cxx/Debug/3g2b4u35/x86_64/CMakeFiles/edit_cache.dir
+D:/MindSpeak-GP1/flutter/mind_speak_app/android/app/.cxx/Debug/3g2b4u35/x86_64/CMakeFiles/rebuild_cache.dir

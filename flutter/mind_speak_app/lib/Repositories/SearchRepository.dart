@@ -1,9 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mind_speak_app/models/Therapist.dart';
-
+import 'package:mind_speak_app/models/User.dart';
 
 abstract class ISearchRepository {
   Future<List<TherapistModel>> getTherapists();
+  Future<UserModel?> getTherapistUserInfo(String userId);
   Future<String> assignTherapistToChild(String therapistId, String userId);
 }
 
@@ -26,33 +27,10 @@ class SearchRepository implements ISearchRepository {
       for (var doc in therapistSnapshot.docs) {
         var therapistData = doc.data();
 
-        if (therapistData['userid'] == null ||
-            therapistData['userid'].toString().isEmpty) {
-          print('Skipping therapist document with invalid userid: ${doc.id}');
-          continue;
-        }
-
-        final userDoc = await _firestore
-            .collection('user')
-            .doc(therapistData['userid'])
-            .get();
-
-        if (userDoc.exists) {
-          var userData = userDoc.data() as Map<String, dynamic>;
-
-          therapists.add(TherapistModel(
-            therapistId: doc.id,
-            userId: therapistData['userid'],
-            bio: therapistData['bio'] ?? '',
-            nationalId: therapistData['nationalid'] ?? '',
-            nationalProof: therapistData['nationalproof'] ?? '',
-            therapistImage: therapistData['therapistimage'] ?? '',
-            therapistPhoneNumber: therapistData['therapistnumber'] ?? 0,
-            status: therapistData['status'] ?? false,
-            username: userData['username'],
-            email: userData['email'],
-          ));
-        }
+        // Create TherapistModel directly from Firestore data
+        TherapistModel therapist =
+            TherapistModel.fromFirestore(therapistData, doc.id);
+        therapists.add(therapist);
       }
 
       return therapists;
@@ -63,10 +41,75 @@ class SearchRepository implements ISearchRepository {
   }
 
   @override
+  Future<UserModel?> getTherapistUserInfo(String userId) async {
+    try {
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+
+      if (userDoc.exists) {
+        return UserModel.fromFirestore(
+            userDoc.data() as Map<String, dynamic>, userId);
+      }
+
+      return null;
+    } catch (e) {
+      print('Error fetching user info: $e');
+      return null;
+    }
+  }
+
+  // Added method to find users by therapist ID
+  Future<QuerySnapshot> findUsersByTherapistId(String therapistId) {
+    return _firestore
+        .collection('users')
+        .where('therapistId', isEqualTo: therapistId)
+        .limit(1)
+        .get();
+  }
+
+  // Additional method to fetch therapist with associated user data simultaneously
+  Future<Map<String, dynamic>> getTherapistWithUserInfo(
+      String therapistId) async {
+    try {
+      final therapistDoc =
+          await _firestore.collection('therapist').doc(therapistId).get();
+
+      if (!therapistDoc.exists) {
+        throw Exception('Therapist not found');
+      }
+
+      var therapistData = therapistDoc.data() as Map<String, dynamic>;
+      String userId = therapistData['userid'];
+
+      if (userId == null || userId.isEmpty) {
+        throw Exception('Invalid user ID associated with therapist');
+      }
+
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+
+      if (!userDoc.exists) {
+        throw Exception('User not found');
+      }
+
+      TherapistModel therapist =
+          TherapistModel.fromFirestore(therapistData, therapistId);
+      UserModel user = UserModel.fromFirestore(
+          userDoc.data() as Map<String, dynamic>, userId);
+
+      return {
+        'therapist': therapist,
+        'user': user,
+      };
+    } catch (e) {
+      print('Error fetching therapist with user info: $e');
+      throw Exception('Failed to fetch therapist data');
+    }
+  }
+
+  @override
   Future<String> assignTherapistToChild(
       String therapistId, String userId) async {
     try {
-      
+      // Check if therapist has maximum allowed children (3)
       final assignedChildrenSnapshot = await _firestore
           .collection('child')
           .where('therapistId', isEqualTo: therapistId)
@@ -77,7 +120,7 @@ class SearchRepository implements ISearchRepository {
         return 'This therapist already has the maximum number of children assigned.';
       }
 
-      
+      // Verify therapist exists
       final therapistDoc =
           await _firestore.collection('therapist').doc(therapistId).get();
 
@@ -85,7 +128,7 @@ class SearchRepository implements ISearchRepository {
         return 'Selected therapist does not exist.';
       }
 
-     
+      // Check if child record exists for this user
       final childQuery = await _firestore
           .collection('child')
           .where('userId', isEqualTo: userId)
@@ -93,12 +136,14 @@ class SearchRepository implements ISearchRepository {
           .get();
 
       if (childQuery.docs.isEmpty) {
+        // Create new child record
         await _firestore.collection('child').add({
           'userId': userId,
           'therapistId': therapistId,
           'assigned': true,
         });
       } else {
+        // Update existing child record
         await childQuery.docs.first.reference.update({
           'therapistId': therapistId,
           'assigned': true,

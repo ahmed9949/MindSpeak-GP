@@ -52,7 +52,7 @@ class ProfileRepository implements IProfileRepository {
 
   @override
   Future<UserModel> getParentData(String userId) async {
-    final snapshot = await _firestore.collection('user').doc(userId).get();
+    final snapshot = await _firestore.collection('users').doc(userId).get();
     if (!snapshot.exists) {
       throw Exception('Parent not found');
     }
@@ -92,7 +92,7 @@ class ProfileRepository implements IProfileRepository {
 
   @override
   Future<UserModel?> getUserData(String userId) async {
-    final snapshot = await _firestore.collection('user').doc(userId).get();
+    final snapshot = await _firestore.collection('users').doc(userId).get();
     if (!snapshot.exists) return null;
     return UserModel.fromFirestore(
       snapshot.data() as Map<String, dynamic>,
@@ -147,7 +147,7 @@ class ProfileRepository implements IProfileRepository {
       await deleteChildData(child.childId);
     }
     // Delete the parent document.
-    await _firestore.collection('user').doc(userId).delete();
+    await _firestore.collection('users').doc(userId).delete();
     // Delete the Firebase Auth user if available.
     final user = _auth.currentUser;
     if (user != null) {

@@ -14,7 +14,7 @@ void main() async {
   await Firebase.initializeApp();
   await dotenv.load(fileName: "assets/.env");
 
-  // Initialize services
+
   runApp(
     MultiProvider(
       providers: [

@@ -52,7 +52,7 @@ dependencies:
   image_picker_web: ^4.0.0
   mime_type: ^1.0.1
   webview_flutter: ^4.10.0
-  flutter_webrtc: ^0.12.5
+  flutter_webrtc: ^0.12.11
   simli_client: ^1.0.1
   deepgram_speech_to_text: ^3.0.2
   speech_to_text: ^7.0.0

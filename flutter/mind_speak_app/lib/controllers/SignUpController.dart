@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:mind_speak_app/Repositories/SignupRepository.dart';
 import 'package:mind_speak_app/components/navigationpage.dart';
 import 'package:mind_speak_app/models/Child.dart';
+import 'package:mind_speak_app/models/ParentModel.dart';
 import 'package:mind_speak_app/models/Therapist.dart';
 import 'package:mind_speak_app/models/User.dart';
 import 'package:mind_speak_app/pages/adminDashboard.dart';
@@ -12,9 +13,6 @@ import 'package:mind_speak_app/pages/login.dart';
 import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import '../service/local_auth_service.dart';
-
-
-
 
 class SignUpController {
   final BuildContext context;
@@ -72,43 +70,78 @@ class SignUpController {
       if (!_validateImageUploads()) return;
       if (!await _checkDuplicateEntries()) return;
 
-      // Create Firebase user
+      int phoneNumber;
+      if (role == 'parent') {
+        phoneNumber = int.parse(parentPhoneNumberController.text.trim());
+      } else if (role == 'therapist') {
+        phoneNumber = int.parse(therapistPhoneNumberController.text.trim());
+      } else {
+        // Default for admin or other roles
+        phoneNumber = 0;
+      }
+
+      // Get the plain password for Firebase Auth
+      String plainPassword = passwordController.text.trim();
+
+      // Create user model with plain password for Firebase Auth
       final user = UserModel(
         userId: '', // Will be set after Firebase user creation
         email: emailController.text.trim(),
         username: usernameController.text.trim(),
         role: role,
-        password: passwordController.text.trim(), // Plain password
+        password: plainPassword, // Plain password for Firebase Auth
+        phoneNumber: phoneNumber,
         biometricEnabled: false,
       );
 
+      // Create Firebase user with plain password
       UserCredential userCredential =
           await _repository.createFirebaseUser(user);
       String userId = userCredential.user!.uid;
 
-      // Update user ID in the UserModel using copyWith
-      final updatedUser = user.copyWith(userId: userId);
+      // Create updated user with hashed password for database storage
+      final updatedUser = UserModel(
+        userId: userId, // Store Firebase UID
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        password: _repository.hashPassword(plainPassword), // Hash for Firestore
+        phoneNumber: user.phoneNumber,
+        biometricEnabled: user.biometricEnabled,
+      );
 
-      // Upload images and save details based on role
+      // Save user details with hashed password
+      await _repository.saveUserDetails(updatedUser);
+
+      // Handle role-specific data
       if (role == 'parent') {
+        // Save parent details with proper parentId
+        final parent = ParentModel(
+          parentId: userId, // Use Firebase UID
+          phoneNumber: int.parse(parentPhoneNumberController.text.trim()),
+        );
+
+        await _repository.saveParentDetails(parent);
+
+        // Save child details with image and proper parentId reference
         String childImageUrl = childImage != null
             ? await _repository.uploadImage(childImage!, 'child_images')
             : '';
 
         final child = ChildModel(
-          childId: _repository.generateChildId(), // Generate a unique child ID
-          userId: userId,
+          childId: _repository.generateChildId(), // Generate unique child ID
           name: childNameController.text.trim(),
           age: int.parse(childAgeController.text.trim()),
           childInterest: childInterestController.text.trim(),
           childPhoto: childImageUrl,
-          parentNumber: int.parse(parentPhoneNumberController.text.trim()),
           therapistId: '', // Initially unassigned
           assigned: false,
+          userId: userId, // Link child to parent using parent's userId
         );
 
         await _repository.saveParentAndChildDetails(child);
       } else if (role == 'therapist') {
+        // Save therapist details with proper therapistId
         String nationalProofUrl = nationalProofImage != null
             ? await _repository.uploadImage(
                 nationalProofImage!, 'national_proofs')
@@ -118,22 +151,16 @@ class SignUpController {
             : '';
 
         final therapist = TherapistModel(
-          therapistId: userId,
-          userId: userId,
+          therapistId: userId, // Use Firebase UID
           bio: bioController.text.trim(),
           nationalId: nationalIdController.text.trim(),
           nationalProof: nationalProofUrl,
           therapistImage: therapistImageUrl,
-          therapistPhoneNumber:
-              int.parse(therapistPhoneNumberController.text.trim()),
           status: false, // Initially unapproved
         );
 
         await _repository.saveTherapistDetails(therapist);
       }
-
-      // Save user details
-      await _repository.saveUserDetails(updatedUser);
 
       await _handleBiometricAuth(userId);
       _navigateBasedOnRole();

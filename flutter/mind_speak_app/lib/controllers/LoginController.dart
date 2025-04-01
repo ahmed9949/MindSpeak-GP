@@ -31,8 +31,13 @@ class LoginController {
   Future<void> signInWithGoogle() async {
     try {
       UserModel user = await _loginRepository.signInWithGoogle();
-      Navigator.of(context)
-          .push(MaterialPageRoute(builder: (context) => const HomePage()));
+      final sessionProvider =
+          Provider.of<SessionProvider>(context, listen: false);
+      await sessionProvider.saveSession(user.userId, user.role);
+
+      _showSuccessSnackBar("Logged in Successfully with Google");
+      Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const HomePage()));
     } catch (e) {
       _showErrorSnackBar(e.toString());
     }
@@ -46,8 +51,9 @@ class LoginController {
       String password = passwordController.text.trim();
 
       UserModel user = await _loginRepository.authenticateUser(email, password);
-      
-      final sessionProvider = Provider.of<SessionProvider>(context, listen: false);
+
+      final sessionProvider =
+          Provider.of<SessionProvider>(context, listen: false);
       await sessionProvider.saveSession(user.userId, user.role);
 
       await _handleBiometricAuth(user.userId, user.biometricEnabled);
@@ -59,7 +65,8 @@ class LoginController {
     }
   }
 
-  Future<void> _handleBiometricAuth(String userId, bool biometricEnabled) async {
+  Future<void> _handleBiometricAuth(
+      String userId, bool biometricEnabled) async {
     if (biometricEnabled) {
       bool authenticated = await LocalAuth.authenticate();
       if (!authenticated) {
@@ -79,7 +86,8 @@ class LoginController {
         await _handleParentNavigation(userId);
         break;
       case 'therapist':
-        TherapistModel therapist = await _loginRepository.fetchTherapistInfo(userId);
+        TherapistModel therapist =
+            await _loginRepository.fetchTherapistInfo(userId);
         await _handleTherapistNavigation(userId, therapist.status);
         break;
       case 'admin':
@@ -96,7 +104,8 @@ class LoginController {
   Future<void> _handleParentNavigation(String userId) async {
     try {
       ChildModel child = await _loginRepository.fetchChildData(userId);
-      CarsFormModel? carsForm = await _loginRepository.fetchCarsFormStatus(child.childId);
+      CarsFormModel? carsForm =
+          await _loginRepository.fetchCarsFormStatus(child.childId);
 
       if (carsForm != null && carsForm.status) {
         Navigator.pushReplacement(
@@ -114,13 +123,15 @@ class LoginController {
     }
   }
 
-  Future<void> _handleTherapistNavigation(String userId, bool isApproved) async {
+  Future<void> _handleTherapistNavigation(
+      String userId, bool isApproved) async {
     if (!isApproved) {
       throw Exception("Your account is not yet approved by the admin.");
     }
 
     try {
-      TherapistModel therapist = await _loginRepository.fetchTherapistInfo(userId);
+      TherapistModel therapist =
+          await _loginRepository.fetchTherapistInfo(userId);
       Map<String, dynamic> userInfo = await _doctorServices.getUserInfo(userId);
 
       Navigator.pushReplacement(

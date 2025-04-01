@@ -4,8 +4,7 @@ import 'package:mind_speak_app/models/User.dart';
 class AdminState {
   final int userCount;
   final int therapistCount;
-  final List<TherapistModel> therapists;
-  final List<UserModel> users;
+  final List<Map<String, dynamic>> therapistData;
   final int currentPage;
   final int totalPages;
   final bool showUsersCount;
@@ -14,19 +13,41 @@ class AdminState {
   const AdminState({
     this.userCount = 0,
     this.therapistCount = 0,
-    this.therapists = const [],
-    this.users = const [],
+    this.therapistData = const [],
     this.currentPage = 1,
     this.totalPages = 1,
-    this.showUsersCount = false,
-    this.showTherapistCount = false,
+    this.showUsersCount = true,
+    this.showTherapistCount = true,
   });
+
+  // Computed properties to get therapists and users from therapistData
+  List<TherapistModel> get therapists => therapistData.map((data) {
+        return TherapistModel(
+          therapistId: data['therapistId'],
+          bio: data['bio'] ?? '',
+          nationalId: data['nationalId'] ?? '',
+          nationalProof: data['nationalProof'] ?? '',
+          therapistImage: data['therapistImage'] ?? '',
+          status: data['status'] ?? false,
+        );
+      }).toList();
+
+  List<UserModel> get users => therapistData.map((data) {
+        return UserModel(
+          userId: data['therapistId'], // Use the same ID
+          email: data['email'] ?? '',
+          username: data['username'] ?? '',
+          role: 'therapist',
+          password:
+              '', // Password isn't included in the data returned from repository
+          phoneNumber: data['therapistPhoneNumber'] ?? 0,
+        );
+      }).toList();
 
   AdminState copyWith({
     int? userCount,
     int? therapistCount,
-    List<TherapistModel>? therapists,
-    List<UserModel>? users,
+    List<Map<String, dynamic>>? therapistData,
     int? currentPage,
     int? totalPages,
     bool? showUsersCount,
@@ -35,8 +56,7 @@ class AdminState {
     return AdminState(
       userCount: userCount ?? this.userCount,
       therapistCount: therapistCount ?? this.therapistCount,
-      therapists: therapists ?? this.therapists,
-      users: users ?? this.users,
+      therapistData: therapistData ?? this.therapistData,
       currentPage: currentPage ?? this.currentPage,
       totalPages: totalPages ?? this.totalPages,
       showUsersCount: showUsersCount ?? this.showUsersCount,

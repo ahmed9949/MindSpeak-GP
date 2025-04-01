@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:mind_speak_app/Repositories/AdminRepository.dart';
 import 'package:mind_speak_app/components/CustomBottomNavigationBar.dart';
 import 'package:mind_speak_app/controllers/AdminController.dart';
-import 'package:mind_speak_app/models/Therapist.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 
@@ -165,9 +164,12 @@ class AdminDashboardView extends StatelessWidget {
     BuildContext context,
     AdminController controller,
   ) {
-    if (controller.state.therapists.isEmpty) {
+    if (controller.state.therapistData.isEmpty) {
       return const Center(
-        child: Text('No therapist requests available'),
+        child: Padding(
+          padding: EdgeInsets.all(20.0),
+          child: Text('No therapist requests available'),
+        ),
       );
     }
 
@@ -193,32 +195,35 @@ class AdminDashboardView extends StatelessWidget {
     final startIndex =
         (controller.state.currentPage - 1) * AdminController.itemsPerPage;
     final endIndex = startIndex + AdminController.itemsPerPage;
-    final pageTherapists = controller.state.therapists
+
+    // Get the items for the current page
+    final pageData = controller.state.therapistData
         .skip(startIndex)
         .take(AdminController.itemsPerPage)
         .toList();
 
-    return pageTherapists.map((therapist) {
+    return pageData.map((data) {
       return DataRow(cells: [
-        DataCell(Text(therapist.username ?? 'N/A')),
-        DataCell(Text(therapist.email ?? 'N/A')),
-        DataCell(Text(therapist.nationalId)),
-        DataCell(Text(therapist.bio)),
-        DataCell(Text(therapist.therapistPhoneNumber.toString())),
+        DataCell(Text(data['username'] ?? 'N/A')),
+        DataCell(Text(data['email'] ?? 'N/A')),
+        DataCell(Text(data['nationalId'] ?? 'N/A')),
+        DataCell(Text(data['bio'] ?? 'N/A')),
+        DataCell(Text(data['therapistPhoneNumber']?.toString() ?? 'N/A')),
         DataCell(_buildImageButton(
           context,
-          therapist.therapistImage,
+          data['therapistImage'],
           Colors.green,
         )),
         DataCell(_buildImageButton(
           context,
-          therapist.nationalProof,
+          data['nationalProof'],
           Colors.blue,
         )),
         DataCell(_buildActionButtons(
           context,
           controller,
-          therapist,
+          data['therapistId'],
+          data['email'],
         )),
       ]);
     }).toList();
@@ -238,7 +243,8 @@ class AdminDashboardView extends StatelessWidget {
   Widget _buildActionButtons(
     BuildContext context,
     AdminController controller,
-    TherapistModel therapist,
+    String therapistId,
+    String email,
   ) {
     return Row(
       children: [
@@ -246,15 +252,15 @@ class AdminDashboardView extends StatelessWidget {
           icon: const Icon(Icons.check, color: Colors.green),
           onPressed: () => controller.approveTherapist(
             context,
-            therapist.therapistId,
+            therapistId,
           ),
         ),
         IconButton(
           icon: const Icon(Icons.close, color: Colors.red),
           onPressed: () => controller.rejectTherapist(
             context,
-            therapist.therapistId,
-            therapist.email ?? '',
+            therapistId,
+            email,
           ),
         ),
       ],

@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "557724781150",
-    "project_id": "mindspeak-628d5",
-    "storage_bucket": "mindspeak-628d5.firebasestorage.app"
+    "project_number": "94025019439",
+    "project_id": "mindspeak-6899e",
+    "storage_bucket": "mindspeak-6899e.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:557724781150:android:508f07d0937856ba9802cf",
+        "mobilesdk_app_id": "1:94025019439:android:3c239b371d88694a1056da",
         "android_client_info": {
           "package_name": "com.example.mind_speak_app"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCAQnCFBp46CRwS2zXciEf1k0CtDFeeHm0"
+          "current_key": "AIzaSyCnxp_hao2fZAWZJBKWDcd4qzJfaKqFos0"
         }
       ],
       "services": {

@@ -1,15 +1,17 @@
 buildscript {
+    ext.kotlin_version = '2.1.0'  // ✅ Add this line to declare Kotlin version
+
     repositories {
         google()
         mavenCentral()
     }
+
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.4.0' // Use a Gradle version compatible with your Flutter version
-        classpath 'com.google.gms:google-services:4.4.2' // Correct usage for Google Services plugin
+        classpath "com.android.tools.build:gradle:8.2.1"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version" // ✅ Add this
+        classpath "com.google.gms:google-services:4.4.2"
     }
 }
-
-
 
 allprojects {
     repositories {

@@ -29,10 +29,25 @@ class _SearchPageState extends State<SearchPage> {
     super.dispose();
   }
 
-  void _showTherapistDetails(TherapistModel therapist) {
-    // Get associated user information
+  void _showTherapistDetails(TherapistModel therapist) async {
+    // Try to get user info from controller cache
     UserModel? userInfo =
         _controller.getUserForTherapist(therapist.therapistId);
+
+    if (userInfo == null) {
+      // If user info is missing, fetch it directly
+      userInfo = await _controller.fetchUserForTherapist(therapist.therapistId);
+    }
+
+    if (!mounted) return;
+
+    // Debug info
+    print('Showing details for therapist: ${therapist.therapistId}');
+    print('User info available: ${userInfo != null}');
+    if (userInfo != null) {
+      print('Username: ${userInfo.username}');
+      print('Email: ${userInfo.email}');
+    }
 
     showDialog(
       context: context,
@@ -191,92 +206,101 @@ class _SearchPageState extends State<SearchPage> {
                   child: ValueListenableBuilder<List<TherapistModel>>(
                     valueListenable: _controller.filteredTherapistsNotifier,
                     builder: (context, filteredTherapists, _) {
-                      return filteredTherapists.isNotEmpty
-                          ? GridView.builder(
-                              padding: const EdgeInsets.all(16.0),
-                              gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
-                                childAspectRatio: 0.8,
-                              ),
-                              itemCount: filteredTherapists.length,
-                              itemBuilder: (context, index) {
-                                final therapist = filteredTherapists[index];
-                                // Get user information for this therapist
-                                final userInfo = _controller
-                                    .getUserForTherapist(therapist.therapistId);
+                      if (filteredTherapists.isEmpty) {
+                        return const Center(
+                          child: Text('No therapists found.'),
+                        );
+                      }
 
-                                return GestureDetector(
-                                  onTap: () => _showTherapistDetails(therapist),
-                                  child: Card(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(15),
-                                    ),
-                                    elevation: 4,
-                                    child: Column(
-                                      children: [
-                                        if (therapist.therapistImage.isNotEmpty)
-                                          LayoutBuilder(
-                                            builder: (context, constraints) {
-                                              double imageHeight =
-                                                  constraints.maxWidth * 0.75;
-                                              return ClipRRect(
-                                                borderRadius:
-                                                    const BorderRadius.vertical(
-                                                  top: Radius.circular(15),
-                                                ),
-                                                child: Image.network(
-                                                  therapist.therapistImage,
-                                                  height: imageHeight,
-                                                  width: double.infinity,
-                                                  fit: BoxFit.cover,
-                                                  errorBuilder: (context, error,
-                                                      stackTrace) {
-                                                    return Container(
-                                                      height: imageHeight,
-                                                      width: double.infinity,
-                                                      color: Colors.grey[300],
-                                                      child: const Icon(
-                                                          Icons.person,
-                                                          size: 60,
-                                                          color: Colors.grey),
-                                                    );
-                                                  },
-                                                ),
+                      return GridView.builder(
+                        padding: const EdgeInsets.all(16.0),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          childAspectRatio: 0.8,
+                        ),
+                        itemCount: filteredTherapists.length,
+                        itemBuilder: (context, index) {
+                          final therapist = filteredTherapists[index];
+                          // Get user information for this therapist
+                          final userInfo = _controller
+                              .getUserForTherapist(therapist.therapistId);
+
+                          // Debug print to help diagnose
+                          print(
+                              'Building card for therapist ${therapist.therapistId}');
+                          print('User info available: ${userInfo != null}');
+                          if (userInfo != null) {
+                            print('Username: ${userInfo.username}');
+                          }
+
+                          return GestureDetector(
+                            onTap: () => _showTherapistDetails(therapist),
+                            child: Card(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              elevation: 4,
+                              child: Column(
+                                children: [
+                                  if (therapist.therapistImage.isNotEmpty)
+                                    LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        double imageHeight =
+                                            constraints.maxWidth * 0.75;
+                                        return ClipRRect(
+                                          borderRadius:
+                                              const BorderRadius.vertical(
+                                            top: Radius.circular(15),
+                                          ),
+                                          child: Image.network(
+                                            therapist.therapistImage,
+                                            height: imageHeight,
+                                            width: double.infinity,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                              return Container(
+                                                height: imageHeight,
+                                                width: double.infinity,
+                                                color: Colors.grey[300],
+                                                child: const Icon(Icons.person,
+                                                    size: 60,
+                                                    color: Colors.grey),
                                               );
                                             },
-                                          )
-                                        else
-                                          Container(
-                                            height: 120,
-                                            width: double.infinity,
-                                            color: Colors.grey[300],
-                                            child: const Icon(Icons.person,
-                                                size: 60, color: Colors.grey),
                                           ),
-                                        Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: Text(
-                                            userInfo?.username ?? 'Unknown',
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
+                                        );
+                                      },
+                                    )
+                                  else
+                                    Container(
+                                      height: 120,
+                                      width: double.infinity,
+                                      color: Colors.grey[300],
+                                      child: const Icon(Icons.person,
+                                          size: 60, color: Colors.grey),
+                                    ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Text(
+                                      userInfo?.username ?? 'Unknown',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                );
-                              },
-                            )
-                          : const Center(
-                              child: Text('No therapists found.'),
-                            );
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
                     },
                   ),
                 ),

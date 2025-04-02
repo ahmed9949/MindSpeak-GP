@@ -29,7 +29,7 @@ class _StartSessionPageState extends State<StartSessionPage> {
 
   void _initGenerativeModel() {
     final apiKey = dotenv.env['GEMINI_API_KEY']!;
-    _model = GenerativeModel(model: 'gemini-pro', apiKey: apiKey);
+    _model = GenerativeModel(model: 'gemini-2.0-flash', apiKey: apiKey);
   }
 
   Future<Map<String, dynamic>?> _fetchChildData() async {
@@ -65,6 +65,7 @@ class _StartSessionPageState extends State<StartSessionPage> {
 
     return '''
 Act as a therapist for children with autism, trying to enhance communication skills.
+talk with him in egyption arabic
 
 Child Information:
 - Name: $name

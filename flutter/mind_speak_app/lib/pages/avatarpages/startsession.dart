@@ -8,7 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
- 
+
 class StartSessionPage extends StatefulWidget {
   const StartSessionPage({Key? key}) : super(key: key);
 
@@ -33,7 +33,8 @@ class _StartSessionPageState extends State<StartSessionPage> {
   }
 
   Future<Map<String, dynamic>?> _fetchChildData() async {
-    final sessionProvider = Provider.of<SessionProvider>(context, listen: false);
+    final sessionProvider =
+        Provider.of<SessionProvider>(context, listen: false);
     if (!sessionProvider.isLoggedIn || sessionProvider.childId == null) {
       setState(() => _errorMessage = 'No child data available');
       return null;
@@ -104,7 +105,7 @@ Remember to:
       final prompt = _generateInitialPrompt(childData);
       final chat = _model.startChat();
       final response = await chat.sendMessage(Content.text(prompt));
-      
+
       if (response.text == null) {
         setState(() {
           _isLoading = false;
@@ -117,11 +118,11 @@ Remember to:
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => StartSessionView()
-            //   childData: childData,
-            //   initialPrompt: prompt,
-            //   initialResponse: response.text!,
-            // ),
+            builder: (context) => VoiceChat3DModelPage(
+              childData: childData,
+              initialPrompt: prompt,
+              initialResponse: response.text!,
+            ),
           ),
         );
       }

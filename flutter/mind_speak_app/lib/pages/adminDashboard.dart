@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mind_speak_app/Repositories/AdminRepository.dart';
 import 'package:mind_speak_app/components/CustomBottomNavigationBar.dart';
 import 'package:mind_speak_app/controllers/AdminController.dart';
+import 'package:mind_speak_app/pages/progresspage.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 
@@ -42,6 +43,8 @@ class AdminDashboardView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildStatisticsCard(controller),
+                    const SizedBox(height: 10),
+                    _buildProgressButton(context), // Added button here
                     const SizedBox(height: 20),
                     _buildTherapistRequestsSection(context, controller),
                     const SizedBox(height: 20),
@@ -106,6 +109,30 @@ class AdminDashboardView extends StatelessWidget {
               iconColor: Colors.green,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgressButton(BuildContext context) {
+    return Center(
+      child: ElevatedButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => DashboardView()),
+          );
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        ),
+        child: const Text(
+          'View Progress Questions',
+          style: TextStyle(color: Colors.white, fontSize: 16),
         ),
       ),
     );
@@ -196,7 +223,6 @@ class AdminDashboardView extends StatelessWidget {
         (controller.state.currentPage - 1) * AdminController.itemsPerPage;
     final endIndex = startIndex + AdminController.itemsPerPage;
 
-    // Get the items for the current page
     final pageData = controller.state.therapistData
         .skip(startIndex)
         .take(AdminController.itemsPerPage)

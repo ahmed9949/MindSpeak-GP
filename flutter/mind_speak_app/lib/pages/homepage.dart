@@ -62,42 +62,58 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _fetchTherapists() async {
     try {
+      print('Fetching therapists for home page...');
+      // Get therapists with status = true
       QuerySnapshot therapistSnapshot = await _firestore
           .collection('therapist')
           .where('status', isEqualTo: true)
           .get();
 
+      print(
+          'Found ${therapistSnapshot.docs.length} therapists with status=true');
       List<Map<String, dynamic>> tempTherapists = [];
 
       for (var doc in therapistSnapshot.docs) {
         var therapistData = doc.data() as Map<String, dynamic>;
+        String therapistId = doc.id;
 
-        if (therapistData['userid'] == null ||
-            therapistData['userid'].toString().isEmpty) {
-          print('Skipping therapist document with invalid userid: ${doc.id}');
-          continue;
-        }
+        print('Processing therapist: $therapistId');
 
+        // Since the user ID is the same as the therapist ID
+        // Query the users collection (not user - ensure correct collection name!)
         DocumentSnapshot userDoc = await _firestore
-            .collection('user')
-            .doc(therapistData['userid'])
+            .collection(
+                'users') // Make sure this is the correct collection name
+            .doc(therapistId)
             .get();
 
         if (userDoc.exists) {
+          print('Found user data for therapist: $therapistId');
           var userData = userDoc.data() as Map<String, dynamic>;
 
           tempTherapists.add({
             'name': userData['username'] ?? 'Unknown',
             'email': userData['email'] ?? 'N/A',
-            'therapistPhoneNumber':
-                therapistData['therapistnumber']?.toString() ?? 'N/A',
+            'phoneNumber': userData['phoneNumber']?.toString() ?? 'N/A',
             'bio': therapistData['bio'] ?? 'N/A',
             'therapistImage': therapistData['therapistimage'] ?? '',
-            'therapistId': doc.id,
+            'therapistId': therapistId,
           });
-        } else {
+
           print(
-              'Associated user document not found for userid: ${therapistData['userid']}');
+              'Added therapist to list: ${userData['username'] ?? 'Unknown'}');
+        } else {
+          print('User document not found for therapist ID: $therapistId');
+
+          // Add therapist with available data even if user data is missing
+          tempTherapists.add({
+            'name': 'Unknown',
+            'email': 'N/A',
+            'phoneNumber': 'N/A',
+            'bio': therapistData['bio'] ?? 'N/A',
+            'therapistImage': therapistData['therapistimage'] ?? '',
+            'therapistId': therapistId,
+          });
         }
       }
 
@@ -106,9 +122,10 @@ class _HomePageState extends State<HomePage> {
         isLoading = false;
       });
 
-      print('Fetched ${therapists.length} therapists successfully.');
+      print(
+          'Fetched ${therapists.length} therapists successfully for home page.');
     } catch (e) {
-      print('Error fetching therapists: $e');
+      print('Error fetching therapists for home page: $e');
       setState(() {
         isLoading = false;
       });
@@ -147,11 +164,13 @@ class _HomePageState extends State<HomePage> {
             children: [
               const SizedBox(width: 20),
               CircleAvatar(
-                radius: 50,
+                radius:
+                    20, // Reduced from 50 to make it fit better in the appbar
                 backgroundImage:
                     childPhoto != null ? NetworkImage(childPhoto!) : null,
                 child: childPhoto == null
-                    ? const Icon(Icons.person, color: Colors.white, size: 40)
+                    ? const Icon(Icons.person,
+                        color: Colors.white, size: 20) // Reduced from 40
                     : null,
               ),
               const SizedBox(width: 5),
@@ -181,18 +200,13 @@ class _HomePageState extends State<HomePage> {
                           "assets/doctor.png",
                           const SearchPage(),
                         ),
-                        // _buildTopCard(
-                        //     context, "tts", "assets/cars.png", const TTSPage()),
-                        // _buildTopCard(
-                        //     context, "stt", "assets/cars.png", const STTPage()),
-
                         _buildTopCard(context, "3d session",
                             "assets/predict.png", StartSessionPage()),
                         _buildTopCard(
                           context,
                           "Cars",
                           "assets/cars.png",
-                          const carsform(),
+                          const CarsForm(),
                         ),
                         _buildTopCard(
                           context,
@@ -226,35 +240,62 @@ class _HomePageState extends State<HomePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              "Top Therapists",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                                color: themeProvider.isDarkMode
-                                    ? Colors.white
-                                    : Colors.black,
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "Top Therapists",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                    color: themeProvider.isDarkMode
+                                        ? Colors.white
+                                        : Colors.black,
+                                  ),
+                                ),
+                                Text(
+                                  "Found: ${therapists.length}",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 10),
-                            SizedBox(
-                              height:
-                                  150, // Set a fixed height for the ListView
-                              child: ListView.builder(
-                                scrollDirection: Axis
-                                    .horizontal, // Enable horizontal scrolling
-                                physics: const BouncingScrollPhysics(),
-                                itemCount: therapists.length,
-                                itemBuilder: (context, index) {
-                                  final therapist = therapists[index];
-                                  return Padding(
-                                    padding: const EdgeInsets.only(
-                                        right: 10), // Add spacing between cards
-                                    child: _buildTherapistCard(therapist),
-                                  );
-                                },
-                              ),
-                            ),
+                            therapists.isEmpty
+                                ? Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 20),
+                                      child: Text(
+                                        "No therapists available",
+                                        style: TextStyle(
+                                          color: Colors.grey,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : SizedBox(
+                                    height:
+                                        150, // Set a fixed height for the ListView
+                                    child: ListView.builder(
+                                      scrollDirection: Axis
+                                          .horizontal, // Enable horizontal scrolling
+                                      physics: const BouncingScrollPhysics(),
+                                      itemCount: therapists.length,
+                                      itemBuilder: (context, index) {
+                                        final therapist = therapists[index];
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                              right:
+                                                  10), // Add spacing between cards
+                                          child: _buildTherapistCard(therapist),
+                                        );
+                                      },
+                                    ),
+                                  ),
                             // Add Quick Tips Section
                             const SizedBox(height: 20),
                             Container(
@@ -317,9 +358,7 @@ class _HomePageState extends State<HomePage> {
                                 ],
                               ),
                             ),
-                            const SizedBox(
-                                height:
-                                    20), // Add spacing before the Start Session button // Add spacing before the Start Session button
+                            const SizedBox(height: 20),
                           ],
                         ),
                       ),
@@ -372,33 +411,64 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildTherapistCard(Map<String, dynamic> therapist) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircleAvatar(
-            radius: 25,
-            backgroundImage: therapist['therapistImage'] != null
-                ? NetworkImage(therapist['therapistImage'])
-                : null,
-            child: therapist['therapistImage'] == null
-                ? const Icon(Icons.person)
-                : null,
+    return Container(
+      width: 150, // Fixed width for the card
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Therapist image
+              therapist['therapistImage'] != null &&
+                      therapist['therapistImage'].isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(30),
+                      child: Image.network(
+                        therapist['therapistImage'],
+                        height: 60,
+                        width: 60,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          print('Error loading image: $error');
+                          return CircleAvatar(
+                            radius: 30,
+                            backgroundColor: Colors.grey[300],
+                            child: Icon(Icons.person, color: Colors.grey),
+                          );
+                        },
+                      ),
+                    )
+                  : CircleAvatar(
+                      radius: 30,
+                      backgroundColor: Colors.grey[300],
+                      child: Icon(Icons.person, color: Colors.grey),
+                    ),
+              const SizedBox(height: 8),
+
+              // Therapist name
+              Text(
+                therapist['name'] ?? 'Unknown',
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+
+              // Therapist bio (truncated)
+              Text(
+                therapist['bio'] ?? 'N/A',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+              ),
+            ],
           ),
-          const SizedBox(height: 5),
-          Text(
-            therapist['name'],
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            textAlign: TextAlign.center,
-          ),
-          Text(
-            therapist['bio'],
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
-            textAlign: TextAlign.center,
-          ),
-        ],
+        ),
       ),
     );
   }

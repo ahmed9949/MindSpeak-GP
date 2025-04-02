@@ -5,15 +5,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mind_speak_app/components/cars.dart';
 import 'package:mind_speak_app/components/drawer.dart';
 import 'package:mind_speak_app/pages/homepage.dart';
+
 // Second Page: UI Page
-class carsform extends StatefulWidget {
-  const carsform({super.key});
+class CarsForm extends StatefulWidget {
+  const CarsForm({super.key});
 
   @override
   _CategorySelectionPageState createState() => _CategorySelectionPageState();
 }
 
-class _CategorySelectionPageState extends State<carsform> {
+class _CategorySelectionPageState extends State<CarsForm> {
   final List<Map<String, dynamic>> categories = [
     {
       "category": "التواصل مع الناس",
@@ -167,13 +168,22 @@ class _CategorySelectionPageState extends State<carsform> {
     }
   ];
 
-
- final ValueNotifier<List<double?>> selectedScores =
+  final ValueNotifier<List<double?>> selectedScores =
       ValueNotifier<List<double?>>(List.generate(15, (_) => null));
-  String? childId; // Make childId nullable
   bool isLoading = true; // Track loading state
 
- void showCustomPopup(BuildContext context, String message) {
+  @override
+  void initState() {
+    super.initState();
+    // Ensure child ID is fetched when the widget is initialized
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final sessionProvider =
+          Provider.of<SessionProvider>(context, listen: false);
+      sessionProvider.fetchChildId();
+    });
+  }
+
+  void showCustomPopup(BuildContext context, String message) {
     final overlay = Overlay.of(context);
 
     // Declare the overlayEntry with a placeholder
@@ -235,11 +245,8 @@ class _CategorySelectionPageState extends State<carsform> {
     overlay.insert(overlayEntry);
   }
 
-
-
   @override
-   Widget build(BuildContext context) {
-    
+  Widget build(BuildContext context) {
     final sessionProvider = Provider.of<SessionProvider>(context);
 
     return Scaffold(
@@ -258,7 +265,8 @@ class _CategorySelectionPageState extends State<carsform> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),
               child: const Text('تخطي', style: TextStyle(fontSize: 16)),
             ),
@@ -266,36 +274,87 @@ class _CategorySelectionPageState extends State<carsform> {
         ],
       ),
       drawer: const NavigationDrawe(),
-      body: ValueListenableBuilder<List<double?>>(
-        valueListenable: selectedScores,
-        builder: (context, scores, child) {
-          return ListView.builder(
-            itemCount: categories.length,
-            itemBuilder: (context, index) {
-              final category = categories[index];
-              return Cars(
-                title: category["category"],
-                questions: List<String>.from(category["questions"]),
-                scores: List<double>.from(category["scores"]),
-                selectedScore: ValueNotifier(scores[index]),
-                onValueChanged: (value) {
-                  setState(() {
-                    selectedScores.value[index] = value;
-                  });
-                },
-              );
-            },
-          );
-        },
+      body: Column(
+        children: [
+          // Display child ID status
+          Container(
+            padding: const EdgeInsets.all(8.0),
+            color: sessionProvider.childId == null
+                ? Colors.red.shade100
+                : Colors.green.shade100,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  sessionProvider.childId == null
+                      ? Icons.error
+                      : Icons.check_circle,
+                  color: sessionProvider.childId == null
+                      ? Colors.red
+                      : Colors.green,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  sessionProvider.childId == null
+                      ? 'لم يتم تحديد معرف الطفل. الرجاء إضافة طفل أولاً.'
+                      : 'تم تحديد معرف الطفل بنجاح',
+                  style: TextStyle(
+                    color: sessionProvider.childId == null
+                        ? Colors.red
+                        : Colors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Questions list
+          Expanded(
+            child: ValueListenableBuilder<List<double?>>(
+              valueListenable: selectedScores,
+              builder: (context, scores, child) {
+                return ListView.builder(
+                  itemCount: categories.length,
+                  itemBuilder: (context, index) {
+                    final category = categories[index];
+                    return Cars(
+                      title: category["category"],
+                      questions: List<String>.from(category["questions"]),
+                      scores: List<double>.from(category["scores"]),
+                      selectedScore: ValueNotifier(scores[index]),
+                      onValueChanged: (value) {
+                        setState(() {
+                          selectedScores.value[index] = value;
+                          // Create a new list to trigger the ValueNotifier
+                          selectedScores.value =
+                              List.from(selectedScores.value);
+                        });
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton(
           onPressed: () async {
+            final sessionProvider =
+                Provider.of<SessionProvider>(context, listen: false);
+
+            // Make sure the childId is fetched
+            if (sessionProvider.childId == null) {
+              await sessionProvider.fetchChildId();
+            }
+
             if (sessionProvider.childId == null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('لم يتم تحديد معرف الطفل.'),
+                  content:
+                      Text('لم يتم تحديد معرف الطفل. الرجاء إضافة طفل أولاً.'),
                   backgroundColor: Colors.red,
                 ),
               );
@@ -319,16 +378,20 @@ class _CategorySelectionPageState extends State<carsform> {
               return;
             }
 
+            // Convert nullable doubles to non-nullable for calculation
+            List<double> nonNullScores = selectedScores.value
+                .where((score) => score != null)
+                .map((score) => score!)
+                .toList();
+
             // Calculate total score
-            double totalScore = selectedScores.value
-                .whereType<double>()
-                .reduce((a, b) => a + b);
-            
-           String message;
+            double totalScore = nonNullScores.reduce((a, b) => a + b);
+
+            String message;
             if (totalScore < 15) {
               message = 'طفلك ليس مصابًا بالتوحد.';
             } else if (totalScore >= 15 && totalScore <= 29.5) {
-              message = 'طفلك مصاب بالتوحد بدلرجة ضئيلة.';
+              message = 'طفلك مصاب بالتوحد بدرجة ضئيلة.';
             } else if (totalScore >= 30 && totalScore <= 36.5) {
               message = 'طفلك مصاب بالتوحد بدرجة متوسطة.';
             } else {
@@ -336,22 +399,22 @@ class _CategorySelectionPageState extends State<carsform> {
                   'طفلك مصاب بالتوحد بدرجة شديدة. لا يمكننا مساعدتك. الرجاء مراجعة الطبيب للحصول على المساعدة.';
             }
 
-            showCustomPopup(context, message);
-
             try {
+              // Convert scores to strings for Firestore
+              List<String> scoreStrings = selectedScores.value
+                  .map((score) => score?.toString() ?? "0.0")
+                  .toList();
+
               await FirebaseFirestore.instance.collection('Cars').add({
                 'childId': sessionProvider.childId,
                 'totalScore': totalScore,
-                'selectedQuestions': selectedScores.value,
+                'selectedQuestions': scoreStrings,
                 'status': true,
+                'timestamp':
+                    FieldValue.serverTimestamp(), // Add timestamp for tracking
               });
 
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('تم حفظ الإجابات بنجاح.'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+              showCustomPopup(context, message);
             } catch (e) {
               print('Error saving form data: $e');
               ScaffoldMessenger.of(context).showSnackBar(

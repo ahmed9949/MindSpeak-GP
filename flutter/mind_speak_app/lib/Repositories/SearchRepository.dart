@@ -43,6 +43,7 @@ class SearchRepository implements ISearchRepository {
   @override
   Future<UserModel?> getTherapistUserInfo(String userId) async {
     try {
+      // Since therapistId and userId are the same, we can use therapistId directly
       final userDoc = await _firestore.collection('users').doc(userId).get();
 
       if (userDoc.exists) {
@@ -57,15 +58,6 @@ class SearchRepository implements ISearchRepository {
     }
   }
 
-  // Added method to find users by therapist ID
-  Future<QuerySnapshot> findUsersByTherapistId(String therapistId) {
-    return _firestore
-        .collection('users')
-        .where('therapistId', isEqualTo: therapistId)
-        .limit(1)
-        .get();
-  }
-
   // Additional method to fetch therapist with associated user data simultaneously
   Future<Map<String, dynamic>> getTherapistWithUserInfo(
       String therapistId) async {
@@ -78,11 +70,9 @@ class SearchRepository implements ISearchRepository {
       }
 
       var therapistData = therapistDoc.data() as Map<String, dynamic>;
-      String userId = therapistData['userid'];
 
-      if (userId == null || userId.isEmpty) {
-        throw Exception('Invalid user ID associated with therapist');
-      }
+      // Since therapistId is the same as userId, we can use it directly
+      String userId = therapistId;
 
       final userDoc = await _firestore.collection('users').doc(userId).get();
 

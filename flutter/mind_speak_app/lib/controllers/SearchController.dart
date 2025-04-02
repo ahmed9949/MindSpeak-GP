@@ -42,38 +42,22 @@ class SearchPageController {
       _userInfoMap.clear();
 
       // For each therapist, fetch associated user information
-      // Based on the repository code, it seems like therapists have user information
-      // stored in a separate collection
+      // Since therapistId is the same as userId, we can directly fetch user info
       for (var therapist in _therapists) {
         try {
-          // Using the method that fetches therapist with user info in one go
-          var combinedData = await _searchRepository
-              .getTherapistWithUserInfo(therapist.therapistId);
-
-          if (combinedData.containsKey('user')) {
-            _userInfoMap[therapist.therapistId] =
-                combinedData['user'] as UserModel;
+          final userInfo =
+              await _repository.getTherapistUserInfo(therapist.therapistId);
+          if (userInfo != null) {
+            _userInfoMap[therapist.therapistId] = userInfo;
+            print(
+                'Successfully loaded user info for therapist: ${therapist.therapistId}');
+            print('Username: ${userInfo.username}, Email: ${userInfo.email}');
+          } else {
+            print('No user info found for therapist: ${therapist.therapistId}');
           }
         } catch (e) {
           print(
               'Error fetching user info for therapist ${therapist.therapistId}: $e');
-
-          // Fallback approach: try to get the user directly if available in Firestore
-          try {
-            // Using the new method in SearchRepository instead of direct _firestore access
-            final userDoc = await _searchRepository
-                .findUsersByTherapistId(therapist.therapistId);
-
-            if (userDoc.docs.isNotEmpty) {
-              final userId = userDoc.docs.first.id;
-              final userInfo = await _repository.getTherapistUserInfo(userId);
-              if (userInfo != null) {
-                _userInfoMap[therapist.therapistId] = userInfo;
-              }
-            }
-          } catch (innerError) {
-            print('Secondary error fetching user: $innerError');
-          }
         }
       }
 
@@ -91,7 +75,31 @@ class SearchPageController {
 
   // Get user info for a specific therapist
   UserModel? getUserForTherapist(String therapistId) {
-    return _userInfoMap[therapistId];
+    UserModel? userInfo = _userInfoMap[therapistId];
+    if (userInfo == null) {
+      print('No cached user info for therapist: $therapistId');
+    }
+    return userInfo;
+  }
+
+  // Fetch user info on-demand if not available
+  Future<UserModel?> fetchUserForTherapist(String therapistId) async {
+    try {
+      UserModel? userInfo = _userInfoMap[therapistId];
+      if (userInfo != null) {
+        return userInfo;
+      }
+
+      // Fetch user info if not already cached
+      userInfo = await _repository.getTherapistUserInfo(therapistId);
+      if (userInfo != null) {
+        _userInfoMap[therapistId] = userInfo;
+      }
+      return userInfo;
+    } catch (e) {
+      print('Error fetching user info for therapist $therapistId: $e');
+      return null;
+    }
   }
 
   void searchTherapists(String query) {

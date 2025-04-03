@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 // lib/screens/voice_chat_3d_model_page.dart
 
 import 'package:flutter/material.dart';
@@ -768,23 +769,22 @@ class ChatMessage {
 
 
 
+=======
+// // lib/screens/voice_chat_3d_model_page.dart
+>>>>>>> Stashed changes
 
 // import 'package:flutter/material.dart';
 // import 'package:flutter_dotenv/flutter_dotenv.dart';
 // import 'package:flutter_3d_controller/flutter_3d_controller.dart';
-// import 'package:mind_speak_app/components/blindcamera.dart';
 // import 'package:mind_speak_app/models/sessionmodel.dart';
 // import 'package:mind_speak_app/providers/session_provider.dart';
-// import 'package:mind_speak_app/service/cameraservice.dart';
-// import 'package:mind_speak_app/service/detectionservice.dart';
-// import 'package:mind_speak_app/service/servicemanager.dart';
+// import 'package:mind_speak_app/service/avatarservice/chatmanager.dart';
+// import 'package:mind_speak_app/service/avatarservice/sessionanalyzer.dart';
 // import 'package:speech_to_text/speech_to_text.dart' as stt;
 // import 'package:flutter_tts/flutter_tts.dart';
 // import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:provider/provider.dart';
 // import 'package:google_generative_ai/google_generative_ai.dart';
-// import 'package:camera/camera.dart';
-// import 'dart:async';
 
 // class VoiceChat3DModelPage extends StatefulWidget {
 //   final Map<String, dynamic> childData;
@@ -821,18 +821,9 @@ class ChatMessage {
 //   late String _sessionId;
 //   late DateTime _sessionStartTime;
 //   int _sessionNumber = 0;
-
-//   // === AI and Chat Variables ===
 //   late GenerativeModel _model;
 //   late ChatSession _chatSession;
-
-//   // === Detection Variables ===
-//   final DetectionService _detectionService = DetectionService();
-//   late CameraService _cameraService;
-//   Timer? _detectionTimer;
-//   bool _isDetecting = false;
-//   bool _isCameraInitialized = false;
-//   Map<String, dynamic> _detectionStats = {};
+//   late SessionAnalyzer _analyzer;
 
 //   @override
 //   void initState() {
@@ -840,60 +831,27 @@ class ChatMessage {
 //     _sessionId = DateTime.now().millisecondsSinceEpoch.toString();
 //     _sessionStartTime = DateTime.now();
 //     _childName = widget.childData['name'];
+
+//     // Initialize all components
 //     _initGenerativeModel();
-//     controller.onModelLoaded.addListener(_onModelLoaded);
 //     _initSpeech();
 //     _initTts();
-//     _initCamera();
-//   }
 
-//   Future<void> _initCamera() async {
-//     _cameraService = CameraService();
-//     try {
-//       await _cameraService.initialize();
-//       setState(() {
-//         _isCameraInitialized = true;
-//       });
-//     } catch (e) {
-//       print('Failed to initialize camera: $e');
-//     }
+//     // Add 3D model listener
+//     controller.onModelLoaded.addListener(_onModelLoaded);
 //   }
 
 //   void _initGenerativeModel() {
 //     final apiKey = dotenv.env['GEMINI_API_KEY']!;
-//     _model = GenerativeModel(model: 'gemini-pro', apiKey: apiKey);
+//     _model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: apiKey);
+//     _analyzer = SessionAnalyzer(_model);
 
 //     final sessionProvider =
 //         Provider.of<SessionProvider>(context, listen: false);
-//     _chatSession = ChatManager.getOrCreateSession(
-//         sessionProvider.childId!, _model, widget.childData);
-//   }
-
-//   void _startDetection() {
-//     _isDetecting = true;
-//     _detectionTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
-//       if (!_isDetecting) {
-//         timer.cancel();
-//         return;
-//       }
-
-//       try {
-//         if (_isCameraInitialized) {
-//           String base64Frame = await _cameraService.captureFrame();
-//           Map<String, dynamic> results =
-//               await _detectionService.processFrame(base64Frame);
-//           // Optional: Use results for real-time feedback
-//         }
-//       } catch (e) {
-//         print('Detection error: $e');
-//       }
-//     });
-//   }
-
-//   void _stopDetection() {
-//     _isDetecting = false;
-//     _detectionTimer?.cancel();
-//     _detectionStats = _detectionService.getSessionStats();
+//     if (sessionProvider.childId != null) {
+//       _chatSession = ChatManager.getOrCreateSession(
+//           sessionProvider.childId!, _model, widget.childData);
+//     }
 //   }
 
 //   Future<int> _getAndIncrementSessionCounter() async {
@@ -937,7 +895,7 @@ class ChatMessage {
 //         ]),
 //       }, SetOptions(merge: true));
 //     } catch (e) {
-//       print('Error saving message: $e');
+//       print('Error saving message to database: $e');
 //     }
 //   }
 
@@ -948,6 +906,8 @@ class ChatMessage {
 //     if (sessionProvider.isLoggedIn && sessionProvider.userId != null) {
 //       try {
 //         _sessionNumber = await _getAndIncrementSessionCounter();
+
+//         // Get therapistId from child data
 //         String therapistId = widget.childData['therapistId'];
 
 //         await FirebaseFirestore.instance
@@ -962,6 +922,7 @@ class ChatMessage {
 //           'conversation': [],
 //         });
 
+//         // Generate welcome message using chat session
 //         await _saveMessageToDatabase('dr', widget.initialResponse);
 
 //         setState(() {
@@ -972,9 +933,6 @@ class ChatMessage {
 //         });
 
 //         await _speak(widget.initialResponse);
-
-//         // Start detection after setup
-//         _startDetection();
 //       } catch (e) {
 //         print("Error starting call: $e");
 //         const errorMsg = "عذراً، حدث خطأ في بدء المحادثة.";
@@ -1038,7 +996,7 @@ class ChatMessage {
 //   Future<void> _initTts() async {
 //     await _flutterTts.setLanguage("ar-EG");
 //     await _flutterTts.setPitch(1.0);
-//     await _flutterTts.setSpeechRate(0.5); // Slower speech rate
+//     await _flutterTts.setSpeechRate(0.5);
 //     _flutterTts.setCompletionHandler(() {
 //       if (mounted) {
 //         setState(() => _isSpeaking = false);
@@ -1089,9 +1047,14 @@ class ChatMessage {
 //     });
 
 //     try {
+//       if (_chatSession == null) {
+//         throw Exception('Chat session not initialized');
+//       }
+
 //       String aiResponse = await ChatManager.processResponse(
 //           _chatSession, text, _messages.length);
 
+//       // Ensure response is not too long
 //       if (aiResponse.split('.').length > 2) {
 //         aiResponse = aiResponse
 //                 .split('.')
@@ -1127,6 +1090,31 @@ class ChatMessage {
 //     }
 //   }
 
+//   Future<SessionStatistics> _calculateSessionStatistics() async {
+//     int childMsgCount = 0;
+//     int drMsgCount = 0;
+//     int totalWords = 0;
+
+//     for (var message in _messages) {
+//       if (message.isUser) {
+//         childMsgCount++;
+//       } else {
+//         drMsgCount++;
+//       }
+//       totalWords += message.text.split(' ').length;
+//     }
+
+//     return SessionStatistics(
+//       totalMessages: _messages.length,
+//       childMessages: childMsgCount,
+//       drMessages: drMsgCount,
+//       sessionDuration: DateTime.now().difference(_sessionStartTime),
+//       sessionDate: _sessionStartTime,
+//       wordsPerMessage: totalWords ~/ _messages.length,
+//       sessionNumber: _sessionNumber,
+//     );
+//   }
+
 //   Future<void> _saveSessionStatistics() async {
 //     final sessionProvider =
 //         Provider.of<SessionProvider>(context, listen: false);
@@ -1137,10 +1125,7 @@ class ChatMessage {
 //           .collection('sessions')
 //           .doc(_sessionId)
 //           .update({
-//         'statistics': {
-//           ...stats.toJson(),
-//           'detection_stats': _detectionStats,
-//         },
+//         'statistics': stats.toJson(),
 //         'endTime': DateTime.now().toIso8601String(),
 //       });
 
@@ -1186,33 +1171,182 @@ class ChatMessage {
 //     }
 //   }
 
-//   Future<SessionStatistics> _calculateSessionStatistics() async {
-//     int childMsgCount = 0;
-//     int drMsgCount = 0;
-//     int totalWords = 0;
+// // In voice_chat_3d_model_page.dart
+// //   Future<void> _generateAndSaveRecommendations() async {
+// //     final sessionProvider =
+// //         Provider.of<SessionProvider>(context, listen: false);
+// //     final childId = sessionProvider.childId;
 
-//     for (var message in _messages) {
-//       if (message.isUser) {
-//         childMsgCount++;
-//       } else {
-//         drMsgCount++;
-//       }
-//       totalWords += message.text.split(' ').length;
-//     }
+// //     if (childId == null) return;
 
-//     return SessionStatistics(
-//       totalMessages: _messages.length,
-//       childMessages: childMsgCount,
-//       drMessages: drMsgCount,
-//       sessionDuration: DateTime.now().difference(_sessionStartTime),
-//       sessionDate: _sessionStartTime,
-//       wordsPerMessage: _messages.isEmpty ? 0 : totalWords ~/ _messages.length,
-//       sessionNumber: _sessionNumber,
-//     );
+// //     try {
+// //       // Get recent sessions
+// //       final sessions = await FirebaseFirestore.instance
+// //           .collection('sessions')
+// //           .where('childId', isEqualTo: childId)
+// //           .orderBy('sessionNumber', descending: true)
+// //           .limit(5) // Get last 5 sessions
+// //           .get();
+
+// //       if (sessions.docs.isEmpty) {
+// //         print('No sessions found for recommendations');
+// //         return;
+// //       }
+
+// //       // Get child data for recommendations
+// //       final childDoc = await FirebaseFirestore.instance
+// //           .collection('child')
+// //           .doc(childId)
+// //           .get();
+
+// //       if (!childDoc.exists) {
+// //         print('Child document not found');
+// //         return;
+// //       }
+
+// //       final childData = childDoc.data()!;
+// //       final sessionData = sessions.docs.map((doc) => doc.data()).toList();
+// //       final aggregateStats = childData['aggregateStats'] ?? {};
+
+// //       // Generate recommendations with more specific prompt
+// //       final prompt = '''
+// // Based on the session data for ${childData['name']}, aged ${childData['age']}, with interest in ${childData['childInterest']},
+// // please provide two specific recommendations in Arabic:
+
+// // 1. Recommendations for parents (2-3 sentences):
+// // - How to support the child at home
+// // - Activities to try
+// // - Areas to focus on
+
+// // 2. Recommendations for therapists (2-3 sentences):
+// // - Therapeutic strategies
+// // - Progress notes
+// // - Focus areas for next session
+// // ''';
+
+// //       final chat = _model.startChat();
+// //       final response = await chat.sendMessage(Content.text(prompt));
+
+// //       if (response.text == null) {
+// //         print('No recommendations generated');
+// //         return;
+// //       }
+
+// //       // Split recommendations
+// //       final recommendationsText = response.text!;
+// //       final parts = recommendationsText.split('2.');
+// //       final parentRecs = parts[0].replaceAll('1.', '').trim();
+// //       final therapistRecs = parts.length > 1 ? parts[1].trim() : '';
+
+// //       final recommendations = {
+// //         'parents': parentRecs,
+// //         'therapists': therapistRecs,
+// //         'timestamp': DateTime.now().toIso8601String(),
+// //       };
+
+// //       // Save to session document
+// //       await FirebaseFirestore.instance
+// //           .collection('sessions')
+// //           .doc(_sessionId)
+// //           .update({
+// //         'recommendations': recommendations,
+// //       });
+
+// //       // Save to child document
+// //       await FirebaseFirestore.instance.collection('child').doc(childId).update({
+// //         'latestRecommendations': recommendations,
+// //       });
+
+// //       print('Recommendations saved successfully');
+// //     } catch (e) {
+// //       print('Error generating recommendations: $e');
+// //     }
+// //   }
+
+// Future<void> _generateAndSaveRecommendations() async {
+//   final sessionProvider = Provider.of<SessionProvider>(context, listen: false);
+//   final childId = sessionProvider.childId;
+  
+//   if (childId == null) return;
+
+//   try {
+//     // 1. Get child data
+//     final childDoc = await FirebaseFirestore.instance
+//         .collection('child')
+//         .doc(childId)
+//         .get();
+    
+//     if (!childDoc.exists) return;
+
+//     // 2. Get recent sessions (3 most recent)
+//     final sessionsQuery = await FirebaseFirestore.instance
+//         .collection('sessions')
+//         .where('childId', isEqualTo: childId)
+//         .orderBy('startTime', descending: true)
+//         .limit(3)
+//         .get();
+
+//     // 3. Prepare prompt
+//     final prompt = '''
+// Generate therapy recommendations in Arabic based on this session data:
+
+// Child: ${childDoc['name']} (Age: ${childDoc['age']})
+// Interest: ${childDoc['childInterest']}
+
+// Recent Sessions Summary:
+// ${sessionsQuery.docs.map((d) => 
+//   'Session ${d['sessionNumber']}: ${d['statistics']?['childMessages']} child messages'
+// ).join('\n')}
+
+// Provide two separate recommendations:
+// 1. For Parents (2-3 practical suggestions for home)
+// 2. For Therapists (2-3 professional strategy suggestions)
+
+// Write in clear, simple Arabic.
+// ''';
+
+//     // 4. Generate recommendations
+//     final chat = _model.startChat();
+//     final response = await chat.sendMessage(Content.text(prompt));
+    
+//     if (response.text == null) return;
+
+//     // 5. Parse and save
+//     final recommendations = _parseRecommendations(response.text!);
+    
+//     await FirebaseFirestore.instance
+//         .collection('sessions')
+//         .doc(_sessionId)
+//         .update({
+//           'recommendations': recommendations,
+//           'lastUpdated': FieldValue.serverTimestamp()
+//         });
+
+//     await FirebaseFirestore.instance
+//         .collection('child')
+//         .doc(childId)
+//         .update({
+//           'latestRecommendations': recommendations,
+//         });
+
+//   } catch (e) {
+//     debugPrint('Recommendation generation error: $e');
 //   }
+// }
+
+// Map<String, String> _parseRecommendations(String text) {
+//   // Simple parsing - adapt based on your AI's response format
+//   return {
+//     'parents': text.contains('1.') 
+//         ? text.split('1.')[1].split('2.').first.trim()
+//         : 'No parent recommendations generated',
+//     'therapists': text.contains('2.')
+//         ? text.split('2.').last.trim()
+//         : 'No therapist recommendations generated',
+//   };
+// }
 
 //   Future<void> _endCall() async {
-//     // Stop all ongoing processes
 //     if (_isListening) {
 //       await _speech.stop();
 //     }
@@ -1220,17 +1354,13 @@ class ChatMessage {
 //       await _flutterTts.stop();
 //     }
 
-//     // Stop detection and get final stats
-//     _stopDetection();
-
-//     // Create ending message
 //     String endingMessage = "الى اللقاء";
 //     if (_childName != null) {
 //       endingMessage = "الى اللقاء $_childName";
 //     }
 
+//     // Save ending message
 //     await _saveMessageToDatabase('dr', endingMessage);
-//     await _saveSessionStatistics();
 
 //     setState(() {
 //       _messages.add(ChatMessage(text: endingMessage, isUser: false));
@@ -1248,109 +1378,66 @@ class ChatMessage {
 
 //     _playAnimation('Rig|idle');
 
+//     // Save statistics first
+//     await _saveSessionStatistics();
+
+//     // Then generate and save recommendations
+//     await _generateAndSaveRecommendations();
+
 //     if (mounted) {
-//       _showSessionSummary();
-//     }
-//   }
+//       // Show session summary dialog
+//       showDialog(
+//         context: context,
+//         builder: (context) => FutureBuilder<SessionStatistics>(
+//           future: _calculateSessionStatistics(),
+//           builder: (context, snapshot) {
+//             if (!snapshot.hasData) {
+//               return const AlertDialog(
+//                 title: Text('Calculating Statistics...'),
+//                 content: CircularProgressIndicator(),
+//               );
+//             }
 
-//   void _showSessionSummary() {
-//     showDialog(
-//       context: context,
-//       builder: (context) => FutureBuilder<SessionStatistics>(
-//         future: _calculateSessionStatistics(),
-//         builder: (context, snapshot) {
-//           if (!snapshot.hasData) {
-//             return const AlertDialog(
-//               title: Text('Calculating Statistics...'),
-//               content: CircularProgressIndicator(),
+//             final stats = snapshot.data!;
+//             return AlertDialog(
+//               title: const Text('Session Summary'),
+//               content: SingleChildScrollView(
+//                 child: Column(
+//                   mainAxisSize: MainAxisSize.min,
+//                   crossAxisAlignment: CrossAxisAlignment.start,
+//                   children: [
+//                     Text('Session #${stats.sessionNumber}'),
+//                     Text(
+//                         'Duration: ${stats.sessionDuration.inMinutes} minutes'),
+//                     Text('Total Messages: ${stats.totalMessages}'),
+//                     Text('Child Messages: ${stats.childMessages}'),
+//                     Text('Therapist Messages: ${stats.drMessages}'),
+//                     Text('Average Words/Message: ${stats.wordsPerMessage}'),
+//                   ],
+//                 ),
+//               ),
+//               actions: [
+//                 TextButton(
+//                   onPressed: () => Navigator.of(context).pop(),
+//                   child: const Text('OK'),
+//                 ),
+//               ],
 //             );
-//           }
-
-//           final stats = snapshot.data!;
-//           return AlertDialog(
-//             title: const Text('Session Summary'),
-//             content: SingleChildScrollView(
-//               child: Column(
-//                 mainAxisSize: MainAxisSize.min,
-//                 crossAxisAlignment: CrossAxisAlignment.start,
-//                 children: [
-//                   Text('Session #${stats.sessionNumber}'),
-//                   Text('Duration: ${stats.sessionDuration.inMinutes} minutes'),
-//                   Text('Total Messages: ${stats.totalMessages}'),
-//                   Text('Child Messages: ${stats.childMessages}'),
-//                   Text('Therapist Messages: ${stats.drMessages}'),
-//                   Text('Average Words/Message: ${stats.wordsPerMessage}'),
-//                   const Divider(),
-//                   _buildDetectionSummary(),
-//                 ],
-//               ),
-//             ),
-//             actions: [
-//               TextButton(
-//                 onPressed: () => Navigator.of(context).pop(),
-//                 child: const Text('OK'),
-//               ),
-//             ],
-//           );
-//         },
-//       ),
-//     );
-//   }
-
-//   Widget _buildDetectionSummary() {
-//     return Column(
-//       crossAxisAlignment: CrossAxisAlignment.start,
-//       children: [
-//         const Text(
-//           'Detection Statistics',
-//           style: TextStyle(fontWeight: FontWeight.bold),
+//           },
 //         ),
-//         Text('Focus Percentage: ${_detectionStats['gaze_focus_percentage']}%'),
-//         const Text('\nBehaviors:'),
-//         ..._buildBehaviorStats(),
-//         const Text('\nEmotions:'),
-//         ..._buildEmotionStats(),
-//       ],
-//     );
-//   }
+//       );
+//     }
 
-//   List<Widget> _buildBehaviorStats() {
-//     final behaviorSummary =
-//         _detectionStats['behavior_summary'] as Map<String, String>? ?? {};
-//     return behaviorSummary.entries
-//         .map(
-//           (e) => Padding(
-//             padding: const EdgeInsets.only(left: 16.0),
-//             child: Text('${e.key}: ${e.value}%'),
-//           ),
-//         )
-//         .toList();
-//   }
-
-//   List<Widget> _buildEmotionStats() {
-//     final emotionSummary =
-//         _detectionStats['emotion_summary'] as Map<String, String>? ?? {};
-//     return emotionSummary.entries
-//         .map(
-//           (e) => Padding(
-//             padding: const EdgeInsets.only(left: 16.0),
-//             child: Text('${e.key}: ${e.value}%'),
-//           ),
-//         )
-//         .toList();
+    
 //   }
 
 //   @override
 //   void dispose() {
-//     _detectionTimer?.cancel();
-//     _cameraService.dispose();
 //     controller.onModelLoaded.removeListener(_onModelLoaded);
 //     _speech.stop();
 //     _flutterTts.stop();
 //     super.dispose();
 //   }
-
-//   // Build method continues in next part...
 
 //   @override
 //   Widget build(BuildContext context) {
@@ -1359,194 +1446,186 @@ class ChatMessage {
 //         title: Text(
 //             _sessionNumber > 0 ? 'Session #$_sessionNumber' : '3D Voice Chat'),
 //       ),
-//       body: Stack(
+//       body: Column(
 //         children: [
-//           Column(
-//             children: [
-//               // 3D Model Viewer Section
-//               Expanded(
-//                 flex: 2,
-//                 child: Stack(
-//                   children: [
-//                     Flutter3DViewer(
-//                       src: 'assets/models/business_man.glb',
-//                       controller: controller,
-//                       activeGestureInterceptor: true,
-//                       onProgress: (progress) {
-//                         setState(() {
-//                           isLoading = progress < 1;
-//                         });
-//                       },
-//                       onLoad: (modelAddress) {},
-//                       onError: (error) {
-//                         setState(() {
-//                           errorMessage = 'Failed to load model: $error';
-//                           isLoading = false;
-//                         });
-//                       },
+//           // 3D Model Viewer Section
+//           Expanded(
+//             flex: 2,
+//             child: Stack(
+//               children: [
+//                 Flutter3DViewer(
+//                   src: 'assets/models/business_man.glb',
+//                   controller: controller,
+//                   activeGestureInterceptor: true,
+//                   onProgress: (progress) {
+//                     setState(() {
+//                       isLoading = progress < 1;
+//                     });
+//                   },
+//                   onLoad: (modelAddress) {},
+//                   onError: (error) {
+//                     setState(() {
+//                       errorMessage = 'Failed to load model: $error';
+//                       isLoading = false;
+//                     });
+//                   },
+//                 ),
+//                 if (isLoading)
+//                   Container(
+//                     color: Colors.black45,
+//                     child: const Center(child: CircularProgressIndicator()),
+//                   ),
+//                 if (errorMessage != null)
+//                   Container(
+//                     color: Colors.black45,
+//                     padding: const EdgeInsets.all(16),
+//                     child: Center(
+//                       child: Text(
+//                         errorMessage!,
+//                         style: const TextStyle(color: Colors.white),
+//                       ),
 //                     ),
-//                     if (isLoading)
-//                       Container(
-//                         color: Colors.black45,
-//                         child: const Center(child: CircularProgressIndicator()),
-//                       ),
-//                     if (errorMessage != null)
-//                       Container(
-//                         color: Colors.black45,
-//                         padding: const EdgeInsets.all(16),
-//                         child: Center(
-//                           child: Text(
-//                             errorMessage!,
-//                             style: const TextStyle(color: Colors.white),
-//                           ),
-//                         ),
-//                       ),
-//                   ],
-//                 ),
-//               ),
-//               // Chat Messages Section
-//               Expanded(
-//                 flex: 3,
-//                 child: ListView.builder(
-//                   padding: const EdgeInsets.all(16.0),
-//                   itemCount: _messages.length,
-//                   itemBuilder: (context, index) {
-//                     final message = _messages[index];
-//                     return Align(
-//                       alignment: message.isUser
-//                           ? Alignment.centerRight
-//                           : Alignment.centerLeft,
-//                       child: Container(
-//                         margin: const EdgeInsets.symmetric(vertical: 4.0),
-//                         padding: const EdgeInsets.all(12.0),
-//                         decoration: BoxDecoration(
-//                           color: message.isUser
-//                               ? Colors.blue[100]
-//                               : Colors.grey[300],
-//                           borderRadius: BorderRadius.circular(15.0),
-//                         ),
-//                         child: Text(
-//                           message.text,
-//                           style: const TextStyle(fontSize: 16.0),
-//                         ),
-//                       ),
-//                     );
-//                   },
-//                 ),
-//               ),
-//               // Control Buttons Section
-//               Container(
-//                 padding:
-//                     const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-//                 child: LayoutBuilder(
-//                   builder: (context, constraints) {
-//                     if (!_callStarted) {
-//                       return Center(
-//                         child: ElevatedButton(
-//                           onPressed: () {
-//                             setState(() {
-//                               _callStarted = true;
-//                             });
-//                             _startCall();
-//                           },
-//                           child: const Text("Start Call"),
-//                         ),
-//                       );
-//                     }
-
-//                     return Wrap(
-//                       spacing: 8.0,
-//                       runSpacing: 8.0,
-//                       alignment: WrapAlignment.spaceEvenly,
-//                       children: [
-//                         // Record Button
-//                         SizedBox(
-//                           width: constraints.maxWidth > 600
-//                               ? (constraints.maxWidth - 32) / 3
-//                               : (constraints.maxWidth - 16) / 2,
-//                           child: ElevatedButton.icon(
-//                             onPressed: _isSpeaking ? null : _toggleListening,
-//                             icon:
-//                                 Icon(_isListening ? Icons.mic : Icons.mic_none),
-//                             label:
-//                                 Text(_isListening ? 'Recording...' : 'Record'),
-//                             style: ElevatedButton.styleFrom(
-//                               backgroundColor:
-//                                   _isListening ? Colors.red : Colors.blue,
-//                               padding: const EdgeInsets.symmetric(
-//                                 horizontal: 8,
-//                                 vertical: 12,
-//                               ),
-//                             ),
-//                           ),
-//                         ),
-
-//                         // Stop TTS Button
-//                         SizedBox(
-//                           width: constraints.maxWidth > 600
-//                               ? (constraints.maxWidth - 32) / 3
-//                               : (constraints.maxWidth - 16) / 2,
-//                           child: ElevatedButton.icon(
-//                             onPressed: _isSpeaking
-//                                 ? () async {
-//                                     await _flutterTts.stop();
-//                                     setState(() => _isSpeaking = false);
-//                                     _playAnimation('Rig|idle');
-//                                   }
-//                                 : null,
-//                             icon: const Icon(Icons.stop),
-//                             label: const Text('Stop TTS'),
-//                             style: ElevatedButton.styleFrom(
-//                               backgroundColor: Colors.orange,
-//                               padding: const EdgeInsets.symmetric(
-//                                 horizontal: 8,
-//                                 vertical: 12,
-//                               ),
-//                             ),
-//                           ),
-//                         ),
-
-//                         // End Call Button
-//                         SizedBox(
-//                           width: constraints.maxWidth > 600
-//                               ? (constraints.maxWidth - 32) / 3
-//                               : constraints.maxWidth - 16,
-//                           child: ElevatedButton.icon(
-//                             onPressed: () => _endCall(),
-//                             icon: const Icon(Icons.call_end),
-//                             label: const Text('End Call'),
-//                             style: ElevatedButton.styleFrom(
-//                               backgroundColor: Colors.red,
-//                               padding: const EdgeInsets.symmetric(
-//                                 horizontal: 8,
-//                                 vertical: 12,
-//                               ),
-//                             ),
-//                           ),
-//                         ),
-//                       ],
-//                     );
-//                   },
-//                 ),
-//               ),
-//             ],
-//           ),
-//           // Hidden camera widget for detection
-//           if (_isCameraInitialized)
-//             Positioned(
-//               left: -1,
-//               top: -1,
-//               child: BlindCamera(controller: _cameraService.controller!),
+//                   ),
+//               ],
 //             ),
+//           ),
+//           // Chat Messages Section
+//           Expanded(
+//             flex: 3,
+//             child: ListView.builder(
+//               padding: const EdgeInsets.all(16.0),
+//               itemCount: _messages.length,
+//               itemBuilder: (context, index) {
+//                 final message = _messages[index];
+//                 return Align(
+//                   alignment: message.isUser
+//                       ? Alignment.centerRight
+//                       : Alignment.centerLeft,
+//                   child: Container(
+//                     margin: const EdgeInsets.symmetric(vertical: 4.0),
+//                     padding: const EdgeInsets.all(12.0),
+//                     decoration: BoxDecoration(
+//                       color:
+//                           message.isUser ? Colors.blue[100] : Colors.grey[300],
+//                       borderRadius: BorderRadius.circular(15.0),
+//                     ),
+//                     child: Text(
+//                       message.text,
+//                       style: const TextStyle(fontSize: 16.0),
+//                     ),
+//                   ),
+//                 );
+//               },
+//             ),
+//           ),
+//           // Control Buttons Section
+
+// // Control Buttons Section
+//           Container(
+//             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+//             child: LayoutBuilder(
+//               builder: (context, constraints) {
+//                 if (!_callStarted) {
+//                   // Single Start Call button
+//                   return Center(
+//                     child: ElevatedButton(
+//                       onPressed: () {
+//                         setState(() {
+//                           _callStarted = true;
+//                         });
+//                         _startCall();
+//                       },
+//                       child: const Text("Start Call"),
+//                     ),
+//                   );
+//                 }
+
+//                 // Control buttons when call is started
+//                 return Wrap(
+//                   spacing: 8.0, // horizontal space between buttons
+//                   runSpacing: 8.0, // vertical space between lines
+//                   alignment: WrapAlignment.spaceEvenly,
+//                   children: [
+//                     // Record Button
+//                     SizedBox(
+//                       width: constraints.maxWidth > 600
+//                           ? (constraints.maxWidth - 32) / 3
+//                           : // For larger screens
+//                           (constraints.maxWidth - 16) /
+//                               2, // For smaller screens
+//                       child: ElevatedButton.icon(
+//                         onPressed: _isSpeaking ? null : _toggleListening,
+//                         icon: Icon(_isListening ? Icons.mic : Icons.mic_none),
+//                         label: Text(_isListening ? 'Recording...' : 'Record'),
+//                         style: ElevatedButton.styleFrom(
+//                           backgroundColor:
+//                               _isListening ? Colors.red : Colors.blue,
+//                           padding: const EdgeInsets.symmetric(
+//                             horizontal: 8,
+//                             vertical: 12,
+//                           ),
+//                         ),
+//                       ),
+//                     ),
+
+//                     // Stop TTS Button
+//                     SizedBox(
+//                       width: constraints.maxWidth > 600
+//                           ? (constraints.maxWidth - 32) / 3
+//                           : (constraints.maxWidth - 16) / 2,
+//                       child: ElevatedButton.icon(
+//                         onPressed: _isSpeaking
+//                             ? () async {
+//                                 await _flutterTts.stop();
+//                                 setState(() => _isSpeaking = false);
+//                                 _playAnimation('Rig|idle');
+//                               }
+//                             : null,
+//                         icon: const Icon(Icons.stop),
+//                         label: const Text('Stop TTS'),
+//                         style: ElevatedButton.styleFrom(
+//                           backgroundColor: Colors.orange,
+//                           padding: const EdgeInsets.symmetric(
+//                             horizontal: 8,
+//                             vertical: 12,
+//                           ),
+//                         ),
+//                       ),
+//                     ),
+
+//                     // End Call Button
+//                     SizedBox(
+//                       width: constraints.maxWidth > 600
+//                           ? (constraints.maxWidth - 32) / 3
+//                           : constraints.maxWidth - 16,
+//                       child: ElevatedButton.icon(
+//                         onPressed: () => _endCall(),
+//                         icon: const Icon(Icons.call_end),
+//                         label: const Text('End Call'),
+//                         style: ElevatedButton.styleFrom(
+//                           backgroundColor: Colors.red,
+//                           padding: const EdgeInsets.symmetric(
+//                             horizontal: 8,
+//                             vertical: 12,
+//                           ),
+//                         ),
+//                       ),
+//                     ),
+//                   ],
+//                 );
+//               },
+//             ),
+//           )
 //         ],
 //       ),
 //     );
 //   }
+  
 // }
 
-// // Message class
 // class ChatMessage {
 //   final String text;
 //   final bool isUser;
 //   const ChatMessage({required this.text, required this.isUser});
 // }
+ 

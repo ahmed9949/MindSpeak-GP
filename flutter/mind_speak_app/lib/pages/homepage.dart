@@ -201,7 +201,7 @@ class _HomePageState extends State<HomePage> {
                           const SearchPage(),
                         ),
                         _buildTopCard(context, "3d session",
-                            "assets/predict.png", StartSessionPage()),
+                            "assets/predict.png", const StartSessionPage()),
                         _buildTopCard(
                           context,
                           "Cars",
@@ -255,7 +255,7 @@ class _HomePageState extends State<HomePage> {
                                 ),
                                 Text(
                                   "Found: ${therapists.length}",
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 14,
                                     color: Colors.grey,
                                   ),
@@ -264,9 +264,9 @@ class _HomePageState extends State<HomePage> {
                             ),
                             const SizedBox(height: 10),
                             therapists.isEmpty
-                                ? Center(
+                                ? const Center(
                                     child: Padding(
-                                      padding: const EdgeInsets.symmetric(
+                                      padding: EdgeInsets.symmetric(
                                           vertical: 20),
                                       child: Text(
                                         "No therapists available",
@@ -305,7 +305,7 @@ class _HomePageState extends State<HomePage> {
                                     ? Colors.grey[850]
                                     : Colors.white,
                                 borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
+                                boxShadow: const [
                                   BoxShadow(
                                     color: Colors.black12,
                                     blurRadius: 10,
@@ -330,7 +330,7 @@ class _HomePageState extends State<HomePage> {
                                               : Colors.black,
                                         ),
                                       ),
-                                      Icon(Icons.tips_and_updates,
+                                      const Icon(Icons.tips_and_updates,
                                           color: Colors.blueAccent, size: 24),
                                     ],
                                   ),
@@ -411,7 +411,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildTherapistCard(Map<String, dynamic> therapist) {
-    return Container(
+    return SizedBox(
       width: 150, // Fixed width for the card
       child: Card(
         elevation: 4,
@@ -436,7 +436,7 @@ class _HomePageState extends State<HomePage> {
                           return CircleAvatar(
                             radius: 30,
                             backgroundColor: Colors.grey[300],
-                            child: Icon(Icons.person, color: Colors.grey),
+                            child: const Icon(Icons.person, color: Colors.grey),
                           );
                         },
                       ),
@@ -444,7 +444,7 @@ class _HomePageState extends State<HomePage> {
                   : CircleAvatar(
                       radius: 30,
                       backgroundColor: Colors.grey[300],
-                      child: Icon(Icons.person, color: Colors.grey),
+                      child: const Icon(Icons.person, color: Colors.grey),
                     ),
               const SizedBox(height: 8),
 
@@ -481,7 +481,7 @@ Widget _buildTipCard(IconData icon, String text) {
     decoration: BoxDecoration(
       color: Colors.blueAccent.withOpacity(0.1),
       borderRadius: BorderRadius.circular(15),
-      boxShadow: [
+      boxShadow: const [
         BoxShadow(
           color: Colors.black12,
           blurRadius: 8,

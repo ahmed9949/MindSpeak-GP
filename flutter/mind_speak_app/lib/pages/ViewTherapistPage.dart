@@ -13,7 +13,7 @@ class ViewTherapist extends StatefulWidget {
 }
 
 class _ViewTherapistState extends State<ViewTherapist> {
-  late ViewTherapistController _controller = ViewTherapistController();
+  late final ViewTherapistController _controller = ViewTherapistController();
   final TextEditingController _searchController = TextEditingController();
 
   @override

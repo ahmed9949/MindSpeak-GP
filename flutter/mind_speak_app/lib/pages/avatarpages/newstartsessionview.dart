@@ -9,7 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class StartSessionView extends StatefulWidget {
-  const StartSessionView({Key? key}) : super(key: key);
+  const StartSessionView({super.key});
 
   @override
   _StartSessionViewState createState() => _StartSessionViewState();
@@ -42,7 +42,7 @@ class _StartSessionViewState extends State<StartSessionView> {
     });
     try {
       // Replace this with actual logic (e.g., from a SessionProvider) to get the child's ID.
-      final String childId = "child123";
+      const String childId = "child123";
       final data = await sessionController.fetchChildData(childId);
       setState(() {
         childData = data;

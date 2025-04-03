@@ -6,7 +6,7 @@ class EditableField extends StatelessWidget {
   final TextInputType inputType;
   final int? maxLines;
 
-  const EditableField({
+  const EditableField({super.key, 
     required this.controller,
     required this.label,
     this.inputType = TextInputType.text,

@@ -28,7 +28,7 @@ class ImageUploader {
 }
 
 class PredictScreen extends StatefulWidget {
-  const PredictScreen({Key? key}) : super(key: key);
+  const PredictScreen({super.key});
 
   @override
   State<PredictScreen> createState() => _PredictScreenState();
@@ -126,5 +126,5 @@ class _PredictScreenState extends State<PredictScreen> {
 }
 
 void main() {
-  runApp(MaterialApp(home: PredictScreen()));
+  runApp(const MaterialApp(home: PredictScreen()));
 }

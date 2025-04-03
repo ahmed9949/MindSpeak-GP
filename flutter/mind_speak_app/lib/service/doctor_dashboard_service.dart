@@ -69,7 +69,7 @@ class DoctorDashboardService {
   Future<Map<String, dynamic>> getUserInfo(String therapistId) async {
     try {
       DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
-          .collection('user')
+          .collection('users')
           .doc(therapistId)
           .get();
       if (!userSnapshot.exists) {
@@ -97,7 +97,7 @@ class DoctorDashboardService {
   Future<void> updateUserInfo(
       String userId, Map<String, dynamic> updatedInfo) async {
     try {
-      await _firestore.collection('user').doc(userId).update(updatedInfo);
+      await _firestore.collection('users').doc(userId).update(updatedInfo);
     } catch (e) {
       throw Exception('Failed to update user info: ${e.toString()}');
     }
@@ -105,7 +105,7 @@ class DoctorDashboardService {
 
   Future<void> deleteAccount(String userId, String therapistId) async {
     try {
-      await _firestore.collection('user').doc(userId).delete();
+      await _firestore.collection('users').doc(userId).delete();
 
       await _firestore.collection('therapist').doc(therapistId).delete();
 

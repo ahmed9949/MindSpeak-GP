@@ -10,7 +10,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 
 class StartSessionPage extends StatefulWidget {
-  const StartSessionPage({Key? key}) : super(key: key);
+  const StartSessionPage({super.key});
 
   @override
   State<StartSessionPage> createState() => _StartSessionPageState();

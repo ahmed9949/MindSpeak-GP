@@ -7,13 +7,13 @@ class BlindCamera extends StatelessWidget {
   final CameraController controller;
 
   const BlindCamera({
-    Key? key,
+    super.key,
     required this.controller,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: 1,
       height: 1,
       child: controller.value.isInitialized

@@ -89,7 +89,7 @@ class DetectionService {
     try {
       final request = http.MultipartRequest('POST', Uri.parse(behaviorUrl))
         ..files.add(
-          await http.MultipartFile.fromBytes(
+          http.MultipartFile.fromBytes(
             'frame',
             base64Decode(base64Image),
             filename: 'frame.jpg',
@@ -112,7 +112,7 @@ class DetectionService {
     try {
       final request = http.MultipartRequest('POST', Uri.parse(emotionUrl))
         ..files.add(
-          await http.MultipartFile.fromBytes(
+          http.MultipartFile.fromBytes(
             'frame',
             base64Decode(base64Image),
             filename: 'frame.jpg',

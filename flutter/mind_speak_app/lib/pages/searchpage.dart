@@ -34,10 +34,7 @@ class _SearchPageState extends State<SearchPage> {
     UserModel? userInfo =
         _controller.getUserForTherapist(therapist.therapistId);
 
-    if (userInfo == null) {
-      // If user info is missing, fetch it directly
-      userInfo = await _controller.fetchUserForTherapist(therapist.therapistId);
-    }
+    userInfo ??= await _controller.fetchUserForTherapist(therapist.therapistId);
 
     if (!mounted) return;
 

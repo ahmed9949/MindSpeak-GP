@@ -107,8 +107,8 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _loadChildrenData,
-        child: const Icon(Icons.refresh, color: Colors.black,),
         backgroundColor: Colors.blue,
+        child: const Icon(Icons.refresh, color: Colors.black,),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,

@@ -1,5 +1,6 @@
 class TherapistModel {
-  final String therapistId;
+  final String therapistId; // This is the document ID
+  final String userId; // This links to the users collection
   final String bio;
   final String nationalId;
   final String nationalProof;
@@ -8,6 +9,7 @@ class TherapistModel {
 
   TherapistModel({
     required this.therapistId,
+    required this.userId,
     required this.bio,
     required this.nationalId,
     required this.nationalProof,
@@ -18,6 +20,7 @@ class TherapistModel {
   factory TherapistModel.fromFirestore(Map<String, dynamic> data, String id) {
     return TherapistModel(
       therapistId: id,
+      userId: data['userId'] ?? '',
       bio: data['bio'] ?? '',
       nationalId: data['nationalid'] ?? '',
       nationalProof: data['nationalproof'] ?? '',
@@ -28,6 +31,8 @@ class TherapistModel {
 
   Map<String, dynamic> toFirestore() {
     return {
+      'userId': userId,
+      'therapistId': therapistId,
       'bio': bio,
       'nationalid': nationalId,
       'nationalproof': nationalProof,
@@ -39,6 +44,7 @@ class TherapistModel {
   Map<String, dynamic> toMap() {
     return {
       'therapistId': therapistId,
+      'userId': userId,
       'bio': bio,
       'nationalId': nationalId,
       'nationalProof': nationalProof,

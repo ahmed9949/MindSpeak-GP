@@ -15,11 +15,11 @@ class VoiceChatView extends StatefulWidget {
   final String initialResponse;
 
   const VoiceChatView({
-    Key? key,
+    super.key,
     required this.childData,
     required this.initialPrompt,
     required this.initialResponse,
-  }) : super(key: key);
+  });
 
   @override
   _VoiceChatViewState createState() => _VoiceChatViewState();

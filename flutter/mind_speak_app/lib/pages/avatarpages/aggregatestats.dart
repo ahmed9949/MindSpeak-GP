@@ -8,7 +8,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 
 class AggregateStatsPage extends StatelessWidget {
-  const AggregateStatsPage({Key? key}) : super(key: key);
+  const AggregateStatsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -221,7 +221,7 @@ class AggregateStatsPage extends StatelessWidget {
 
     return LineChart(
       LineChartData(
-        gridData: FlGridData(show: true),
+        gridData: const FlGridData(show: true),
         titlesData: FlTitlesData(
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
@@ -256,7 +256,7 @@ class AggregateStatsPage extends StatelessWidget {
             isCurved: true,
             color: Colors.blue,
             barWidth: 3,
-            dotData: FlDotData(show: true),
+            dotData: const FlDotData(show: true),
             isStrokeCapRound: true,
             belowBarData: BarAreaData(show: false),
           ),
@@ -265,7 +265,7 @@ class AggregateStatsPage extends StatelessWidget {
             isCurved: true,
             color: Colors.green,
             barWidth: 3,
-            dotData: FlDotData(show: true),
+            dotData: const FlDotData(show: true),
             isStrokeCapRound: true,
             belowBarData: BarAreaData(show: false),
           ),
@@ -296,7 +296,7 @@ class AggregateStatsPage extends StatelessWidget {
 
     return LineChart(
       LineChartData(
-        gridData: FlGridData(show: true),
+        gridData: const FlGridData(show: true),
         titlesData: FlTitlesData(
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
@@ -331,7 +331,7 @@ class AggregateStatsPage extends StatelessWidget {
             isCurved: true,
             color: Colors.orange,
             barWidth: 3,
-            dotData: FlDotData(show: true),
+            dotData: const FlDotData(show: true),
             isStrokeCapRound: true,
             belowBarData: BarAreaData(show: false),
           ),

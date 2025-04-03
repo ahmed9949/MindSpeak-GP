@@ -98,6 +98,8 @@ class LoginRepository implements ILoginRepository {
 
   Future<void> _createNewUser(User user) async {
     await _firestore.collection('users').doc(user.uid).set({
+      'therapistId': user.uid,
+      'userId': user.uid,
       'email': user.email,
       'username': user.displayName,
       'role': 'user',
@@ -148,16 +150,29 @@ class LoginRepository implements ILoginRepository {
   @override
   Future<TherapistModel> fetchTherapistInfo(String userId) async {
     try {
-      DocumentSnapshot therapistDoc =
-          await _firestore.collection('therapist').doc(userId).get();
+      print("🔍 Searching therapist by userId: $userId");
 
-      if (!therapistDoc.exists) {
+      QuerySnapshot snapshot = await _firestore
+          .collection('therapist')
+          .where('userId', isEqualTo: userId)
+          .limit(1)
+          .get();
+
+      print("📦 Found docs: ${snapshot.docs.length}");
+
+      if (snapshot.docs.isEmpty) {
+        print("❌ No therapist document found with userId = $userId");
         throw Exception("Therapist information not found.");
       }
 
+      final doc = snapshot.docs.first;
+      print("✅ Therapist document ID: ${doc.id}");
+      print("📄 Therapist data: ${doc.data()}");
+
       return TherapistModel.fromFirestore(
-          therapistDoc.data() as Map<String, dynamic>, therapistDoc.id);
+          doc.data() as Map<String, dynamic>, doc.id);
     } catch (e) {
+      print("🔥 Exception in fetchTherapistInfo: $e");
       rethrow;
     }
   }

@@ -19,11 +19,11 @@ class VoiceChat3DModelPage extends StatefulWidget {
   final String initialResponse;
 
   const VoiceChat3DModelPage({
-    Key? key,
+    super.key,
     required this.childData,
     required this.initialPrompt,
     required this.initialResponse,
-  }) : super(key: key);
+  });
 
   @override
   State<VoiceChat3DModelPage> createState() => _VoiceChat3DModelPageState();
@@ -164,7 +164,7 @@ class _VoiceChat3DModelPageState extends State<VoiceChat3DModelPage> {
         print("Error starting call: $e");
         const errorMsg = "عذراً، حدث خطأ في بدء المحادثة.";
         setState(() {
-          _messages.add(ChatMessage(text: errorMsg, isUser: false));
+          _messages.add(const ChatMessage(text: errorMsg, isUser: false));
         });
         await _speak(errorMsg);
       }
@@ -274,22 +274,17 @@ class _VoiceChat3DModelPageState extends State<VoiceChat3DModelPage> {
     });
 
     try {
-      if (_chatSession == null) {
-        throw Exception('Chat session not initialized');
-      }
-
       String aiResponse = await ChatManager.processResponse(
           _chatSession, text, _messages.length);
 
       // Ensure response is not too long
       if (aiResponse.split('.').length > 2) {
-        aiResponse = aiResponse
+        aiResponse = '${aiResponse
                 .split('.')
                 .take(2)
                 .map((s) => s.trim())
                 .where((s) => s.isNotEmpty)
-                .join('. ') +
-            '.';
+                .join('. ')}.';
       }
 
       await _saveMessageToDatabase('dr', aiResponse);
@@ -303,7 +298,7 @@ class _VoiceChat3DModelPageState extends State<VoiceChat3DModelPage> {
       print("Error processing input: $e");
       const errorMsg = "عذراً، حدث خطأ أثناء معالجة طلبك.";
       setState(() {
-        _messages.add(ChatMessage(text: errorMsg, isUser: false));
+        _messages.add(const ChatMessage(text: errorMsg, isUser: false));
       });
       await _speak(errorMsg);
     }

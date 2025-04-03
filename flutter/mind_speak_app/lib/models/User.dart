@@ -37,6 +37,7 @@ class UserModel {
       'role': role,
       'phoneNumber': phoneNumber,
       'biometricEnabled': biometricEnabled,
+      'userid': userId,
     };
   }
 }

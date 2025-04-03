@@ -5,7 +5,7 @@ class ContactInfoCard extends StatelessWidget {
   final String? subtitle;
   final IconData icon;
 
-  const ContactInfoCard({
+  const ContactInfoCard({super.key, 
     required this.title,
     this.subtitle,
     required this.icon,

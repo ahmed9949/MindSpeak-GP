@@ -11,8 +11,8 @@ class DoctorDetailsPage extends StatefulWidget {
   final Map<String, dynamic> userInfo;
   final Map<String, dynamic> therapistInfo;
 
-  DoctorDetailsPage(
-      {required this.sessionId,
+  const DoctorDetailsPage(
+      {super.key, required this.sessionId,
       required this.userInfo,
       required this.therapistInfo});
 

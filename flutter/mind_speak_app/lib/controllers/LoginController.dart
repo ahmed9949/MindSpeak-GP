@@ -88,7 +88,7 @@ class LoginController {
       case 'therapist':
         TherapistModel therapist =
             await _loginRepository.fetchTherapistInfo(userId);
-        await _handleTherapistNavigation(userId, therapist.status);
+        await _handleTherapistNavigation(userId, therapist);
         break;
       case 'admin':
         Navigator.pushReplacement(
@@ -124,15 +124,18 @@ class LoginController {
   }
 
   Future<void> _handleTherapistNavigation(
-      String userId, bool isApproved) async {
-    if (!isApproved) {
+      String userId, TherapistModel therapist) async {
+    if (!therapist.status) {
       throw Exception("Your account is not yet approved by the admin.");
     }
 
     try {
-      TherapistModel therapist =
-          await _loginRepository.fetchTherapistInfo(userId);
+      print("🧠 Therapist approved, navigating to dashboard...");
+      print("👤 Fetching user info for: $userId");
+
       Map<String, dynamic> userInfo = await _doctorServices.getUserInfo(userId);
+
+      print("✅ User info fetched: $userInfo");
 
       Navigator.pushReplacement(
         context,
@@ -145,6 +148,7 @@ class LoginController {
         ),
       );
     } catch (e) {
+      print("🔥 Error in _handleTherapistNavigation: $e");
       _showErrorSnackBar(e.toString());
     }
   }

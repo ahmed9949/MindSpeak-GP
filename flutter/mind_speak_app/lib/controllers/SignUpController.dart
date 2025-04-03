@@ -156,7 +156,9 @@ class SignUpController {
           nationalId: nationalIdController.text.trim(),
           nationalProof: nationalProofUrl,
           therapistImage: therapistImageUrl,
-          status: false, // Initially unapproved
+          status: false,
+          userId: userId, // Link therapist to user using user's userId
+          // Initially unapproved
         );
 
         await _repository.saveTherapistDetails(therapist);

@@ -5,7 +5,7 @@ class DoctorProfile extends StatelessWidget {
   final String name;
   final String bio;
 
-  const DoctorProfile({ 
+  const DoctorProfile({super.key,  
     required this.name,
     required this.bio,
     this.therapistImage,

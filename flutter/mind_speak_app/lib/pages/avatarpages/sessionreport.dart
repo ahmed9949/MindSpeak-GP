@@ -5,7 +5,7 @@ import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:intl/intl.dart';
 
 class SessionReportPage extends StatelessWidget {
-  const SessionReportPage({Key? key}) : super(key: key);
+  const SessionReportPage({super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -23,6 +23,7 @@ class AdminState {
   // Computed properties to get therapists and users from therapistData
   List<TherapistModel> get therapists => therapistData.map((data) {
         return TherapistModel(
+          userId: data['userId'],
           therapistId: data['therapistId'],
           bio: data['bio'] ?? '',
           nationalId: data['nationalId'] ?? '',

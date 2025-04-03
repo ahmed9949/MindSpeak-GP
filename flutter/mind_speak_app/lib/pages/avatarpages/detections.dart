@@ -43,7 +43,7 @@ class detection extends StatelessWidget {
                   Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => AutismDetectionPage()));
+                          builder: (context) => const AutismDetectionPage()));
                 },
                 child: const Text(
                   'Autism Detection',
@@ -61,7 +61,7 @@ class detection extends StatelessWidget {
                   Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => UnifiedDetectionScreen()));
+                          builder: (context) => const UnifiedDetectionScreen()));
                 },
                 child: const Text(
                   'all Detection',
@@ -195,7 +195,7 @@ class _AutismDetectionPageState extends State<AutismDetectionPage> {
 }
 
 class UnifiedDetectionScreen extends StatefulWidget {
-  const UnifiedDetectionScreen({Key? key}) : super(key: key);
+  const UnifiedDetectionScreen({super.key});
 
   @override
   _UnifiedDetectionScreenState createState() => _UnifiedDetectionScreenState();

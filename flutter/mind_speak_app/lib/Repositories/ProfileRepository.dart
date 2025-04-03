@@ -72,7 +72,7 @@ class ProfileRepository implements IProfileRepository {
     return snapshot.docs
         .map(
           (doc) => ChildModel.fromFirestore(
-            doc.data() as Map<String, dynamic>,
+            doc.data(),
             doc.id,
           ),
         )
@@ -109,7 +109,7 @@ class ProfileRepository implements IProfileRepository {
     return snapshot.docs
         .map(
           (doc) => CarsFormModel.fromFirestore(
-            doc.data() as Map<String, dynamic>,
+            doc.data(),
             doc.id,
           ),
         )

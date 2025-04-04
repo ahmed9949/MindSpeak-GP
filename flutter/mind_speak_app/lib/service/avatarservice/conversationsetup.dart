@@ -62,13 +62,12 @@
 //   }
 // }
 
-
 // lib/modules/conversation_module.dart
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/service/avatarservice/openai.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
- import 'package:mind_speak_app/controllers/sessioncontrollerCl.dart';
+import 'package:mind_speak_app/controllers/sessioncontrollerCl.dart';
 import 'package:mind_speak_app/Repositories/sessionrepoC.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:provider/single_child_widget.dart';
@@ -76,8 +75,8 @@ import 'package:provider/single_child_widget.dart';
 class ConversationModule {
   static List<SingleChildWidget> providers() {
     final sessionRepository = FirebaseSessionRepository();
-    // final apiKey = dotenv.env['OPEN_AI_API_KEY']!;
-    // final model = ChatGptModel(apiKey: apiKey, model: 'gpt-3.5-turbo');
+    final apiKey = dotenv.env['OPEN_AI_API_KEY']!;
+    final model = ChatGptModel(apiKey: apiKey, model: 'gpt-3.5-turbo');
 
     final sessionController = SessionController(sessionRepository);
     // final analyzerController = SessionAnalyzerController(model);

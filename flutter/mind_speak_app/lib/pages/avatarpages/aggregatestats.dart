@@ -32,8 +32,16 @@ class AggregateStatsPage extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final childData = snapshot.data!.data() as Map<String, dynamic>;
-          final aggregateStats = childData['aggregateStats'] ?? {};
+          final rawData = snapshot.data!.data();
+          final childData = Map<String, dynamic>.from(rawData as Map);
+
+          final aggregateStatsRaw = childData['aggregateStats'] ?? {};
+          final aggregateStats = Map<String, dynamic>.from(aggregateStatsRaw);
+
+          final latestRecommendationsRaw = childData['latestRecommendations'];
+          final latestRecommendations = latestRecommendationsRaw != null
+              ? Map<String, dynamic>.from(latestRecommendationsRaw)
+              : null;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
@@ -46,7 +54,7 @@ class AggregateStatsPage extends StatelessWidget {
                 const SizedBox(height: 16),
                 _buildProgressCharts(context, sessionProvider.childId!),
                 const SizedBox(height: 16),
-                _buildLatestRecommendations(childData['latestRecommendations']),
+                _buildLatestRecommendations(latestRecommendations),
               ],
             ),
           );
@@ -94,13 +102,21 @@ class AggregateStatsPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             _buildStatRow(
-                'Total Sessions', stats['totalSessions']?.toString() ?? '0'),
+              'Total Sessions',
+              stats['totalSessions']?.toString() ?? '0',
+            ),
             _buildStatRow(
-                'Total Messages', stats['totalMessages']?.toString() ?? '0'),
-            _buildStatRow('Average Session Duration',
-                '${stats['averageSessionDuration']?.toString() ?? '0'} minutes'),
-            _buildStatRow('Average Messages/Session',
-                stats['averageMessagesPerSession']?.toString() ?? '0'),
+              'Total Messages',
+              stats['totalMessages']?.toString() ?? '0',
+            ),
+            _buildStatRow(
+              'Average Session Duration',
+              '${stats['averageSessionDuration']?.toString() ?? '0'} minutes',
+            ),
+            _buildStatRow(
+              'Average Messages/Session',
+              stats['averageMessagesPerSession']?.toString() ?? '0',
+            ),
             if (stats['lastSessionDate'] != null)
               _buildStatRow(
                 'Last Session',
@@ -117,17 +133,22 @@ class AggregateStatsPage extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 16),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 16),
+            ),
           ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -177,15 +198,9 @@ class AggregateStatsPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                SizedBox(
-                  height: 300,
-                  child: _buildMessagesChart(sessions),
-                ),
+                SizedBox(height: 300, child: _buildMessagesChart(sessions)),
                 const SizedBox(height: 24),
-                SizedBox(
-                  height: 300,
-                  child: _buildDurationChart(sessions),
-                ),
+                SizedBox(height: 300, child: _buildDurationChart(sessions)),
               ],
             );
           },
@@ -214,9 +229,7 @@ class AggregateStatsPage extends StatelessWidget {
     }
 
     if (childSpots.isEmpty) {
-      return const Center(
-        child: Text('No message data available'),
-      );
+      return const Center(child: Text('No message data available'));
     }
 
     return LineChart(
@@ -229,10 +242,8 @@ class AggregateStatsPage extends StatelessWidget {
               getTitlesWidget: (value, meta) {
                 return Padding(
                   padding: const EdgeInsets.all(4.0),
-                  child: Text(
-                    'S${value.toInt() + 1}',
-                    style: const TextStyle(fontSize: 10),
-                  ),
+                  child: Text('S${value.toInt() + 1}',
+                      style: const TextStyle(fontSize: 10)),
                 );
               },
             ),
@@ -241,10 +252,8 @@ class AggregateStatsPage extends StatelessWidget {
             sideTitles: SideTitles(
               showTitles: true,
               getTitlesWidget: (value, meta) {
-                return Text(
-                  value.toInt().toString(),
-                  style: const TextStyle(fontSize: 10),
-                );
+                return Text(value.toInt().toString(),
+                    style: const TextStyle(fontSize: 10));
               },
             ),
           ),
@@ -289,9 +298,7 @@ class AggregateStatsPage extends StatelessWidget {
     }
 
     if (spots.isEmpty) {
-      return const Center(
-        child: Text('No duration data available'),
-      );
+      return const Center(child: Text('No duration data available'));
     }
 
     return LineChart(
@@ -304,10 +311,8 @@ class AggregateStatsPage extends StatelessWidget {
               getTitlesWidget: (value, meta) {
                 return Padding(
                   padding: const EdgeInsets.all(4.0),
-                  child: Text(
-                    'S${value.toInt() + 1}',
-                    style: const TextStyle(fontSize: 10),
-                  ),
+                  child: Text('S${value.toInt() + 1}',
+                      style: const TextStyle(fontSize: 10)),
                 );
               },
             ),
@@ -316,10 +321,8 @@ class AggregateStatsPage extends StatelessWidget {
             sideTitles: SideTitles(
               showTitles: true,
               getTitlesWidget: (value, meta) {
-                return Text(
-                  '${value.toInt()}m',
-                  style: const TextStyle(fontSize: 10),
-                );
+                return Text('${value.toInt()}m',
+                    style: const TextStyle(fontSize: 10));
               },
             ),
           ),
@@ -341,9 +344,7 @@ class AggregateStatsPage extends StatelessWidget {
   }
 
   Widget _buildLatestRecommendations(Map<String, dynamic>? recommendations) {
-    if (recommendations == null) {
-      return const SizedBox.shrink();
-    }
+    if (recommendations == null) return const SizedBox.shrink();
 
     return Card(
       child: Padding(
@@ -353,10 +354,7 @@ class AggregateStatsPage extends StatelessWidget {
           children: [
             const Text(
               'Latest Recommendations',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             _buildRecommendationSection(
@@ -391,10 +389,7 @@ class AggregateStatsPage extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(content),
@@ -403,4 +398,3 @@ class AggregateStatsPage extends StatelessWidget {
     );
   }
 }
- 

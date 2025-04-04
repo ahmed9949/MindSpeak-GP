@@ -5,7 +5,7 @@ import 'package:mind_speak_app/Repositories/AdminRepository.dart';
 import 'package:mind_speak_app/Repositories/progressquestionrepository.dart';
 import 'package:mind_speak_app/components/splashscreen.dart';
 import 'package:mind_speak_app/controllers/progresscontroller.dart';
- import 'package:mind_speak_app/providers/session_provider.dart';
+import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:mind_speak_app/service/avatarservice/conversationsetup.dart';
 import 'package:provider/provider.dart';
 import 'providers/theme_provider.dart';
@@ -28,8 +28,8 @@ void main() async {
         ChangeNotifierProvider(
           create: (_) => ProgressController(FirebaseProgressRepository()),
         ),
-       ...ConversationModule.providers(),
-       ],
+        ...ConversationModule.providers(),
+      ],
       child: const MyApp(),
     ),
   );
@@ -40,12 +40,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: Provider.of<ThemeProvider>(context).isDarkMode
-          ? ThemeData.dark()
-          : ThemeData.light(),
-      home: const SplashScreen(),
-    ); 
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme:
+              themeProvider.isDarkMode ? ThemeData.dark() : ThemeData.light(),
+          home: const SplashScreen(),
+        );
+      },
+    );
   }
 }

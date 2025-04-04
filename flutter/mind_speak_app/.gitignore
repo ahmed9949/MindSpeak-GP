@@ -43,4 +43,6 @@ app.*.map.json
 /android/app/release
 /android/build.gradle
 pubspec.lock
+ 
+
 /assets/.env

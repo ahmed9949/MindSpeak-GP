@@ -339,8 +339,9 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
                           style: const TextStyle(fontSize: 16),
                           keyboardType: TextInputType.emailAddress,
                           validator: (value) {
-                            if (value == null || value.trim().isEmpty)
+                            if (value == null || value.trim().isEmpty) {
                               return 'Enter Email';
+                            }
                             if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w]{2,4}$')
                                 .hasMatch(value.trim())) {
                               return 'Enter a valid email address';
@@ -387,10 +388,12 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
                           ),
                           style: const TextStyle(fontSize: 16),
                           validator: (value) {
-                            if (value == null || value.trim().isEmpty)
+                            if (value == null || value.trim().isEmpty) {
                               return 'Enter Password';
-                            if (value.length < 6)
+                            }
+                            if (value.length < 6) {
                               return 'Password must be at least 6 characters';
+                            }
                             return null;
                           },
                         ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/components/children_list.dart';
+import 'package:mind_speak_app/components/dashboard_count_card.dart';
 import 'package:mind_speak_app/pages/logout.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/service/doctor_dashboard_service.dart';
@@ -56,12 +57,27 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     final pages = [
-      ChildrenList(
-        children: children,
-        isLoading: isLoading,
-        doctorServices: _doctorServices,
+      Column(
+        children: [
+          // Add the new dashboard count cards component
+          DashboardCountCards(
+            sessionId: widget.sessionId,
+            children: children,
+          ),
+          // Then display the existing children list
+          Expanded(
+            child: ChildrenList(
+              children: children,
+              isLoading: isLoading,
+              doctorServices: _doctorServices,
+            ),
+          ),
+        ],
       ),
-      DoctorDetailsPage(sessionId: widget.sessionId, userInfo: widget.userInfo, therapistInfo: widget.therapistInfo), // Use the external page
+      DoctorDetailsPage(
+          sessionId: widget.sessionId,
+          userInfo: widget.userInfo,
+          therapistInfo: widget.therapistInfo),
     ];
 
     return Scaffold(
@@ -108,7 +124,10 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
       floatingActionButton: FloatingActionButton(
         onPressed: _loadChildrenData,
         backgroundColor: Colors.blue,
-        child: const Icon(Icons.refresh, color: Colors.black,),
+        child: const Icon(
+          Icons.refresh,
+          color: Colors.black,
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,

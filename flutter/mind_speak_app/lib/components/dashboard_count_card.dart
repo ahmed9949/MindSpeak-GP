@@ -1,11 +1,10 @@
-// Create a new file: lib/components/dashboard_count_cards.dart
-
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/models/Child.dart';
 import 'package:mind_speak_app/service/doctor_dashboard_service.dart';
 
 class DashboardCountCards extends StatefulWidget {
   final String sessionId; // This is the therapist ID
-  final List<Map<String, dynamic>> children;
+  final List<ChildModel> children;
 
   const DashboardCountCards({
     super.key,
@@ -47,7 +46,7 @@ class _DashboardCountCardsState extends State<DashboardCountCards> {
 
     int reports = 0;
     for (var child in widget.children) {
-      String childId = child['childId'] ?? '';
+      String childId = child.childId;
       if (childId.isNotEmpty) {
         List<Map<String, dynamic>> childReports =
             await _doctorServices.fetchReport(childId);

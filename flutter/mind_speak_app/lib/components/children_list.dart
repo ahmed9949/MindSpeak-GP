@@ -28,7 +28,7 @@ class ChildrenList extends StatelessWidget {
                     fontWeight: FontWeight.bold),
               ))
             : Container(
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Colors.white, Colors.white],
                     begin: Alignment.topLeft,

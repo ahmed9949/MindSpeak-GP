@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mind_speak_app/Repositories/SignupRepository.dart';
-import 'package:mind_speak_app/components/cars.dart';
-import 'package:mind_speak_app/components/navigationpage.dart';
 import 'package:mind_speak_app/models/Child.dart';
 import 'package:mind_speak_app/models/ParentModel.dart';
 import 'package:mind_speak_app/models/Therapist.dart';

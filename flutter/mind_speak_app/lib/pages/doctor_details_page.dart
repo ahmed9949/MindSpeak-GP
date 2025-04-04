@@ -4,7 +4,6 @@ import 'package:mind_speak_app/components/contact_info_card.dart';
 import 'package:mind_speak_app/components/editable_fields.dart';
 import 'package:mind_speak_app/pages/login.dart';
 import 'package:mind_speak_app/service/doctor_dashboard_service.dart';
-import 'package:mind_speak_app/pages/doctor_dashboard.dart';
 
 class DoctorDetailsPage extends StatefulWidget {
   final String sessionId;

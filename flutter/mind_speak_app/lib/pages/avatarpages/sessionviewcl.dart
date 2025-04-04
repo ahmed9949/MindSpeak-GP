@@ -597,7 +597,7 @@ class _SessionViewState extends State<SessionView> {
   bool _isSpeaking = false;
   bool _callStarted = false;
   String? _childName;
-  Map<String, dynamic> _detectionStats = {};
+  final Map<String, dynamic> _detectionStats = {};
   late ChatGptModel _chatModel;
 
   @override

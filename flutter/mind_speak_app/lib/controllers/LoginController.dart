@@ -46,10 +46,16 @@ class LoginController {
     if (!formKey.currentState!.validate()) return;
 
     try {
+      print("🔐 Starting login...");
       String email = mailController.text.trim();
       String password = passwordController.text.trim();
 
+      print("Email: $email");
+      print("Password: $password");
+
+      print("📨 Authenticating...");
       UserModel user = await _loginRepository.authenticateUser(email, password);
+      print("✅ Auth success for: ${user.username}");
 
       final sessionProvider =
           Provider.of<SessionProvider>(context, listen: false);
@@ -59,6 +65,7 @@ class LoginController {
 
       _showSuccessSnackBar("Logged in Successfully");
     } catch (e) {
+      print("❌ Error during login: $e");
       _showErrorSnackBar(e.toString());
     }
   }

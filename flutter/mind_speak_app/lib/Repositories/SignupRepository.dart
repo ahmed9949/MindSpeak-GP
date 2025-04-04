@@ -98,6 +98,8 @@ class SignupRepository implements ISignUpRepository {
 
   @override
   Future<UserCredential> createFirebaseUser(UserModel user) async {
+    print(
+        "Creating Firebase user with: ${user.email}, ${user.password}"); // 👈 Debug print
     return await _auth.createUserWithEmailAndPassword(
       email: user.email,
       password: user.password, // Use plain password for Firebase Auth

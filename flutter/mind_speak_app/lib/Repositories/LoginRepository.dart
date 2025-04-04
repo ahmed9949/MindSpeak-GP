@@ -35,7 +35,10 @@ class LoginRepository implements ILoginRepository {
         email: email,
         password: password,
       );
-
+      if (!userCredential.user!.emailVerified) {
+        await _auth.signOut();
+        throw Exception("Please verify your email before logging in.");
+      }
       String userId = userCredential.user!.uid;
 
       // After successful authentication, fetch the user details
@@ -43,7 +46,7 @@ class LoginRepository implements ILoginRepository {
           await _firestore.collection('users').doc(userId).get();
 
       if (!userDoc.exists) {
-        throw Exception("User details not found in database.");
+        throw Exception("This account was rejected by the admin before.");
       }
 
       return UserModel.fromFirestore(
@@ -51,11 +54,11 @@ class LoginRepository implements ILoginRepository {
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         case 'user-not-found':
-          throw Exception("No user found with this email.");
         case 'wrong-password':
-          throw Exception("Incorrect password.");
+        case 'invalid-credential':
+          throw Exception("Incorrect email or password. Please try again.");
         default:
-          throw Exception("Authentication failed: ${e.message}");
+          throw Exception("Authentication failed. Please try again later.");
       }
     } catch (e) {
       rethrow;

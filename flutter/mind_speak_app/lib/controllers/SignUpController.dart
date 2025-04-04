@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mind_speak_app/Repositories/SignupRepository.dart';
-import 'package:mind_speak_app/components/cars.dart';
-import 'package:mind_speak_app/components/navigationpage.dart';
 import 'package:mind_speak_app/models/Child.dart';
 import 'package:mind_speak_app/models/ParentModel.dart';
 import 'package:mind_speak_app/models/Therapist.dart';
@@ -97,6 +95,18 @@ class SignUpController {
       // Create Firebase user with plain password
       UserCredential userCredential =
           await _repository.createFirebaseUser(user);
+
+// 👇 Send email verification immediately after creation
+      await userCredential.user!.sendEmailVerification();
+
+      // 🔐 Prevent login until verification is complete
+      _showInfoSnackBar(
+          "Verification email sent. Please check your Gmail and verify before logging in.");
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LogIn()),
+      );
+
       String userId = userCredential.user!.uid;
 
       // Create updated user with hashed password for database storage

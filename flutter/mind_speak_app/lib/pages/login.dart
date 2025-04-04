@@ -5,7 +5,6 @@ import 'package:mind_speak_app/pages/forgot_password.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 
-
 class LogIn extends StatefulWidget {
   const LogIn({super.key});
 
@@ -13,11 +12,14 @@ class LogIn extends StatefulWidget {
   State<LogIn> createState() => _LogInState();
 }
 
-class _LogInState extends State<LogIn> {
+class _LogInState extends State<LogIn> with SingleTickerProviderStateMixin {
   final TextEditingController mailcontroller = TextEditingController();
   final TextEditingController passwordcontroller = TextEditingController();
   final _formkey = GlobalKey<FormState>();
   late LoginController _loginController;
+  late AnimationController _appBarController;
+  late Animation<Offset> _slideAnimation;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
@@ -28,12 +30,31 @@ class _LogInState extends State<LogIn> {
       passwordController: passwordcontroller,
       formKey: _formkey,
     );
+
+    _appBarController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, -1),
+      end: Offset.zero,
+    ).animate(
+        CurvedAnimation(parent: _appBarController, curve: Curves.easeOut));
+
+    _fadeAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _appBarController, curve: Curves.easeIn));
+
+    _appBarController.forward(); // Start the animation
   }
 
   @override
   void dispose() {
     mailcontroller.dispose();
     passwordcontroller.dispose();
+    _appBarController.dispose();
     super.dispose();
   }
 
@@ -42,17 +63,72 @@ class _LogInState extends State<LogIn> {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(
-        actions: [
-          IconButton(
-            icon: Icon(themeProvider.isDarkMode
-                ? Icons.wb_sunny
-                : Icons.nightlight_round),
-            onPressed: () {
-              themeProvider.toggleTheme();
-            },
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(80),
+        child: SlideTransition(
+          position: _slideAnimation,
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF6A11CB), Color(0xFF2575FC)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(25),
+                  bottomRight: Radius.circular(25),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 6,
+                    offset: Offset(0, 3),
+                  )
+                ],
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20.0, vertical: 10),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundImage: AssetImage("assets/logo.webp"),
+                        backgroundColor: Colors.white,
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          "Welcome Back!",
+                          style: TextStyle(
+                            fontSize: 22,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          themeProvider.isDarkMode
+                              ? Icons.wb_sunny
+                              : Icons.nightlight_round,
+                          color: Colors.white,
+                        ),
+                        onPressed: () {
+                          themeProvider.toggleTheme();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
-        ],
+        ),
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -81,7 +157,6 @@ class _LogInState extends State<LogIn> {
                           key: _formkey,
                           child: Column(
                             children: [
-                              
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                     vertical: 2.0, horizontal: 30.0),
@@ -104,7 +179,6 @@ class _LogInState extends State<LogIn> {
                                 ),
                               ),
                               const SizedBox(height: 20.0),
-                              
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                     vertical: 2.0, horizontal: 30.0),
@@ -128,7 +202,6 @@ class _LogInState extends State<LogIn> {
                                 ),
                               ),
                               const SizedBox(height: 20.0),
-                             
                               GestureDetector(
                                 onTap: () {
                                   if (_formkey.currentState!.validate()) {
@@ -155,7 +228,6 @@ class _LogInState extends State<LogIn> {
                                 ),
                               ),
                               const SizedBox(height: 20.0),
-                             
                               GestureDetector(
                                 onTap: () {
                                   Navigator.push(
@@ -175,7 +247,6 @@ class _LogInState extends State<LogIn> {
                                 ),
                               ),
                               const Spacer(),
-                              
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -199,7 +270,6 @@ class _LogInState extends State<LogIn> {
                                 ],
                               ),
                               const SizedBox(height: 20.0),
-                            
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [

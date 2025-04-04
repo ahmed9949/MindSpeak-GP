@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/controllers/ProfileController.dart';
+// import 'package:mind_speak_app/pages/avatarpages/detections.dart';
 import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/profilepage.dart';
 import 'package:mind_speak_app/pages/searchpage.dart';
@@ -337,6 +338,12 @@ class _HomePageState extends State<HomePage> {
                           "assets/cars.png",
                           const CarsForm(),
                         ),
+                        // _buildTopCard(
+                        //   context,
+                        //   "Prediction",
+                        //   "assets/predict.png",
+                        //   ConversationScreen(),
+                        // ),
                         _buildTopCard(
                           context,
                           "Profile",
@@ -389,8 +396,8 @@ class _HomePageState extends State<HomePage> {
                             therapists.isEmpty
                                 ? const Center(
                                     child: Padding(
-                                      padding: EdgeInsets.symmetric(
-                                          vertical: 20),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 20),
                                       child: Text(
                                         "No therapists available",
                                         style: TextStyle(

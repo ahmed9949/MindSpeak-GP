@@ -54,11 +54,11 @@ class LoginRepository implements ILoginRepository {
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         case 'user-not-found':
-          throw Exception("No user found with this email.");
         case 'wrong-password':
-          throw Exception("Incorrect password.");
+        case 'invalid-credential':
+          throw Exception("Incorrect email or password. Please try again.");
         default:
-          throw Exception("Authentication failed: ${e.message}");
+          throw Exception("Authentication failed. Please try again later.");
       }
     } catch (e) {
       rethrow;

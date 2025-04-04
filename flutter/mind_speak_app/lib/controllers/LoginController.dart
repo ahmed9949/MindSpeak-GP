@@ -50,6 +50,9 @@ class LoginController {
       String email = mailController.text.trim();
       String password = passwordController.text.trim();
 
+      print("Email: $email");
+      print("Password: $password");
+
       print("📨 Authenticating...");
       UserModel user = await _loginRepository.authenticateUser(email, password);
       print("✅ Auth success for: ${user.username}");

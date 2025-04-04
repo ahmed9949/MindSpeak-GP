@@ -76,16 +76,16 @@ import 'package:provider/single_child_widget.dart';
 class ConversationModule {
   static List<SingleChildWidget> providers() {
     final sessionRepository = FirebaseSessionRepository();
-    final apiKey = dotenv.env['OPEN_AI_API_KEY']!;
-    final model = ChatGptModel(apiKey: apiKey, model: 'gpt-3.5-turbo');
+    // final apiKey = dotenv.env['OPEN_AI_API_KEY']!;
+    // final model = ChatGptModel(apiKey: apiKey, model: 'gpt-3.5-turbo');
 
     final sessionController = SessionController(sessionRepository);
-    final analyzerController = SessionAnalyzerController(model);
+    // final analyzerController = SessionAnalyzerController(model);
 
     return [
       Provider<SessionRepository>.value(value: sessionRepository),
       ChangeNotifierProvider<SessionController>.value(value: sessionController),
-      Provider<SessionAnalyzerController>.value(value: analyzerController),
+      // Provider<SessionAnalyzerController>.value(value: analyzerController),
     ];
   }
 

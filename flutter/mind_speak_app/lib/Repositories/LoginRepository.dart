@@ -46,7 +46,7 @@ class LoginRepository implements ILoginRepository {
           await _firestore.collection('users').doc(userId).get();
 
       if (!userDoc.exists) {
-        throw Exception("User details not found in database.");
+        throw Exception("This account was rejected by the admin before.");
       }
 
       return UserModel.fromFirestore(

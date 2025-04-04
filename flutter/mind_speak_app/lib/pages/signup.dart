@@ -19,6 +19,13 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
   late Animation<Offset> _emailSlide;
   late Animation<Offset> _passwordSlide;
   late Animation<Offset> _roleSlide;
+  late AnimationController _appBarController;
+  late Animation<Offset> _slideAnimation;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _parentPhoneSlide;
+  late Animation<Offset> _childNameSlide;
+  late Animation<Offset> _childAgeSlide;
+  late Animation<Offset> _childInterestSlide;
 
   final _formkey = GlobalKey<FormState>();
 
@@ -114,6 +121,59 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
       curve: const Interval(0.6, 0.9, curve: Curves.easeOut),
     ));
 
+    _appBarController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    _parentPhoneSlide = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    ));
+
+    _childNameSlide = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    ));
+
+    _childAgeSlide = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    ));
+
+    _childInterestSlide = Tween<Offset>(
+      begin: const Offset(0, 0.3), // slides in from top
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    ));
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, -1),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _appBarController, curve: Curves.easeOut),
+    );
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(
+      CurvedAnimation(parent: _appBarController, curve: Curves.easeIn),
+    );
+
+    _appBarController.forward();
+
     _animationController.forward();
   }
 
@@ -162,44 +222,58 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blueAccent, Colors.deepPurple],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.vertical(bottom: Radius.circular(25)),
-          ),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(70),
+        child: AnimatedBuilder(
+          animation: _appBarController,
+          builder: (context, child) {
+            return SlideTransition(
+              position: _slideAnimation,
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: AppBar(
+                  elevation: 0,
+                  flexibleSpace: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blueAccent, Colors.deepPurple],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius:
+                          BorderRadius.vertical(bottom: Radius.circular(25)),
+                    ),
+                  ),
+                  centerTitle: true,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.vertical(bottom: Radius.circular(25)),
+                  ),
+                  title: const Text(
+                    "Create Account",
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  actions: [
+                    IconButton(
+                      icon: Icon(
+                        themeProvider.isDarkMode
+                            ? Icons.wb_sunny
+                            : Icons.nightlight_round,
+                        color: Colors.white,
+                      ),
+                      onPressed: () => themeProvider.toggleTheme(),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
-        centerTitle: true,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            bottom: Radius.circular(25),
-          ),
-        ),
-        title: const Text(
-          "Create Account",
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-            letterSpacing: 1.2,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              themeProvider.isDarkMode
-                  ? Icons.wb_sunny
-                  : Icons.nightlight_round,
-              color: Colors.white,
-            ),
-            onPressed: () => themeProvider.toggleTheme(),
-          ),
-        ],
       ),
       backgroundColor:
           themeProvider.isDarkMode ? Colors.grey[900] : Colors.white,
@@ -322,102 +396,31 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
                         ),
                       ),
                       const SizedBox(height: 20.0),
-                      DropdownButtonFormField(
-                        value: role,
-                        items: ['parent', 'therapist'].map((roleOption) {
-                          return DropdownMenuItem(
-                            value: roleOption,
-                            child: Text(
-                              roleOption[0].toUpperCase() +
-                                  roleOption.substring(1),
-                              style: const TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.w500),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            role = value.toString();
-                            _signUpController.role = role;
-                          });
-                        },
-                        decoration: InputDecoration(
-                          labelText: 'Select Role',
-                          labelStyle: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w500),
-                          prefixIcon: const Icon(Icons.person),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            borderSide: BorderSide.none,
-                          ),
-                          filled: true,
-                          fillColor:
-                              Theme.of(context).brightness == Brightness.dark
-                                  ? Colors.grey[800]
-                                  : Colors.grey[100],
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 15),
-                        ),
-                        dropdownColor:
-                            Theme.of(context).scaffoldBackgroundColor,
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Theme.of(context).textTheme.bodyLarge?.color,
-                        ),
-                        validator: (value) =>
-                            value == null || value.toString().isEmpty
-                                ? 'Please select a role'
-                                : null,
-                      ),
-                      if (role == 'parent') ...[
-                        const SizedBox(height: 20.0),
-
-                        // Parent Phone Number
-                        TextFormField(
-                          controller: parentPhoneNumberController,
+                      SlideTransition(
+                        position: _roleSlide,
+                        child: DropdownButtonFormField(
+                          value: role,
+                          items: ['parent', 'therapist'].map((roleOption) {
+                            return DropdownMenuItem(
+                              value: roleOption,
+                              child: Text(
+                                roleOption[0].toUpperCase() +
+                                    roleOption.substring(1),
+                                style: const TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.w500),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              role = value.toString();
+                              _signUpController.role = role;
+                            });
+                          },
                           decoration: InputDecoration(
-                            labelText: "Parent Phone Number",
-                            prefixIcon: Icon(Icons.phone,
-                                color: Theme.of(context).iconTheme.color),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(30),
-                              borderSide: BorderSide.none,
-                            ),
-                            filled: true,
-                            fillColor:
-                                Theme.of(context).brightness == Brightness.dark
-                                    ? Colors.grey[800]
-                                    : Colors.grey[100],
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 15),
+                            labelText: 'Select Role',
                             labelStyle: const TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.w500),
-                          ),
-                          style: TextStyle(
-                              color:
-                                  Theme.of(context).textTheme.bodyLarge?.color),
-                          keyboardType: TextInputType.phone,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Enter parent phone number';
-                            }
-                            if (value.length != 11) {
-                              return 'Phone number must be exactly 11 digits';
-                            }
-                            if (!RegExp(r'^\d{11}$').hasMatch(value)) {
-                              return 'Phone number must contain only numbers';
-                            }
-                            return null;
-                          },
-                        ),
-
-                        const SizedBox(height: 20.0),
-
-                        // Child Name
-                        TextFormField(
-                          controller: childNameController,
-                          decoration: InputDecoration(
-                            labelText: "Child Name",
                             prefixIcon: const Icon(Icons.person),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
@@ -430,87 +433,181 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
                                     : Colors.grey[100],
                             contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 20, vertical: 15),
-                            labelStyle: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w500),
                           ),
+                          dropdownColor:
+                              Theme.of(context).scaffoldBackgroundColor,
                           style: TextStyle(
-                              color:
-                                  Theme.of(context).textTheme.bodyLarge?.color),
+                            fontSize: 16,
+                            color: Theme.of(context).textTheme.bodyLarge?.color,
+                          ),
                           validator: (value) =>
-                              value == null || value.trim().isEmpty
-                                  ? 'Enter Child Name'
+                              value == null || value.toString().isEmpty
+                                  ? 'Please select a role'
                                   : null,
+                        ),
+                      ),
+                      if (role == 'parent') ...[
+                        const SizedBox(height: 20.0),
+
+                        // Parent Phone Number
+                        SlideTransition(
+                          position:
+                              _parentPhoneSlide, // This animation should be initialized in initState
+                          child: TextFormField(
+                            controller: parentPhoneNumberController,
+                            decoration: InputDecoration(
+                              labelText: "Parent Phone Number",
+                              prefixIcon: Icon(Icons.phone,
+                                  color: Theme.of(context).iconTheme.color),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(30),
+                                borderSide: BorderSide.none,
+                              ),
+                              filled: true,
+                              fillColor: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.grey[800]
+                                  : Colors.grey[100],
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 15),
+                              labelStyle: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w500),
+                            ),
+                            style: TextStyle(
+                              color:
+                                  Theme.of(context).textTheme.bodyLarge?.color,
+                            ),
+                            keyboardType: TextInputType.phone,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Enter parent phone number';
+                              }
+                              if (value.length != 11) {
+                                return 'Phone number must be exactly 11 digits';
+                              }
+                              if (!RegExp(r'^\d{11}$').hasMatch(value)) {
+                                return 'Phone number must contain only numbers';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+
+                        const SizedBox(height: 20.0),
+
+                        // Child Name
+                        SlideTransition(
+                          position: _childNameSlide,
+                          child: TextFormField(
+                            controller: childNameController,
+                            decoration: InputDecoration(
+                              labelText: "Child Name",
+                              prefixIcon: const Icon(Icons.person),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(30),
+                                borderSide: BorderSide.none,
+                              ),
+                              filled: true,
+                              fillColor: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.grey[800]
+                                  : Colors.grey[100],
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 15),
+                              labelStyle: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w500),
+                            ),
+                            style: TextStyle(
+                                color: Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge
+                                    ?.color),
+                            validator: (value) =>
+                                value == null || value.trim().isEmpty
+                                    ? 'Enter Child Name'
+                                    : null,
+                          ),
                         ),
 
                         const SizedBox(height: 20.0),
 
                         // Child Age
-                        TextFormField(
-                          controller: childAgeController,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: "Child Age",
-                            prefixIcon: Icon(Icons.cake_outlined,
-                                color: Theme.of(context).iconTheme.color),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(30),
-                              borderSide: BorderSide.none,
+                        SlideTransition(
+                          position: _childAgeSlide,
+                          child: TextFormField(
+                            controller: childAgeController,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: "Child Age",
+                              prefixIcon: Icon(Icons.cake_outlined,
+                                  color: Theme.of(context).iconTheme.color),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(30),
+                                borderSide: BorderSide.none,
+                              ),
+                              filled: true,
+                              fillColor: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.grey[800]
+                                  : Colors.grey[100],
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 15),
+                              labelStyle: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w500),
                             ),
-                            filled: true,
-                            fillColor:
-                                Theme.of(context).brightness == Brightness.dark
-                                    ? Colors.grey[800]
-                                    : Colors.grey[100],
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 15),
-                            labelStyle: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                                color: Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge
+                                    ?.color),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Enter Child Age';
+                              }
+                              int? age = int.tryParse(value);
+                              if (age == null || age < 3 || age > 12) {
+                                return 'Age must be between 3 and 12';
+                              }
+                              return null;
+                            },
                           ),
-                          style: TextStyle(
-                              color:
-                                  Theme.of(context).textTheme.bodyLarge?.color),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Enter Child Age';
-                            }
-                            int? age = int.tryParse(value);
-                            if (age == null || age < 3 || age > 12) {
-                              return 'Age must be between 3 and 12';
-                            }
-                            return null;
-                          },
                         ),
 
                         const SizedBox(height: 20.0),
 
                         // Child Interest
-                        TextFormField(
-                          controller: childInterestController,
-                          decoration: InputDecoration(
-                            labelText: "Child Interest",
-                            prefixIcon: Icon(Icons.star_outline,
-                                color: Theme.of(context).iconTheme.color),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(30),
-                              borderSide: BorderSide.none,
+                        SlideTransition(
+                          position: _childInterestSlide,
+                          child: TextFormField(
+                            controller: childInterestController,
+                            decoration: InputDecoration(
+                              labelText: "Child Interest",
+                              prefixIcon: Icon(Icons.star_outline,
+                                  color: Theme.of(context).iconTheme.color),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(30),
+                                borderSide: BorderSide.none,
+                              ),
+                              filled: true,
+                              fillColor: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.grey[800]
+                                  : Colors.grey[100],
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 15),
+                              labelStyle: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w500),
                             ),
-                            filled: true,
-                            fillColor:
-                                Theme.of(context).brightness == Brightness.dark
-                                    ? Colors.grey[800]
-                                    : Colors.grey[100],
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 15),
-                            labelStyle: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                                color: Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge
+                                    ?.color),
+                            validator: (value) =>
+                                value == null || value.trim().isEmpty
+                                    ? 'Enter Child Interest'
+                                    : null,
                           ),
-                          style: TextStyle(
-                              color:
-                                  Theme.of(context).textTheme.bodyLarge?.color),
-                          validator: (value) =>
-                              value == null || value.trim().isEmpty
-                                  ? 'Enter Child Interest'
-                                  : null,
                         ),
 
                         const SizedBox(height: 25.0),

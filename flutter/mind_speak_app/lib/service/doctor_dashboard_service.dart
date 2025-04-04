@@ -78,7 +78,7 @@ class DoctorDashboardService {
     }
 
     final doc = snapshot.docs.first;
-    final data = doc.data() as Map<String, dynamic>;
+    final data = doc.data();
     data['therapistid'] = doc.id;
     return data;
   }

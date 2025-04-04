@@ -14,7 +14,6 @@ abstract class ILoginRepository {
   Future<ChildModel> fetchChildData(String userId);
   Future<CarsFormModel?> fetchCarsFormStatus(String childId);
   Future<TherapistModel> fetchTherapistInfo(String userId);
-  Future<void> updateBiometricStatus(String userId, bool status);
 }
 
 class LoginRepository implements ILoginRepository {
@@ -36,7 +35,10 @@ class LoginRepository implements ILoginRepository {
         email: email,
         password: password,
       );
-
+      if (!userCredential.user!.emailVerified) {
+        await _auth.signOut();
+        throw Exception("Please verify your email before logging in.");
+      }
       String userId = userCredential.user!.uid;
 
       // After successful authentication, fetch the user details
@@ -52,11 +54,11 @@ class LoginRepository implements ILoginRepository {
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         case 'user-not-found':
-          throw Exception("No user found with this email.");
         case 'wrong-password':
-          throw Exception("Incorrect password.");
+        case 'invalid-credential':
+          throw Exception("Incorrect email or password. Please try again.");
         default:
-          throw Exception("Authentication failed: ${e.message}");
+          throw Exception("Authentication failed. Please try again later.");
       }
     } catch (e) {
       rethrow;
@@ -103,7 +105,6 @@ class LoginRepository implements ILoginRepository {
       'email': user.email,
       'username': user.displayName,
       'role': 'user',
-      'biometricEnabled': false,
       'phoneNumber': 0,
       'password': '', // Empty since we're using Google Auth
     });
@@ -173,18 +174,6 @@ class LoginRepository implements ILoginRepository {
           doc.data() as Map<String, dynamic>, doc.id);
     } catch (e) {
       print("🔥 Exception in fetchTherapistInfo: $e");
-      rethrow;
-    }
-  }
-
-  @override
-  Future<void> updateBiometricStatus(String userId, bool status) async {
-    try {
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .update({'biometricEnabled': status});
-    } catch (e) {
       rethrow;
     }
   }

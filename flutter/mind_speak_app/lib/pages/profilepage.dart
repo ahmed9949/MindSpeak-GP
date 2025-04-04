@@ -45,6 +45,8 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() {
         parentId = widget.controller.parentId;
         parentData = widget.controller.parentData;
+        // 🔍 Debug print
+        print('📦 parentData = $parentData');
         childrenData = widget.controller.childrenData;
         carsData = widget.controller.carsData;
         isLoading = false;
@@ -105,7 +107,7 @@ class _ProfilePageState extends State<ProfilePage> {
           return AlertDialog(
             title: const Text('Confirm Deletion'),
             content: const Text(
-                'Are you sure you want to delete your account? This will also delete all associated child data and cannot be undone.'),
+                'Are you sure you want to delete your account? This will delete all your data and your children\'s data from the system and cannot be undone.'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
@@ -136,7 +138,18 @@ class _ProfilePageState extends State<ProfilePage> {
         throw Exception('User not logged in');
       }
 
+      // Show loading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Deleting account... Please wait.'),
+        ));
+      }
+
+      // Delete account from Firebase
       await widget.controller.deleteParentAccount(userId);
+
+      // Clear local session data
+      await sessionProvider.clearSession();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -144,6 +157,7 @@ class _ProfilePageState extends State<ProfilePage> {
           backgroundColor: Colors.green,
         ));
 
+        // Navigate to login page
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const LogIn()),
@@ -151,8 +165,8 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Error deleting account. Please try again later.'),
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error deleting account: ${e.toString()}'),
           backgroundColor: Colors.red,
         ));
       }

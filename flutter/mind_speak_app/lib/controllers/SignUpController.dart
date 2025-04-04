@@ -14,7 +14,6 @@ import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/login.dart';
 import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
-import '../service/local_auth_service.dart';
 
 class SignUpController {
   final BuildContext context;
@@ -93,12 +92,23 @@ class SignUpController {
         role: role,
         password: plainPassword, // Plain password for Firebase Auth
         phoneNumber: phoneNumber,
-        biometricEnabled: false,
       );
 
       // Create Firebase user with plain password
       UserCredential userCredential =
           await _repository.createFirebaseUser(user);
+
+// 👇 Send email verification immediately after creation
+      await userCredential.user!.sendEmailVerification();
+
+      // 🔐 Prevent login until verification is complete
+      _showInfoSnackBar(
+          "Verification email sent. Please check your Gmail and verify before logging in.");
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LogIn()),
+      );
+
       String userId = userCredential.user!.uid;
 
       // Create updated user with hashed password for database storage
@@ -109,7 +119,6 @@ class SignUpController {
         role: user.role,
         password: _repository.hashPassword(plainPassword), // Hash for Firestore
         phoneNumber: user.phoneNumber,
-        biometricEnabled: user.biometricEnabled,
       );
 
       // Save user details with hashed password
@@ -166,8 +175,7 @@ class SignUpController {
         await _repository.saveTherapistDetails(therapist);
       }
 
-      await _handleBiometricAuth(userId);
-      _navigateBasedOnRole();
+      _navigateBasedOnRole(userId);
     } on FirebaseAuthException catch (e) {
       _handleFirebaseAuthError(e);
     } catch (e) {
@@ -221,30 +229,18 @@ class SignUpController {
     return true;
   }
 
-  // Handle biometric authentication
-  Future<void> _handleBiometricAuth(String userId) async {
-    bool enableBiometric = await LocalAuth.hasBiometrics();
-    if (enableBiometric) {
-      bool biometricEnabled = await LocalAuth.authenticate();
-      if (biometricEnabled) {
-        await _repository.updateBiometricStatus(userId, true);
-        _showSuccessSnackBar("Biometric authentication enabled successfully.");
-      }
-    }
-
-    final sessionProvider =
-        Provider.of<SessionProvider>(context, listen: false);
-    await sessionProvider.saveSession(userId, role);
-  }
-
   // Navigate to the appropriate screen based on the user's role
-  void _navigateBasedOnRole() {
+  void _navigateBasedOnRole(String userId) async {
     _showSuccessSnackBar("Registered Successfully");
 
     switch (role) {
       case 'parent':
-        Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const CarsForm()));
+        Provider.of<SessionProvider>(context, listen: false)
+            .saveSession(userId, role);
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const CarsForm()),
+        );
         break;
       case 'therapist':
         Navigator.push(

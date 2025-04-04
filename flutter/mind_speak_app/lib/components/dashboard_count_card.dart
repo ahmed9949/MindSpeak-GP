@@ -8,10 +8,10 @@ class DashboardCountCards extends StatefulWidget {
   final List<Map<String, dynamic>> children;
 
   const DashboardCountCards({
-    Key? key,
+    super.key,
     required this.sessionId,
     required this.children,
-  }) : super(key: key);
+  });
 
   @override
   State<DashboardCountCards> createState() => _DashboardCountCardsState();
@@ -70,8 +70,8 @@ class _DashboardCountCardsState extends State<DashboardCountCards> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(
-            child: const Text(
+          const Center(
+            child: Text(
               'Dashboard Overview',
               style: TextStyle(
                 fontSize: 18,

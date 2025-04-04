@@ -16,11 +16,11 @@ class SessionView extends StatefulWidget {
   final Map<String, dynamic> childData;
 
   const SessionView({
-    Key? key,
+    super.key,
     required this.initialPrompt,
     required this.initialResponse,
     required this.childData,
-  }) : super(key: key);
+  });
 
   @override
   State<SessionView> createState() => _SessionViewState();
@@ -43,7 +43,7 @@ class _SessionViewState extends State<SessionView> {
   String? _childName;
 
   // Detection-related data (simplified for this example)
-  Map<String, dynamic> _detectionStats = {};
+  final Map<String, dynamic> _detectionStats = {};
 
   @override
   void initState() {

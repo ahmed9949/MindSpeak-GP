@@ -23,7 +23,7 @@ class AdminRepository implements IAdminRepository {
       QuerySnapshot snapshot = await _firestore.collection('users').get();
       return snapshot.size;
     } catch (e) {
-      debugPrint(' Error fetching users count: $e');
+      debugPrint('Error fetching users count: $e');
       return 0;
     }
   }
@@ -34,7 +34,7 @@ class AdminRepository implements IAdminRepository {
       QuerySnapshot snapshot = await _firestore.collection('therapist').get();
       return snapshot.size;
     } catch (e) {
-      debugPrint(' Error fetching therapists count: $e');
+      debugPrint('Error fetching therapists count: $e');
       return 0;
     }
   }
@@ -42,7 +42,6 @@ class AdminRepository implements IAdminRepository {
   @override
   Future<List<Map<String, dynamic>>> getPendingTherapistRequests() async {
     try {
-      // Get all pending therapist documents
       QuerySnapshot therapistSnapshot = await _firestore
           .collection('therapist')
           .where('status', isEqualTo: false)
@@ -50,34 +49,24 @@ class AdminRepository implements IAdminRepository {
 
       if (therapistSnapshot.docs.isEmpty) return [];
 
-      // The therapist IDs are also the user IDs
-      List<String> userIds =
-          therapistSnapshot.docs.map((doc) => doc.id).toList();
+      List<String> userIds = therapistSnapshot.docs.map((doc) => doc.id).toList();
 
-      // Get corresponding user documents
       QuerySnapshot userSnapshot = await _firestore
           .collection('users')
           .where(FieldPath.documentId, whereIn: userIds)
           .get();
 
-      // Create a map of user documents for quick lookup
       Map<String, UserModel> userMap = {
         for (var doc in userSnapshot.docs)
-          doc.id: UserModel.fromFirestore(
-            doc.data() as Map<String, dynamic>,
-            doc.id,
-          )
+          doc.id: UserModel.fromFirestore(doc.data() as Map<String, dynamic>, doc.id)
       };
 
-      // Create combined results with both user and therapist data
-      List<Map<String, dynamic>> combinedResults =
-          therapistSnapshot.docs.map((doc) {
-        String id = doc.id; // This is both the therapist ID and user ID
+      return therapistSnapshot.docs.map((doc) {
+        String id = doc.id;
         UserModel? user = userMap[id];
-        TherapistModel therapist = TherapistModel.fromFirestore(
-            doc.data() as Map<String, dynamic>, id);
+        TherapistModel therapist =
+            TherapistModel.fromFirestore(doc.data() as Map<String, dynamic>, id);
 
-        // Return a combined map with both user and therapist data
         return {
           'therapist': therapist,
           'user': user,
@@ -92,8 +81,6 @@ class AdminRepository implements IAdminRepository {
           'email': user?.email ?? '',
         };
       }).toList();
-
-      return combinedResults;
     } catch (e) {
       debugPrint('Error fetching therapist requests: $e');
       return [];
@@ -103,37 +90,29 @@ class AdminRepository implements IAdminRepository {
   @override
   Future<bool> approveTherapist(String therapistId) async {
     try {
-      // Reference the therapist document.
       DocumentReference therapistRef =
           _firestore.collection('therapist').doc(therapistId);
 
-      // Fetch the therapist document to verify it exists.
       DocumentSnapshot therapistSnapshot = await therapistRef.get();
       if (!therapistSnapshot.exists) {
         debugPrint("Therapist document not found for id: $therapistId");
         return false;
       }
 
-      // Since therapistId is the same as userId
-      String userId = therapistId;
+      DocumentReference userRef =
+          _firestore.collection('users').doc(therapistId);
 
-      // Reference the corresponding user document.
-      DocumentReference userRef = _firestore.collection('users').doc(userId);
-
-      // Optionally, verify that the user document exists:
       DocumentSnapshot userSnapshot = await userRef.get();
       if (!userSnapshot.exists) {
-        debugPrint("User document not found for id: $userId");
+        debugPrint("User document not found for id: $therapistId");
         return false;
       }
 
-      // Create a batch update.
       WriteBatch batch = _firestore.batch();
       batch.update(therapistRef, {'status': true});
       batch.update(userRef, {'status': true});
-
-      // Commit the batch.
       await batch.commit();
+
       return true;
     } catch (e) {
       debugPrint('Error approving therapist: $e');
@@ -144,14 +123,11 @@ class AdminRepository implements IAdminRepository {
   @override
   Future<bool> rejectTherapist(String therapistId) async {
     try {
-      // Since therapistId is the same as userId, we can use it directly
+      // Step 1: Delete Firestore documents
       WriteBatch batch = _firestore.batch();
 
-      // Delete the therapist document
       DocumentReference therapistRef =
           _firestore.collection('therapist').doc(therapistId);
-
-      // Delete the user document using the same ID
       DocumentReference userRef =
           _firestore.collection('users').doc(therapistId);
 
@@ -159,6 +135,22 @@ class AdminRepository implements IAdminRepository {
       batch.delete(userRef);
 
       await batch.commit();
+      debugPrint('Therapist documents deleted from Firestore.');
+
+      // Step 2: Delete from Firebase Authentication (if currently signed in)
+      final currentUser = _auth.currentUser;
+      if (currentUser != null && currentUser.uid == therapistId) {
+        try {
+          await currentUser.delete();
+          debugPrint('Therapist deleted from Firebase Authentication.');
+        } catch (e) {
+          debugPrint('Error deleting from Firebase Auth: $e');
+        }
+      } else {
+        debugPrint(
+            'Therapist not currently signed in. Auth deletion skipped.');
+      }
+
       return true;
     } catch (e) {
       debugPrint('Error rejecting therapist: $e');
@@ -177,16 +169,16 @@ class AdminRepository implements IAdminRepository {
 
         if (user != null && user.email == email) {
           await user.delete();
-          debugPrint('Therapist deleted from Firebase Authentication.');
+          debugPrint('User deleted from Firebase Authentication.');
         } else {
           debugPrint(
-              'Therapist is not the currently signed-in user. Re-authentication needed.');
+              'User is not the currently signed-in user. Re-authentication needed.');
         }
       } else {
-        debugPrint('Therapist not found in Authentication.');
+        debugPrint('This account is Rejected from the admin .');
       }
     } catch (e) {
-      debugPrint('Error deleting therapist from Authentication: $e');
+      debugPrint('Error deleting user from Authentication: $e');
     }
   }
 }

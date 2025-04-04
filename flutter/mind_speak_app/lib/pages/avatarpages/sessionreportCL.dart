@@ -8,7 +8,7 @@ import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SessionReportPage extends StatefulWidget {
-  const SessionReportPage({Key? key}) : super(key: key);
+  const SessionReportPage({super.key});
 
   @override
   State<SessionReportPage> createState() => _SessionReportPageState();

@@ -140,6 +140,7 @@ class NavigationDrawe extends StatelessWidget {
                       builder: (context) => const AggregateStatsPage()));
             },
           ),
+          
           ListTile(
             leading: Icon(Icons.report, color: iconColor),
             title: Text(

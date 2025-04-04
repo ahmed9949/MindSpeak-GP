@@ -3,7 +3,7 @@
 // import 'package:mind_speak_app/Repositories/sessionrepoC.dart';
 // import 'package:mind_speak_app/controllers/sessioncontrollerCl.dart';
 // import 'package:mind_speak_app/pages/avatarpages/sessionviewcl.dart';
-// import 'package:mind_speak_app/providers/session_provider.dart'; 
+// import 'package:mind_speak_app/providers/session_provider.dart';
 // import 'package:provider/provider.dart';
 // import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:google_generative_ai/google_generative_ai.dart';
@@ -77,7 +77,7 @@
 // - Main Interest: $interest
 
 // Task:
-// You are a therapist helping this child improve their communication skills. 
+// You are a therapist helping this child improve their communication skills.
 // 1. Start by engaging with their interest in $interest
 // 2. Gradually expand the conversation beyond this interest
 // 3. Keep responses short and clear
@@ -86,7 +86,7 @@
 // 6. Speak in Arabic
 
 // Please provide the initial therapeutic approach and first question you'll ask the child, focusing on their interest in $interest.
-// Remember to: 
+// Remember to:
 // - Keep responses under 2 sentences
 // - Be warm and encouraging
 // - Start with their comfort zone ($interest)
@@ -203,8 +203,6 @@
 // }
 
 
-
-
 // lib/views/session/start_session_page.dart
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/Repositories/sessionrepoC.dart';
@@ -215,7 +213,7 @@ import 'package:mind_speak_app/service/avatarservice/openai.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
- 
+
 class StartSessionPage extends StatefulWidget {
   const StartSessionPage({super.key});
 
@@ -303,24 +301,32 @@ Remember to:
     });
 
     try {
-      final childId = Provider.of<SessionProvider>(context, listen: false).childId;
+      final sessionProvider =
+          Provider.of<SessionProvider>(context, listen: false);
+      final childId = sessionProvider.childId;
+
       if (childId == null || childId.isEmpty) {
-        throw Exception('No child selected');
+        throw Exception(
+            'No child ID found. Please ensure a child profile is created.');
       }
 
       final childData = await _fetchChildData(childId);
       if (childData == null) {
-        throw Exception('Failed to fetch child data');
+        throw Exception('Failed to fetch child data.');
       }
 
-      final String therapistId = childData['therapistId'] ?? '';
+      final therapistId = childData['therapistId'] ?? '';
+      if (therapistId.isEmpty) {
+        throw Exception('No therapist assigned to this child.');
+      }
+
       await _sessionController.startSession(childId, therapistId);
 
       final prompt = _generateInitialPrompt(childData);
       final responseText = await _model.sendMessage(prompt);
 
       if (responseText.isEmpty) {
-        throw Exception('Failed to generate initial response');
+        throw Exception('Failed to generate initial response.');
       }
 
       await _sessionController.addTherapistMessage(responseText);
@@ -345,7 +351,7 @@ Remember to:
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error starting session: $e';
+        _errorMessage = 'Error starting session: ${e.toString()}';
       });
     } finally {
       setState(() {

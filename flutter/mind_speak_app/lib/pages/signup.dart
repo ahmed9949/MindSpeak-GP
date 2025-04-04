@@ -87,33 +87,27 @@ class _SignUpState extends State<SignUp> {
 
   Future<void> pickChildImage() async {
     File? pickedImage = await _signUpController.pickImage(ImageSource.gallery);
-    if (pickedImage != null) {
-      setState(() {
-        _childImage = pickedImage;
-        _signUpController.childImage = pickedImage;
-      });
+    setState(() {
+      _childImage = pickedImage;
+      _signUpController.childImage = pickedImage;
+    });
     }
-  }
 
   Future<void> pickNationalProofImage() async {
     File? pickedImage = await _signUpController.pickImage(ImageSource.gallery);
-    if (pickedImage != null) {
-      setState(() {
-        _nationalProofImage = pickedImage;
-        _signUpController.nationalProofImage = pickedImage;
-      });
+    setState(() {
+      _nationalProofImage = pickedImage;
+      _signUpController.nationalProofImage = pickedImage;
+    });
     }
-  }
 
   Future<void> pickTherapistImage() async {
     File? pickedImage = await _signUpController.pickImage(ImageSource.gallery);
-    if (pickedImage != null) {
-      setState(() {
-        _therapistImage = pickedImage;
-        _signUpController.therapistImage = pickedImage;
-      });
+    setState(() {
+      _therapistImage = pickedImage;
+      _signUpController.therapistImage = pickedImage;
+    });
     }
-  }
 
   @override
   Widget build(BuildContext context) {

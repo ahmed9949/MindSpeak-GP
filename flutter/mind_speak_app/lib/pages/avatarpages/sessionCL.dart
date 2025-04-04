@@ -1,14 +1,14 @@
-// lib/screens/start_session_page.dart
-
+// lib/views/session/start_session_page.dart
 import 'package:flutter/material.dart';
-import 'package:mind_speak_app/pages/avatarpages/VoiceChat3DModelPage.dart';
-import 'package:mind_speak_app/pages/avatarpages/newstartsessionview.dart';
+import 'package:mind_speak_app/Repositories/sessionrepoC.dart';
+import 'package:mind_speak_app/controllers/sessioncontrollerCl.dart';
+import 'package:mind_speak_app/pages/avatarpages/sessionviewcl.dart';
+import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:mind_speak_app/providers/session_provider.dart';
-
+ 
 class StartSessionPage extends StatefulWidget {
   const StartSessionPage({super.key});
 
@@ -20,30 +20,34 @@ class _StartSessionPageState extends State<StartSessionPage> {
   bool _isLoading = false;
   String? _errorMessage;
   late GenerativeModel _model;
+  late SessionRepository _sessionRepository;
+  late SessionController _sessionController;
+  late SessionAnalyzerController _analyzerController;
 
   @override
   void initState() {
     super.initState();
-    _initGenerativeModel();
+    _initializeServices();
   }
 
-  void _initGenerativeModel() {
+  void _initializeServices() {
+    // Initialize AI model
     final apiKey = dotenv.env['GEMINI_API_KEY']!;
     _model = GenerativeModel(model: 'gemini-2.0-flash', apiKey: apiKey);
+    
+    // Initialize repository
+    _sessionRepository = FirebaseSessionRepository();
+    
+    // Initialize controllers
+    _sessionController = SessionController(_sessionRepository);
+    _analyzerController = SessionAnalyzerController(_model);
   }
 
-  Future<Map<String, dynamic>?> _fetchChildData() async {
-    final sessionProvider =
-        Provider.of<SessionProvider>(context, listen: false);
-    if (!sessionProvider.isLoggedIn || sessionProvider.childId == null) {
-      setState(() => _errorMessage = 'No child data available');
-      return null;
-    }
-
+  Future<Map<String, dynamic>?> _fetchChildData(String childId) async {
     try {
       DocumentSnapshot childDoc = await FirebaseFirestore.instance
           .collection('child')
-          .doc(sessionProvider.childId)
+          .doc(childId)
           .get();
 
       if (!childDoc.exists) {
@@ -97,40 +101,61 @@ Remember to:
     });
 
     try {
-      final childData = await _fetchChildData();
+      // In a real app, get this from user context or navigation arguments
+      final String childId = Provider.of<SessionProvider>(context, listen: false).childId ?? '';
+      if (childId.isEmpty) {
+        throw Exception('No child selected');
+      }
+      
+      final childData = await _fetchChildData(childId);
       if (childData == null) {
-        setState(() => _isLoading = false);
-        return;
+        throw Exception('Failed to fetch child data');
       }
 
+      // Get therapist ID from child data
+      final String therapistId = childData['therapistId'] ?? '';
+      
+      // Start the session using controller
+      await _sessionController.startSession(childId, therapistId);
+      
+      // Generate initial AI prompt and response
       final prompt = _generateInitialPrompt(childData);
       final chat = _model.startChat();
       final response = await chat.sendMessage(Content.text(prompt));
 
       if (response.text == null) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Failed to generate initial response';
-        });
-        return;
+        throw Exception('Failed to generate initial response');
       }
+      
+      // Save the initial therapist message
+      await _sessionController.addTherapistMessage(response.text!);
 
       if (mounted) {
+        // Navigate to the session view with all controllers
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => VoiceChat3DModelPage(
-              childData: childData,
-              initialPrompt: prompt,
-              initialResponse: response.text!,
+            builder: (context) => MultiProvider(
+              providers: [
+                ChangeNotifierProvider.value(value: _sessionController),
+                Provider.value(value: _analyzerController),
+              ],
+              child: SessionView(
+                initialPrompt: prompt,
+                initialResponse: response.text!,
+                childData: childData,
+              ),
             ),
           ),
         );
       }
     } catch (e) {
       setState(() {
-        _isLoading = false;
         _errorMessage = 'Error starting session: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
       });
     }
   }

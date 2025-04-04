@@ -7,7 +7,6 @@ import 'package:mind_speak_app/models/User.dart';
 import 'package:mind_speak_app/pages/adminDashboard.dart';
 import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
-import 'package:mind_speak_app/service/local_auth_service.dart';
 import 'package:mind_speak_app/pages/homepage.dart';
 import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/doctor_dashboard.dart';
@@ -56,27 +55,11 @@ class LoginController {
           Provider.of<SessionProvider>(context, listen: false);
       await sessionProvider.saveSession(user.userId, user.role);
 
-      await _handleBiometricAuth(user.userId, user.biometricEnabled);
       await _navigateBasedOnRole(user.role, user.userId);
 
       _showSuccessSnackBar("Logged in Successfully");
     } catch (e) {
       _showErrorSnackBar(e.toString());
-    }
-  }
-
-  Future<void> _handleBiometricAuth(
-      String userId, bool biometricEnabled) async {
-    if (biometricEnabled) {
-      bool authenticated = await LocalAuth.authenticate();
-      if (!authenticated) {
-        throw Exception("Biometric authentication failed.");
-      }
-    } else {
-      bool enableBiometric = await LocalAuth.linkBiometrics();
-      if (enableBiometric) {
-        await _loginRepository.updateBiometricStatus(userId, true);
-      }
     }
   }
 
@@ -151,10 +134,6 @@ class LoginController {
       print("🔥 Error in _handleTherapistNavigation: $e");
       _showErrorSnackBar(e.toString());
     }
-  }
-
-  Future<bool> authenticateWithBiometrics() async {
-    return await LocalAuth.authenticate();
   }
 
   void _showErrorSnackBar(String message) {

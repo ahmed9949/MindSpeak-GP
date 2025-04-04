@@ -5,7 +5,6 @@ class UserModel {
   final String role;
   final String password;
   final int phoneNumber;
-  final bool biometricEnabled;
 
   UserModel({
     required this.userId,
@@ -14,7 +13,6 @@ class UserModel {
     required this.role,
     required this.password,
     required this.phoneNumber,
-    this.biometricEnabled = false,
   });
 
   factory UserModel.fromFirestore(Map<String, dynamic> data, String id) {
@@ -25,7 +23,6 @@ class UserModel {
       role: data['role'] ?? '',
       password: data['password'] ?? '',
       phoneNumber: data['phoneNumber'] ?? 0,
-      biometricEnabled: data['biometricEnabled'] ?? false,
     );
   }
 
@@ -36,8 +33,6 @@ class UserModel {
       'password': password,
       'role': role,
       'phoneNumber': phoneNumber,
-      'biometricEnabled': biometricEnabled,
-      'userid': userId,
     };
   }
 }

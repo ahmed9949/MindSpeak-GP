@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/controllers/ProfileController.dart';
-import 'package:mind_speak_app/pages/avatarpages/detections.dart';
 import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/profilepage.dart';
 import 'package:mind_speak_app/pages/searchpage.dart';
 import 'package:mind_speak_app/components/drawer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:mind_speak_app/pages/avatarpages/startsession.dart';
+import 'package:mind_speak_app/pages/avatarpages/startsessioncl.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
@@ -33,8 +32,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> fetchChildPhoto() async {
     try {
-      final sessionProvider =
-          Provider.of<SessionProvider>(context, listen: false);
+      final sessionProvider = Provider.of<SessionProvider>(context, listen: false);
       final userId = sessionProvider.userId;
 
       if (userId == null) {
@@ -79,11 +77,9 @@ class _HomePageState extends State<HomePage> {
 
         print('Processing therapist: $therapistId');
 
-        // Since the user ID is the same as the therapist ID
-        // Query the users collection (not user - ensure correct collection name!)
+        // Query the users collection
         DocumentSnapshot userDoc = await _firestore
-            .collection(
-                'users') // Make sure this is the correct collection name
+            .collection('users') // Make sure this is the correct collection name
             .doc(therapistId)
             .get();
 
@@ -130,6 +126,139 @@ class _HomePageState extends State<HomePage> {
         isLoading = false;
       });
     }
+  }
+
+  void checkCarsFormAndStartSession(BuildContext context) async {
+    final sessionProvider = Provider.of<SessionProvider>(context, listen: false);
+    final userId = sessionProvider.userId;
+
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User not logged in'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Fetch child data for the current user
+    QuerySnapshot childSnapshot = await _firestore
+        .collection('child')
+        .where('userId', isEqualTo: userId)
+        .get();
+
+    if (childSnapshot.docs.isNotEmpty) {
+      final childId = childSnapshot.docs.first.id;
+
+      // Check if the Cars form is completed
+      QuerySnapshot carsSnapshot = await _firestore
+          .collection('Cars')
+          .where('childId', isEqualTo: childId)
+          .get();
+
+      if (carsSnapshot.docs.isNotEmpty) {
+        final carsData = carsSnapshot.docs.first.data() as Map<String, dynamic>;
+        bool formStatus = carsData['status'] ?? false;
+
+        if (formStatus) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const StartSessionPage()),
+          );
+        } else {
+          // Display snackbar if the Cars form is incomplete
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'You should complete the Cars form first to start the session.',
+              ),
+              backgroundColor: Colors.red,
+              action: SnackBarAction(
+                label: 'Cars Form',
+                textColor: Colors.white,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CarsForm()),
+                  );
+                },
+              ),
+            ),
+          );
+        }
+      } else {
+        // No Cars form data found
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('No Cars form data found.'),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: 'Complete Cars Form',
+              textColor: Colors.white,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CarsForm()),
+                );
+              },
+            ),
+          ),
+        );
+      }
+    } else {
+      // No child data found for the current user
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No child data found for the logged-in user.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Widget _buildTopCard(
+      BuildContext context, String title, String iconPath, Widget page) {
+    return GestureDetector(
+      onTap: () {
+        if (title == "3d session") {
+          checkCarsFormAndStartSession(context);
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => page),
+          );
+        }
+      },
+      child: Column(
+        children: [
+          Container(
+            height: 60,
+            width: 60,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Center(
+              child: Image.asset(
+                iconPath,
+                height: 30,
+                width: 30,
+              ),
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -207,12 +336,6 @@ class _HomePageState extends State<HomePage> {
                           "Cars",
                           "assets/cars.png",
                           const CarsForm(),
-                        ),
-                        _buildTopCard(
-                          context,
-                          "Prediction",
-                          "assets/predict.png",
-                          const detection(),
                         ),
                         _buildTopCard(
                           context,
@@ -367,46 +490,6 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-    );
-  }
-
-  Widget _buildTopCard(
-      BuildContext context, String title, String iconPath, Widget page) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => page),
-        );
-      },
-      child: Column(
-        children: [
-          Container(
-            height: 60,
-            width: 60,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Center(
-              child: Image.asset(
-                iconPath,
-                height: 30,
-                width: 30,
-              ),
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
     );
   }
 

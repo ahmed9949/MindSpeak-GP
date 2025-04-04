@@ -199,25 +199,6 @@ class _LogInState extends State<LogIn> {
                                 ],
                               ),
                               const SizedBox(height: 20.0),
-                              // Biometric Login Button - No changes
-                              ElevatedButton.icon(
-                                onPressed: () async {
-                                  final authenticated = await _loginController
-                                      .authenticateWithBiometrics();
-                                  if (authenticated) {
-                                    _loginController.userLogin();
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text(
-                                              'Biometric authentication failed!')),
-                                    );
-                                  }
-                                },
-                                icon: const Icon(Icons.fingerprint),
-                                label: const Text('Login with Biometrics'),
-                              ),
-                              const SizedBox(height: 20.0),
                             
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,

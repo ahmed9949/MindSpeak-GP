@@ -45,6 +45,8 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() {
         parentId = widget.controller.parentId;
         parentData = widget.controller.parentData;
+         // 🔍 Debug print
+        print('📦 parentData = $parentData');
         childrenData = widget.controller.childrenData;
         carsData = widget.controller.carsData;
         isLoading = false;

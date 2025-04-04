@@ -12,7 +12,6 @@ import 'package:mind_speak_app/pages/adminDashboard.dart';
 import 'package:mind_speak_app/pages/login.dart';
 import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
-import '../service/local_auth_service.dart';
 
 class SignUpController {
   final BuildContext context;
@@ -91,7 +90,6 @@ class SignUpController {
         role: role,
         password: plainPassword, // Plain password for Firebase Auth
         phoneNumber: phoneNumber,
-        biometricEnabled: false,
       );
 
       // Create Firebase user with plain password
@@ -107,7 +105,6 @@ class SignUpController {
         role: user.role,
         password: _repository.hashPassword(plainPassword), // Hash for Firestore
         phoneNumber: user.phoneNumber,
-        biometricEnabled: user.biometricEnabled,
       );
 
       // Save user details with hashed password
@@ -164,8 +161,7 @@ class SignUpController {
         await _repository.saveTherapistDetails(therapist);
       }
 
-      await _handleBiometricAuth(userId);
-      _navigateBasedOnRole();
+      _navigateBasedOnRole(userId);
     } on FirebaseAuthException catch (e) {
       _handleFirebaseAuthError(e);
     } catch (e) {
@@ -219,30 +215,18 @@ class SignUpController {
     return true;
   }
 
-  // Handle biometric authentication
-  Future<void> _handleBiometricAuth(String userId) async {
-    bool enableBiometric = await LocalAuth.hasBiometrics();
-    if (enableBiometric) {
-      bool biometricEnabled = await LocalAuth.authenticate();
-      if (biometricEnabled) {
-        await _repository.updateBiometricStatus(userId, true);
-        _showSuccessSnackBar("Biometric authentication enabled successfully.");
-      }
-    }
-
-    final sessionProvider =
-        Provider.of<SessionProvider>(context, listen: false);
-    await sessionProvider.saveSession(userId, role);
-  }
-
   // Navigate to the appropriate screen based on the user's role
-  void _navigateBasedOnRole() {
+  void _navigateBasedOnRole(String userId) async {
     _showSuccessSnackBar("Registered Successfully");
 
     switch (role) {
       case 'parent':
-        Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const Navigationpage()));
+        Provider.of<SessionProvider>(context, listen: false)
+            .saveSession(userId, role);
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const Navigationpage()),
+        );
         break;
       case 'therapist':
         Navigator.push(

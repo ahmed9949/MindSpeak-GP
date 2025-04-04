@@ -14,7 +14,6 @@ abstract class ILoginRepository {
   Future<ChildModel> fetchChildData(String userId);
   Future<CarsFormModel?> fetchCarsFormStatus(String childId);
   Future<TherapistModel> fetchTherapistInfo(String userId);
-  Future<void> updateBiometricStatus(String userId, bool status);
 }
 
 class LoginRepository implements ILoginRepository {
@@ -103,7 +102,6 @@ class LoginRepository implements ILoginRepository {
       'email': user.email,
       'username': user.displayName,
       'role': 'user',
-      'biometricEnabled': false,
       'phoneNumber': 0,
       'password': '', // Empty since we're using Google Auth
     });
@@ -173,18 +171,6 @@ class LoginRepository implements ILoginRepository {
           doc.data() as Map<String, dynamic>, doc.id);
     } catch (e) {
       print("🔥 Exception in fetchTherapistInfo: $e");
-      rethrow;
-    }
-  }
-
-  @override
-  Future<void> updateBiometricStatus(String userId, bool status) async {
-    try {
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .update({'biometricEnabled': status});
-    } catch (e) {
       rethrow;
     }
   }

@@ -6,27 +6,6 @@
 // class BlindCamera extends StatelessWidget {
 //   final CameraController controller;
 
-<<<<<<< Updated upstream
-  const BlindCamera({
-    super.key,
-    required this.controller,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 1,
-      height: 1,
-      child: controller.value.isInitialized
-          ? AspectRatio(
-              aspectRatio: 1,
-              child: CameraPreview(controller),
-            )
-          : Container(),
-    );
-  }
-}
-=======
 //   const BlindCamera({
 //     Key? key,
 //     required this.controller,
@@ -46,4 +25,3 @@
 //     );
 //   }
 // }
->>>>>>> Stashed changes

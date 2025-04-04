@@ -97,6 +97,18 @@ class SignUpController {
       // Create Firebase user with plain password
       UserCredential userCredential =
           await _repository.createFirebaseUser(user);
+
+// 👇 Send email verification immediately after creation
+      await userCredential.user!.sendEmailVerification();
+
+      // 🔐 Prevent login until verification is complete
+      _showInfoSnackBar(
+          "Verification email sent. Please check your Gmail and verify before logging in.");
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LogIn()),
+      );
+
       String userId = userCredential.user!.uid;
 
       // Create updated user with hashed password for database storage

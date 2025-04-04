@@ -35,7 +35,10 @@ class LoginRepository implements ILoginRepository {
         email: email,
         password: password,
       );
-
+      if (!userCredential.user!.emailVerified) {
+        await _auth.signOut();
+        throw Exception("Please verify your email before logging in.");
+      }
       String userId = userCredential.user!.uid;
 
       // After successful authentication, fetch the user details

@@ -33,7 +33,8 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> fetchChildPhoto() async {
     try {
-      final sessionProvider = Provider.of<SessionProvider>(context, listen: false);
+      final sessionProvider =
+          Provider.of<SessionProvider>(context, listen: false);
       final userId = sessionProvider.userId;
 
       if (userId == null) {
@@ -80,7 +81,8 @@ class _HomePageState extends State<HomePage> {
 
         // Query the users collection
         DocumentSnapshot userDoc = await _firestore
-            .collection('users') // Make sure this is the correct collection name
+            .collection(
+                'users') // Make sure this is the correct collection name
             .doc(therapistId)
             .get();
 
@@ -130,7 +132,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   void checkCarsFormAndStartSession(BuildContext context) async {
-    final sessionProvider = Provider.of<SessionProvider>(context, listen: false);
+    final sessionProvider =
+        Provider.of<SessionProvider>(context, listen: false);
+    await sessionProvider.fetchChildId(); // <- Ensure it's up to date
     final userId = sessionProvider.userId;
 
     if (userId == null) {
@@ -143,53 +147,32 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    // Fetch child data for the current user
-    QuerySnapshot childSnapshot = await _firestore
-        .collection('child')
-        .where('userId', isEqualTo: userId)
-        .get();
+    try {
+      // ✅ Fetch child data
+      final childSnapshot = await FirebaseFirestore.instance
+          .collection('child')
+          .where('userId', isEqualTo: userId)
+          .get();
 
-    if (childSnapshot.docs.isNotEmpty) {
+      if (childSnapshot.docs.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No child data found for the logged-in user.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       final childId = childSnapshot.docs.first.id;
 
-      // Check if the Cars form is completed
-      QuerySnapshot carsSnapshot = await _firestore
+      // ✅ Fetch Cars form
+      final carsSnapshot = await FirebaseFirestore.instance
           .collection('Cars')
           .where('childId', isEqualTo: childId)
           .get();
 
-      if (carsSnapshot.docs.isNotEmpty) {
-        final carsData = carsSnapshot.docs.first.data() as Map<String, dynamic>;
-        bool formStatus = carsData['status'] ?? false;
-
-        if (formStatus) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const StartSessionPage()),
-          );
-        } else {
-          // Display snackbar if the Cars form is incomplete
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text(
-                'You should complete the Cars form first to start the session.',
-              ),
-              backgroundColor: Colors.red,
-              action: SnackBarAction(
-                label: 'Cars Form',
-                textColor: Colors.white,
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const CarsForm()),
-                  );
-                },
-              ),
-            ),
-          );
-        }
-      } else {
-        // No Cars form data found
+      if (carsSnapshot.docs.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('No Cars form data found.'),
@@ -206,12 +189,50 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         );
+        return;
       }
-    } else {
-      // No child data found for the current user
+
+      final rawData = carsSnapshot.docs.first.data();
+      if (rawData is! Map<String, dynamic>) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Invalid Cars form data.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final formStatus = rawData['status'] ?? false;
+
+      if (formStatus == true) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const StartSessionPage()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+                'You should complete the Cars form first to start the session.'),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: 'Cars Form',
+              textColor: Colors.white,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CarsForm()),
+                );
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No child data found for the logged-in user.'),
+        SnackBar(
+          content: Text('Something went wrong: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -219,12 +240,43 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildTopCard(
-      BuildContext context, String title, String iconPath, Widget page) {
+    BuildContext context,
+    String title,
+    String iconPath,
+    Widget page, {
+    required bool isDark,
+  }) {
     return GestureDetector(
       onTap: () {
-        if (title == "3d session") {
+        final sessionProvider =
+            Provider.of<SessionProvider>(context, listen: false);
+
+        // ✅ Handle "3D Session" card with session check
+        if (title.toLowerCase() == "3d session") {
+          if (sessionProvider.isLoading) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Loading user session..."),
+                backgroundColor: Colors.orange,
+              ),
+            );
+            return;
+          }
+
+          if (!sessionProvider.isLoggedIn || sessionProvider.userId == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Please log in to start a session."),
+                backgroundColor: Colors.red,
+              ),
+            );
+            return;
+          }
+
+          // ✅ Proceed to session validation
           checkCarsFormAndStartSession(context);
         } else {
+          // ✅ Navigate for other cards
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => page),
@@ -237,22 +289,30 @@ class _HomePageState extends State<HomePage> {
             height: 60,
             width: 60,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? Colors.grey[800] : Colors.white,
               borderRadius: BorderRadius.circular(15),
+              boxShadow: [
+                BoxShadow(
+                  color: isDark ? Colors.black26 : Colors.grey.withOpacity(0.2),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Center(
               child: Image.asset(
                 iconPath,
                 height: 30,
                 width: 30,
+                color: isDark ? Colors.white : null,
               ),
             ),
           ),
           const SizedBox(height: 5),
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: isDark ? Colors.white : Colors.black,
               fontSize: 12,
               fontWeight: FontWeight.bold,
             ),
@@ -268,98 +328,145 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       drawer: const NavigationDrawe(),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor:
-            themeProvider.isDarkMode ? Colors.grey[900] : Colors.blue,
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            IconButton(
-              icon: Icon(themeProvider.isDarkMode
-                  ? Icons.wb_sunny
-                  : Icons.nightlight_round),
-              onPressed: () {
-                themeProvider.toggleTheme();
-              },
+      backgroundColor: themeProvider.isDarkMode ? Colors.black : Colors.white,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(240),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: themeProvider.isDarkMode
+                  ? [Colors.grey[850]!, Colors.black]
+                  : [Colors.blue.shade400, Colors.deepPurple.shade400],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            IconButton(
-              icon: const Icon(Icons.favorite_border),
-              onPressed: () {},
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(30),
             ),
-          ],
-        ),
-        actions: [
-          Row(
-            children: [
-              const SizedBox(width: 20),
-              CircleAvatar(
-                radius:
-                    20, // Reduced from 50 to make it fit better in the appbar
-                backgroundImage:
-                    childPhoto != null ? NetworkImage(childPhoto!) : null,
-                child: childPhoto == null
-                    ? const Icon(Icons.person,
-                        color: Colors.white, size: 20) // Reduced from 40
-                    : null,
-              ),
-              const SizedBox(width: 5),
-            ],
           ),
-        ],
+          child: SafeArea(
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          // 🔹 Drawer hamburger icon
+                          Builder(
+                            builder: (context) => IconButton(
+                              icon: const Icon(Icons.menu, color: Colors.white),
+                              onPressed: () =>
+                                  Scaffold.of(context).openDrawer(),
+                            ),
+                          ),
+                          const CircleAvatar(
+                            radius: 16,
+                            backgroundColor: Colors.white,
+                            child: Icon(Icons.apps,
+                                color: Colors.blueAccent, size: 18),
+                          ),
+                          const SizedBox(width: 10),
+                          const Text(
+                            "MindSpeak",
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              themeProvider.isDarkMode
+                                  ? Icons.wb_sunny
+                                  : Icons.nightlight_round,
+                              color: Colors.white,
+                            ),
+                            onPressed: () => themeProvider.toggleTheme(),
+                          ),
+                          const SizedBox(width: 5),
+                          CircleAvatar(
+                            radius: 18,
+                            backgroundColor: Colors.white,
+                            backgroundImage: childPhoto != null
+                                ? NetworkImage(childPhoto!)
+                                : null,
+                            child: childPhoto == null
+                                ? const Icon(Icons.person,
+                                    size: 20, color: Colors.grey)
+                                : null,
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "Explore",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildTopCard(context, "Doctors", "assets/doctor.png",
+                            const SearchPage(),
+                            isDark: themeProvider.isDarkMode),
+                        const SizedBox(width: 12),
+                        _buildTopCard(context, "3D Session",
+                            "assets/predict.png", const StartSessionPage(),
+                            isDark: themeProvider.isDarkMode),
+                        const SizedBox(width: 12),
+                        _buildTopCard(context, "Cars", "assets/cars.png",
+                            const CarsForm(),
+                            isDark: themeProvider.isDarkMode),
+                        const SizedBox(width: 12),
+                        _buildTopCard(context, "Profile", "assets/profile.jpg",
+                            ProfilePage(controller: ProfileController()),
+                            isDark: themeProvider.isDarkMode),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : Container(
-              color: themeProvider.isDarkMode ? Colors.black : Colors.blue,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: themeProvider.isDarkMode
+                      ? [Colors.black, Colors.grey[900]!]
+                      : [Colors.blue.shade50, Colors.white],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 30),
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: MediaQuery.of(context).size.width *
-                            0.04), // Dynamic padding
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment
-                          .spaceBetween, // Ensures even spacing between cards
-                      children: [
-                        _buildTopCard(
-                          context,
-                          "Doctors",
-                          "assets/doctor.png",
-                          const SearchPage(),
-                        ),
-                        _buildTopCard(context, "3d session",
-                            "assets/predict.png", const StartSessionPage()),
-                        _buildTopCard(
-                          context,
-                          "Cars",
-                          "assets/cars.png",
-                          const CarsForm(),
-                        ),
-                        // _buildTopCard(
-                        //   context,
-                        //   "Prediction",
-                        //   "assets/predict.png",
-                        //   ConversationScreen(),
-                        // ),
-                        _buildTopCard(
-                          context,
-                          "Profile",
-                          "assets/profile.jpg",
-                          ProfilePage(controller: ProfileController()),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 35),
+                  const SizedBox(height: 10),
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: themeProvider.isDarkMode
-                            ? Colors.grey[900]
-                            : Colors.white,
+                        color: Colors.transparent,
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(20),
                           topRight: Radius.circular(20),
@@ -408,25 +515,22 @@ class _HomePageState extends State<HomePage> {
                                     ),
                                   )
                                 : SizedBox(
-                                    height:
-                                        150, // Set a fixed height for the ListView
+                                    height: 150,
                                     child: ListView.builder(
-                                      scrollDirection: Axis
-                                          .horizontal, // Enable horizontal scrolling
+                                      scrollDirection: Axis.horizontal,
                                       physics: const BouncingScrollPhysics(),
                                       itemCount: therapists.length,
                                       itemBuilder: (context, index) {
                                         final therapist = therapists[index];
                                         return Padding(
-                                          padding: const EdgeInsets.only(
-                                              right:
-                                                  10), // Add spacing between cards
-                                          child: _buildTherapistCard(therapist),
+                                          padding:
+                                              const EdgeInsets.only(right: 10),
+                                          child: _buildTherapistCard(therapist,
+                                              isDark: themeProvider.isDarkMode),
                                         );
                                       },
                                     ),
                                   ),
-                            // Add Quick Tips Section
                             const SizedBox(height: 20),
                             Container(
                               padding: const EdgeInsets.all(16),
@@ -465,23 +569,31 @@ class _HomePageState extends State<HomePage> {
                                     ],
                                   ),
                                   const SizedBox(height: 10),
-
-                                  // Using Flutter's Built-in Carousel
                                   SizedBox(
                                     height: 120,
                                     child: PageView(
                                       scrollDirection: Axis.horizontal,
                                       children: [
-                                        _buildTipCard(Icons.visibility,
-                                            "Encourage eye contact with interactive games."),
-                                        _buildTipCard(Icons.schedule,
-                                            "Use visual schedules to reduce anxiety."),
-                                        _buildTipCard(Icons.emoji_events,
-                                            "Reward small achievements with positive reinforcement."),
-                                        _buildTipCard(Icons.hearing,
-                                            "Use clear and slow speech when communicating."),
-                                        _buildTipCard(Icons.groups,
-                                            "Encourage social interactions through storytelling."),
+                                        _buildTipCard(
+                                            Icons.visibility,
+                                            "Encourage eye contact with interactive games.",
+                                            context),
+                                        _buildTipCard(
+                                            Icons.schedule,
+                                            "Use visual schedules to reduce anxiety.",
+                                            context),
+                                        _buildTipCard(
+                                            Icons.emoji_events,
+                                            "Reward small achievements with positive reinforcement.",
+                                            context),
+                                        _buildTipCard(
+                                            Icons.hearing,
+                                            "Use clear and slow speech when communicating.",
+                                            context),
+                                        _buildTipCard(
+                                            Icons.groups,
+                                            "Encourage social interactions through storytelling.",
+                                            context),
                                       ],
                                     ),
                                   ),
@@ -500,31 +612,36 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildTherapistCard(Map<String, dynamic> therapist) {
+  Widget _buildTherapistCard(Map<String, dynamic> therapist,
+      {required bool isDark}) {
     return SizedBox(
-      width: 150, // Fixed width for the card
+      width: 160,
       child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        color: isDark ? Colors.grey[850] : Colors.white,
+        elevation: 6,
+        shadowColor: Colors.black26,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(8.0),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Therapist image
+              // Image
               therapist['therapistImage'] != null &&
                       therapist['therapistImage'].isNotEmpty
                   ? ClipRRect(
-                      borderRadius: BorderRadius.circular(30),
+                      borderRadius: BorderRadius.circular(40),
                       child: Image.network(
                         therapist['therapistImage'],
-                        height: 60,
-                        width: 60,
+                        height: 70,
+                        width: 70,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
-                          print('Error loading image: $error');
+                          print('Image load error: $error');
                           return CircleAvatar(
-                            radius: 30,
+                            radius: 35,
                             backgroundColor: Colors.grey[300],
                             child: const Icon(Icons.person, color: Colors.grey),
                           );
@@ -532,29 +649,38 @@ class _HomePageState extends State<HomePage> {
                       ),
                     )
                   : CircleAvatar(
-                      radius: 30,
+                      radius: 35,
                       backgroundColor: Colors.grey[300],
                       child: const Icon(Icons.person, color: Colors.grey),
                     ),
-              const SizedBox(height: 8),
 
-              // Therapist name
+              const SizedBox(height: 10),
+
+              // Name
               Text(
                 therapist['name'] ?? 'Unknown',
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
                 maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
               ),
 
-              // Therapist bio (truncated)
+              const SizedBox(height: 4),
+
+              // Bio
               Text(
                 therapist['bio'] ?? 'N/A',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? Colors.grey[300] : Colors.grey[600],
+                ),
                 maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -562,34 +688,46 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-}
 
-Widget _buildTipCard(IconData icon, String text) {
-  return Container(
-    margin: const EdgeInsets.symmetric(horizontal: 8),
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: Colors.blueAccent.withOpacity(0.1),
-      borderRadius: BorderRadius.circular(15),
-      boxShadow: const [
-        BoxShadow(
-          color: Colors.black12,
-          blurRadius: 8,
-          offset: Offset(0, 4),
-        ),
-      ],
-    ),
-    child: Row(
-      children: [
-        Icon(icon, size: 30, color: Colors.blueAccent),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+  Widget _buildTipCard(IconData icon, String text, BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[850] : Colors.blueAccent.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black.withOpacity(0.3) : Colors.black12,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
+        ],
+        border: Border.all(
+          color: isDark ? Colors.blueGrey : Colors.blueAccent.withOpacity(0.3),
+          width: 1.2,
         ),
-      ],
-    ),
-  );
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 28, color: Colors.blueAccent),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.white : Colors.black87,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

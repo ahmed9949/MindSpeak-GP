@@ -586,9 +586,7 @@ class _SessionViewState extends State<SessionView> {
   final Flutter3DController controller = Flutter3DController();
   bool isModelLoaded = false;
   bool isLoading = true;
-  String? errorMessage;
-  final String idleAnimation = 'IDLE.001';
-  final String cycleTalkingAnimation = 'NEWTALK';
+  String? errorMessage; 
   final List<String> allowedAnimations = ['idle.001', 'newtalk'];
 
   final stt.SpeechToText _speech = stt.SpeechToText();

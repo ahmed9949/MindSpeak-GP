@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mind_speak_app/Repositories/SignupRepository.dart';
+import 'package:mind_speak_app/components/cars.dart';
 import 'package:mind_speak_app/components/navigationpage.dart';
 import 'package:mind_speak_app/models/Child.dart';
 import 'package:mind_speak_app/models/ParentModel.dart';
 import 'package:mind_speak_app/models/Therapist.dart';
 import 'package:mind_speak_app/models/User.dart';
 import 'package:mind_speak_app/pages/adminDashboard.dart';
+import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/login.dart';
 import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
@@ -225,7 +227,7 @@ class SignUpController {
             .saveSession(userId, role);
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const Navigationpage()),
+          MaterialPageRoute(builder: (context) => const CarsForm()),
         );
         break;
       case 'therapist':

@@ -11,10 +11,12 @@ class DoctorDetailsPage extends StatefulWidget {
   final Map<String, dynamic> userInfo;
   final Map<String, dynamic> therapistInfo;
 
-  const DoctorDetailsPage(
-      {super.key, required this.sessionId,
-      required this.userInfo,
-      required this.therapistInfo});
+  const DoctorDetailsPage({
+    super.key,
+    required this.sessionId,
+    required this.userInfo,
+    required this.therapistInfo,
+  });
 
   @override
   _DoctorDetailsPageState createState() => _DoctorDetailsPageState();
@@ -26,19 +28,47 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController bioController = TextEditingController();
   late DoctorDashboardService _doctorServices;
+  Map<String, dynamic>? userInfo;
+  Map<String, dynamic>? therapistInfo;
 
   @override
   void initState() {
     super.initState();
-    nameController.text = widget.userInfo['username'];
-    emailController.text = widget.userInfo['email'];
-    phoneController.text = widget.therapistInfo['therapistnumber'].toString();
-    bioController.text = widget.therapistInfo['bio'] ?? '';
     _doctorServices = DoctorDashboardService();
+
+    userInfo = Map<String, dynamic>.from(widget.userInfo);
+    therapistInfo = Map<String, dynamic>.from(widget.therapistInfo);
+
+    nameController.text = userInfo!['username'] ?? '';
+    emailController.text = userInfo!['email'] ?? '';
+    phoneController.text = userInfo!['phoneNumber']?.toString() ?? '';
+    bioController.text = therapistInfo!['bio'] ?? '';
+  }
+
+  Future<void> refreshData() async {
+    final newUserInfo =
+        await _doctorServices.refreshUserData(userInfo!['userid']);
+    final newTherapistInfo = await _doctorServices
+        .refreshTherapistData(therapistInfo!['therapistid']);
+
+    setState(() {
+      userInfo = newUserInfo;
+      therapistInfo = newTherapistInfo;
+      nameController.text = newUserInfo['username'] ?? '';
+      emailController.text = newUserInfo['email'] ?? '';
+      phoneController.text = newUserInfo['phoneNumber']?.toString() ?? '';
+      bioController.text = newTherapistInfo['bio'] ?? '';
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (userInfo == null || therapistInfo == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Details'),
@@ -51,27 +81,29 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             DoctorProfile(
-              name: widget.userInfo['username'] ?? 'Doctor Name',
-              bio: widget.therapistInfo['bio'] ?? 'bio',
-              therapistImage: widget.therapistInfo['therapistimage'],
+              key: ValueKey(DateTime.now().millisecondsSinceEpoch),
+              name: userInfo!['username'] ?? 'Doctor Name',
+              bio: therapistInfo!['bio'] ?? 'bio',
+              therapistImage: therapistInfo!['therapistimage'],
             ),
             ContactInfoCard(
               title: 'Email',
-              subtitle: widget.userInfo['email'],
+              subtitle: userInfo!['email'],
               icon: Icons.email,
             ),
             ContactInfoCard(
               title: 'Phone',
-              subtitle: widget.therapistInfo['therapistnumber']?.toString(),
+              subtitle: userInfo!['phoneNumber']?.toString(),
               icon: Icons.phone,
             ),
             const SizedBox(height: 16),
             const Text(
               'Edit Profile',
               style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue),
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue,
+              ),
             ),
             const SizedBox(height: 8),
             Card(
@@ -97,7 +129,7 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                     EditableField(
                       controller: phoneController,
                       label: 'Phone Number',
-                      inputType: TextInputType.phone,
+                      inputType: TextInputType.number,
                     ),
                     const SizedBox(height: 16),
                     EditableField(
@@ -112,15 +144,17 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
             const SizedBox(height: 16),
             Center(
               child: ElevatedButton.icon(
-                onPressed: () {
+                onPressed: () async {
                   String name = nameController.text;
                   String email = emailController.text;
                   String bio = bioController.text;
                   String phoneNumber = phoneController.text;
 
-                  if (phoneNumber.length != 11) {
+                  if (phoneNumber.length != 11 ||
+                      int.tryParse(phoneNumber) == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please enter a valid phone number.')),
+                      const SnackBar(
+                          content: Text('Please enter a valid phone number.')),
                     );
                     return;
                   }
@@ -128,42 +162,31 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                   Map<String, dynamic> updatedUserInfo = {
                     'username': name,
                     'email': email,
+                    'phoneNumber': int.parse(phoneNumber),
                   };
 
                   Map<String, dynamic> updatedTherapistInfo = {
-                    'therapistnumber': phoneNumber,
                     'bio': bio,
                   };
 
-                  _doctorServices.updateUserInfo(widget.userInfo['userid'], updatedUserInfo);
-                  _doctorServices.updateTherapistInfo(widget.therapistInfo['therapistid'], updatedTherapistInfo);
+                  await _doctorServices.updateUserInfo(
+                      userInfo!['userid'], updatedUserInfo);
+                  await _doctorServices.updateTherapistInfo(
+                      therapistInfo!['therapistid'], updatedTherapistInfo);
 
-                  setState(() {
-                    widget.userInfo['username'] = name;
-                    widget.userInfo['email'] = email;
-                    widget.therapistInfo['therapistnumber'] = phoneNumber;
-                    widget.therapistInfo['bio'] = bio;
-                  });
+                  await refreshData();
 
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Details updated successfully!')),
-                  );
-
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => DoctorDashboard(
-                        sessionId: widget.sessionId,
-                        userInfo: widget.userInfo,
-                        therapistInfo: widget.therapistInfo,
-                      ),
-                    ),
+                    const SnackBar(
+                        content: Text('Details updated successfully!')),
                   );
                 },
                 icon: const Icon(Icons.save, color: Colors.blue),
-                label: const Text('Save Changes', style: TextStyle(color: Colors.black)),
+                label: const Text('Save Changes',
+                    style: TextStyle(color: Colors.black)),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -174,7 +197,10 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
             const Text(
               'Delete Account',
               style: TextStyle(
-                  fontSize: 22, fontWeight: FontWeight.bold, color: Colors.red),
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
             ),
             const SizedBox(height: 8),
             Card(
@@ -203,15 +229,13 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                             actions: <Widget>[
                               TextButton(
                                 child: const Text('Cancel'),
-                                onPressed: () {
-                                  Navigator.of(context).pop(false);
-                                },
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
                               ),
                               TextButton(
                                 child: const Text('Delete'),
-                                onPressed: () {
-                                  Navigator.of(context).pop(true);
-                                },
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
                               ),
                             ],
                           ),
@@ -219,8 +243,9 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
 
                         if (confirmDelete) {
                           await _doctorServices.deleteAccount(
-                              widget.userInfo['userid'],
-                              widget.therapistInfo['therapistid']);
+                            userInfo!['userid'],
+                            therapistInfo!['therapistid'],
+                          );
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                                 content: Text('Account deleted successfully')),
@@ -234,10 +259,12 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                         }
                       },
                       icon: const Icon(Icons.delete, color: Colors.white),
-                      label: const Text('Delete Account', style: TextStyle(color: Colors.white)),
+                      label: const Text('Delete Account',
+                          style: TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),

@@ -19,8 +19,6 @@ class DoctorDashboardService {
     }
   }
 
-  // Space
-
   Future<List<Map<String, dynamic>>> getAllChildren(String therapistId) async {
     try {
       QuerySnapshot snapshot = await _firestore
@@ -51,37 +49,40 @@ class DoctorDashboardService {
     }
   }
 
-  Future<Map<String, dynamic>> getTherapistInfo(String therapistId) async {
+  Future<Map<String, dynamic>> getUserInfo(String userId) async {
     try {
-      DocumentSnapshot therapistSnapshot = await FirebaseFirestore.instance
-          .collection('therapist')
-          .doc(therapistId)
-          .get();
-      if (!therapistSnapshot.exists) {
-        throw Exception('Therapist not found');
-      }
-      return therapistSnapshot.data() as Map<String, dynamic>;
-    } catch (e) {
-      throw Exception('Failed to fetch therapist info: ${e.toString()}');
-    }
-  }
+      DocumentSnapshot userSnapshot =
+          await _firestore.collection('users').doc(userId).get();
 
-  Future<Map<String, dynamic>> getUserInfo(String therapistId) async {
-    try {
-      DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(therapistId)
-          .get();
       if (!userSnapshot.exists) {
         throw Exception('User not found');
       }
-      return userSnapshot.data() as Map<String, dynamic>;
+
+      final data = userSnapshot.data() as Map<String, dynamic>;
+      data['userid'] = userSnapshot.id;
+      return data;
     } catch (e) {
-      throw Exception('Failed to fetch therapist info: ${e.toString()}');
+      throw Exception('Failed to fetch user info: $e');
     }
   }
 
-  // Update functions
+  Future<Map<String, dynamic>> getTherapistInfoByUserId(String userId) async {
+    final snapshot = await _firestore
+        .collection('therapist')
+        .where('userId', isEqualTo: userId)
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isEmpty) {
+      throw Exception('Therapist not found');
+    }
+
+    final doc = snapshot.docs.first;
+    final data = doc.data() as Map<String, dynamic>;
+    data['therapistid'] = doc.id;
+    return data;
+  }
+
   Future<void> updateTherapistInfo(
       String therapistId, Map<String, dynamic> updatedInfo) async {
     try {
@@ -106,7 +107,6 @@ class DoctorDashboardService {
   Future<void> deleteAccount(String userId, String therapistId) async {
     try {
       await _firestore.collection('users').doc(userId).delete();
-
       await _firestore.collection('therapist').doc(therapistId).delete();
 
       await _firestore
@@ -124,5 +124,22 @@ class DoctorDashboardService {
     } catch (e) {
       throw Exception('Failed to delete account: $e');
     }
+  }
+
+  Future<Map<String, dynamic>> refreshUserData(String userId) async {
+    final snapshot = await _firestore.collection('users').doc(userId).get();
+    if (!snapshot.exists) throw Exception('User not found');
+    final data = snapshot.data() as Map<String, dynamic>;
+    data['userid'] = snapshot.id;
+    return data;
+  }
+
+  Future<Map<String, dynamic>> refreshTherapistData(String therapistId) async {
+    final snapshot =
+        await _firestore.collection('therapist').doc(therapistId).get();
+    if (!snapshot.exists) throw Exception('Therapist not found');
+    final data = snapshot.data() as Map<String, dynamic>;
+    data['therapistid'] = snapshot.id;
+    return data;
   }
 }

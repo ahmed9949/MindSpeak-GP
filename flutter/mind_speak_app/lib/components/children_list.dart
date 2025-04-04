@@ -30,7 +30,7 @@ class ChildrenList extends StatelessWidget {
             : Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Colors.blue[50]!, Colors.blue[100]!],
+                    colors: [Colors.white, Colors.white],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),

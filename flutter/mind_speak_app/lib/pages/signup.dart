@@ -13,9 +13,15 @@ class SignUp extends StatefulWidget {
   State<SignUp> createState() => _SignUpState();
 }
 
-class _SignUpState extends State<SignUp> {
+class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<Offset> _usernameSlide;
+  late Animation<Offset> _emailSlide;
+  late Animation<Offset> _passwordSlide;
+  late Animation<Offset> _roleSlide;
+
   final _formkey = GlobalKey<FormState>();
-  bool _obscurePassword = true;
+
   late TextEditingController usernamecontroller;
   late TextEditingController emailcontroller;
   late TextEditingController passwordcontroller;
@@ -32,7 +38,8 @@ class _SignUpState extends State<SignUp> {
   File? _nationalProofImage;
   File? _therapistImage;
   bool isLoading = false;
-
+  bool fieldsVisible = false;
+  bool _obscurePassword = true;
   late SignUpController _signUpController;
 
   @override
@@ -68,6 +75,46 @@ class _SignUpState extends State<SignUp> {
       nationalProofImage: _nationalProofImage,
       therapistImage: _therapistImage,
     );
+
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+
+    // Define intervals to stagger animation
+    _usernameSlide = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: const Interval(0.0, 0.3, curve: Curves.easeOut),
+    ));
+
+    _emailSlide = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: const Interval(0.2, 0.5, curve: Curves.easeOut),
+    ));
+
+    _passwordSlide = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: const Interval(0.4, 0.7, curve: Curves.easeOut),
+    ));
+
+    _roleSlide = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: const Interval(0.6, 0.9, curve: Curves.easeOut),
+    ));
+
+    _animationController.forward();
   }
 
   @override
@@ -82,6 +129,7 @@ class _SignUpState extends State<SignUp> {
     bioController.dispose();
     parentPhoneNumberController.dispose();
     therapistPhoneNumberController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -166,103 +214,112 @@ class _SignUpState extends State<SignUp> {
                   key: _formkey,
                   child: Column(
                     children: [
-                      TextFormField(
-                        controller: usernamecontroller,
-                        decoration: InputDecoration(
-                          labelText: "Username",
-                          labelStyle: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w500),
-                          prefixIcon: const Icon(Icons.person),
-                          filled: true,
-                          fillColor:
-                              Theme.of(context).brightness == Brightness.dark
-                                  ? Colors.grey[800]
-                                  : Colors.grey[100],
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 18),
-                        ),
-                        style: const TextStyle(fontSize: 16),
-                        validator: (value) =>
-                            value!.isEmpty ? 'Enter Username' : null,
-                      ),
-                      const SizedBox(height: 20.0),
-                      TextFormField(
-                        controller: emailcontroller,
-                        decoration: InputDecoration(
-                          labelText: "Email",
-                          labelStyle: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w500),
-                          prefixIcon: const Icon(Icons.email),
-                          filled: true,
-                          fillColor:
-                              Theme.of(context).brightness == Brightness.dark
-                                  ? Colors.grey[800]
-                                  : Colors.grey[100],
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 18),
-                        ),
-                        style: const TextStyle(fontSize: 16),
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty)
-                            return 'Enter Email';
-                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w]{2,4}$')
-                              .hasMatch(value.trim())) {
-                            return 'Enter a valid email address';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20.0),
-                      TextFormField(
-                        controller: passwordcontroller,
-                        obscureText: _obscurePassword,
-                        decoration: InputDecoration(
-                          labelText: "Password",
-                          labelStyle: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w500),
-                          prefixIcon: const Icon(Icons.lock),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                              color: Colors.grey,
+                      SlideTransition(
+                        position: _usernameSlide, // <-- animation variable
+                        child: TextFormField(
+                          controller: usernamecontroller,
+                          decoration: InputDecoration(
+                            labelText: "Username",
+                            labelStyle: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w500),
+                            prefixIcon: const Icon(Icons.person),
+                            filled: true,
+                            fillColor:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.grey[800]
+                                    : Colors.grey[100],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              borderSide: BorderSide.none,
                             ),
-                            onPressed: () {
-                              setState(() {
-                                _obscurePassword = !_obscurePassword;
-                              });
-                            },
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 18),
                           ),
-                          filled: true,
-                          fillColor:
-                              Theme.of(context).brightness == Brightness.dark
-                                  ? Colors.grey[800]
-                                  : Colors.grey[100],
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 18),
+                          style: const TextStyle(fontSize: 16),
+                          validator: (value) =>
+                              value!.isEmpty ? 'Enter Username' : null,
                         ),
-                        style: const TextStyle(fontSize: 16),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty)
-                            return 'Enter Password';
-                          if (value.length < 6)
-                            return 'Password must be at least 6 characters';
-                          return null;
-                        },
+                      ),
+                      const SizedBox(height: 20.0),
+                      SlideTransition(
+                        position: _emailSlide, // <-- another animation variable
+                        child: TextFormField(
+                          controller: emailcontroller,
+                          decoration: InputDecoration(
+                            labelText: "Email",
+                            labelStyle: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w500),
+                            prefixIcon: const Icon(Icons.email),
+                            filled: true,
+                            fillColor:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.grey[800]
+                                    : Colors.grey[100],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 18),
+                          ),
+                          style: const TextStyle(fontSize: 16),
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty)
+                              return 'Enter Email';
+                            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w]{2,4}$')
+                                .hasMatch(value.trim())) {
+                              return 'Enter a valid email address';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 20.0),
+                      SlideTransition(
+                        position: _passwordSlide,
+                        child: TextFormField(
+                          controller: passwordcontroller,
+                          obscureText: _obscurePassword,
+                          decoration: InputDecoration(
+                            labelText: "Password",
+                            labelStyle: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w500),
+                            prefixIcon: const Icon(Icons.lock),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: Colors.grey,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
+                            filled: true,
+                            fillColor:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.grey[800]
+                                    : Colors.grey[100],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 18),
+                          ),
+                          style: const TextStyle(fontSize: 16),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty)
+                              return 'Enter Password';
+                            if (value.length < 6)
+                              return 'Password must be at least 6 characters';
+                            return null;
+                          },
+                        ),
                       ),
                       const SizedBox(height: 20.0),
                       DropdownButtonFormField(

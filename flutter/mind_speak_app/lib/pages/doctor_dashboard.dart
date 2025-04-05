@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/components/children_list.dart';
 import 'package:mind_speak_app/components/dashboard_count_card.dart';
+
+import 'package:mind_speak_app/models/Child.dart';
+import 'package:mind_speak_app/models/Therapist.dart';
+import 'package:mind_speak_app/models/User.dart';
 import 'package:mind_speak_app/pages/logout.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/service/doctor_dashboard_service.dart';
@@ -9,8 +13,8 @@ import 'doctor_details_page.dart';
 
 class DoctorDashboard extends StatefulWidget {
   final String sessionId;
-  final Map<String, dynamic> therapistInfo;
-  final Map<String, dynamic> userInfo;
+  final TherapistModel therapistInfo;
+  final UserModel userInfo;
 
   const DoctorDashboard({
     super.key,
@@ -28,7 +32,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
   late String specialization;
   final DoctorDashboardService _doctorServices = DoctorDashboardService();
 
-  List<Map<String, dynamic>> children = [];
+  List<ChildModel> children = [];
   bool isLoading = true;
 
   int _currentIndex = 0;
@@ -37,19 +41,28 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
   void initState() {
     super.initState();
 
-    doctorName = widget.userInfo['username'] ?? 'Doctor';
-    specialization = widget.therapistInfo['bio'] ?? 'Specialization';
+    doctorName = widget.userInfo.username;
+    specialization = widget.therapistInfo.bio;
 
     _loadChildrenData();
   }
 
   void _loadChildrenData() async {
-    List<Map<String, dynamic>> fetchedChildren =
-        await _doctorServices.fetchChildren(widget.sessionId);
-    setState(() {
-      children = fetchedChildren;
-      isLoading = false;
-    });
+    try {
+      List<ChildModel> fetchedChildren =
+          await _doctorServices.fetchChildren(widget.therapistInfo.therapistId);
+      setState(() {
+        children = fetchedChildren;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading children: $e')),
+      );
+    }
   }
 
   @override
@@ -59,7 +72,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
     final pages = [
       Column(
         children: [
-          // Add the new dashboard count cards component
+          // Add the dashboard count cards component
           DashboardCountCards(
             sessionId: widget.sessionId,
             children: children,
@@ -75,9 +88,10 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
         ],
       ),
       DoctorDetailsPage(
-          sessionId: widget.sessionId,
-          userInfo: widget.userInfo,
-          therapistInfo: widget.therapistInfo),
+        sessionId: widget.sessionId,
+        userInfo: widget.userInfo,
+        therapistInfo: widget.therapistInfo,
+      ),
     ];
 
     return Scaffold(

@@ -28,8 +28,8 @@ void main() async {
         ChangeNotifierProvider(
           create: (_) => ProgressController(FirebaseProgressRepository()),
         ),
-       ...ConversationModule.providers(),
-       ],
+        ...ConversationModule.providers(),
+      ],
       child: const MyApp(),
     ),
   );
@@ -40,12 +40,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: Provider.of<ThemeProvider>(context).isDarkMode
-          ? ThemeData.dark()
-          : ThemeData.light(),
-      home: const SplashScreen(),
-    ); 
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme:
+              themeProvider.isDarkMode ? ThemeData.dark() : ThemeData.light(),
+          home: const SplashScreen(),
+        );
+      },
+    );
   }
 }

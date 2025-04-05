@@ -94,7 +94,7 @@ class _LogInState extends State<LogIn> with SingleTickerProviderStateMixin {
                       horizontal: 20.0, vertical: 10),
                   child: Row(
                     children: [
-                      CircleAvatar(
+                      const CircleAvatar(
                         radius: 20,
                         backgroundImage: AssetImage("assets/logo.webp"),
                         backgroundColor: Colors.white,

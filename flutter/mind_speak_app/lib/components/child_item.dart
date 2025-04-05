@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/models/Child.dart';
 import 'package:mind_speak_app/pages/child_reports.dart';
 import 'package:mind_speak_app/service/doctor_dashboard_service.dart';
 
 class ChildItem extends StatelessWidget {
-  final Map<String, dynamic> child;
+  final ChildModel child;
   final DoctorDashboardService doctorServices;
 
   const ChildItem(
@@ -14,14 +15,14 @@ class ChildItem extends StatelessWidget {
     return InkWell(
       onTap: () async {
         try {
-          final childId = child['childId'];
+          final childId = child.childId;
           final reports = await doctorServices.fetchReport(childId);
 
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => ChildReportsPage(
-                childName: child['name'],
+                childName: child.name,
                 reports: reports,
               ),
             ),
@@ -40,15 +41,24 @@ class ChildItem extends StatelessWidget {
           contentPadding:
               const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
           leading: CircleAvatar(
+            backgroundImage: child.childPhoto.isNotEmpty
+                ? NetworkImage(child.childPhoto)
+                : null,
             backgroundColor: Colors.blue[200],
-            child: Text(
-              child['name'][0],
-              style: const TextStyle(fontSize: 18, color: Colors.white),
-            ),
+            child: child.childPhoto.isEmpty
+                ? Text(
+                    child.name[0],
+                    style: const TextStyle(fontSize: 18, color: Colors.white),
+                  )
+                : null,
           ),
           title: Text(
-            child['name'],
+            child.name,
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          subtitle: Text(
+            'Age: ${child.age} • Interest: ${child.childInterest}',
+            style: const TextStyle(fontSize: 14),
           ),
           trailing: const Icon(
             Icons.arrow_forward_ios,

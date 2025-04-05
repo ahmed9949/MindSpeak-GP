@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:mind_speak_app/components/doctor_profile.dart';
 import 'package:mind_speak_app/components/contact_info_card.dart';
 import 'package:mind_speak_app/components/editable_fields.dart';
+import 'package:mind_speak_app/models/Therapist.dart';
+import 'package:mind_speak_app/models/User.dart';
 import 'package:mind_speak_app/pages/login.dart';
 import 'package:mind_speak_app/service/doctor_dashboard_service.dart';
-import 'package:mind_speak_app/pages/doctor_dashboard.dart';
 
 class DoctorDetailsPage extends StatefulWidget {
   final String sessionId;
-  final Map<String, dynamic> userInfo;
-  final Map<String, dynamic> therapistInfo;
+  final UserModel userInfo;
+  final TherapistModel therapistInfo;
 
   const DoctorDetailsPage({
     super.key,
@@ -28,53 +29,41 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController bioController = TextEditingController();
   late DoctorDashboardService _doctorServices;
-  Map<String, dynamic>? userInfo;
-  Map<String, dynamic>? therapistInfo;
+  late UserModel userInfo;
+  late TherapistModel therapistInfo;
 
   @override
   void initState() {
     super.initState();
     _doctorServices = DoctorDashboardService();
 
-    userInfo = Map<String, dynamic>.from(widget.userInfo);
-    therapistInfo = Map<String, dynamic>.from(widget.therapistInfo);
+    userInfo = widget.userInfo;
+    therapistInfo = widget.therapistInfo;
 
-    nameController.text = userInfo!['username'] ?? '';
-    emailController.text = userInfo!['email'] ?? '';
-    phoneController.text = userInfo!['phoneNumber']?.toString() ?? '';
-    bioController.text = therapistInfo!['bio'] ?? '';
+    nameController.text = userInfo.username;
+    emailController.text = userInfo.email;
+    phoneController.text = userInfo.phoneNumber.toString();
+    bioController.text = therapistInfo.bio;
   }
 
   Future<void> refreshData() async {
-    final newUserInfo =
-        await _doctorServices.refreshUserData(userInfo!['userid']);
-    final newTherapistInfo = await _doctorServices
-        .refreshTherapistData(therapistInfo!['therapistid']);
+    final newUserInfo = await _doctorServices.refreshUserData(userInfo.userId);
+    final newTherapistInfo =
+        await _doctorServices.refreshTherapistData(therapistInfo.therapistId);
 
     setState(() {
       userInfo = newUserInfo;
       therapistInfo = newTherapistInfo;
-      nameController.text = newUserInfo['username'] ?? '';
-      emailController.text = newUserInfo['email'] ?? '';
-      phoneController.text = newUserInfo['phoneNumber']?.toString() ?? '';
-      bioController.text = newTherapistInfo['bio'] ?? '';
+      nameController.text = newUserInfo.username;
+      emailController.text = newUserInfo.email;
+      phoneController.text = newUserInfo.phoneNumber.toString();
+      bioController.text = newTherapistInfo.bio;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (userInfo == null || therapistInfo == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Details'),
-        backgroundColor: Colors.blue,
-        elevation: 0,
-      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -82,18 +71,18 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
           children: [
             DoctorProfile(
               key: ValueKey(DateTime.now().millisecondsSinceEpoch),
-              name: userInfo!['username'] ?? 'Doctor Name',
-              bio: therapistInfo!['bio'] ?? 'bio',
-              therapistImage: therapistInfo!['therapistimage'],
+              name: userInfo.username,
+              bio: therapistInfo.bio,
+              therapistImage: therapistInfo.therapistImage,
             ),
             ContactInfoCard(
               title: 'Email',
-              subtitle: userInfo!['email'],
+              subtitle: userInfo.email,
               icon: Icons.email,
             ),
             ContactInfoCard(
               title: 'Phone',
-              subtitle: userInfo!['phoneNumber']?.toString(),
+              subtitle: userInfo.phoneNumber.toString(),
               icon: Icons.phone,
             ),
             const SizedBox(height: 16),
@@ -150,6 +139,7 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                   String bio = bioController.text;
                   String phoneNumber = phoneController.text;
 
+                  // Validate phone number
                   if (phoneNumber.length != 11 ||
                       int.tryParse(phoneNumber) == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -159,27 +149,45 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                     return;
                   }
 
-                  Map<String, dynamic> updatedUserInfo = {
-                    'username': name,
-                    'email': email,
-                    'phoneNumber': int.parse(phoneNumber),
-                  };
+                  try {
+                    // Create updated models
+                    UserModel updatedUser = UserModel(
+                      userId: userInfo.userId,
+                      email: email,
+                      username: name,
+                      role: userInfo.role,
+                      password: userInfo.password,
+                      phoneNumber: int.parse(phoneNumber),
+                    );
 
-                  Map<String, dynamic> updatedTherapistInfo = {
-                    'bio': bio,
-                  };
+                    TherapistModel updatedTherapist = TherapistModel(
+                      therapistId: therapistInfo.therapistId,
+                      userId: therapistInfo.userId,
+                      bio: bio,
+                      nationalId: therapistInfo.nationalId,
+                      nationalProof: therapistInfo.nationalProof,
+                      therapistImage: therapistInfo.therapistImage,
+                      status: therapistInfo.status,
+                    );
 
-                  await _doctorServices.updateUserInfo(
-                      userInfo!['userid'], updatedUserInfo);
-                  await _doctorServices.updateTherapistInfo(
-                      therapistInfo!['therapistid'], updatedTherapistInfo);
+                    // Update in Firebase
+                    await _doctorServices.updateUserInfo(
+                        userInfo.userId, updatedUser);
+                    await _doctorServices.updateTherapistInfo(
+                        therapistInfo.therapistId, updatedTherapist);
 
-                  await refreshData();
+                    // Refresh the data
+                    await refreshData();
 
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Details updated successfully!')),
-                  );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Details updated successfully!')),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error updating profile: $e')),
+                    );
+                  }
                 },
                 icon: const Icon(Icons.save, color: Colors.blue),
                 label: const Text('Save Changes',
@@ -242,20 +250,28 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                         );
 
                         if (confirmDelete) {
-                          await _doctorServices.deleteAccount(
-                            userInfo!['userid'],
-                            therapistInfo!['therapistid'],
-                          );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Account deleted successfully')),
-                          );
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const LogIn(),
-                            ),
-                          );
+                          try {
+                            await _doctorServices.deleteAccount(
+                              userInfo.userId,
+                              therapistInfo.therapistId,
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content:
+                                      Text('Account deleted successfully')),
+                            );
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const LogIn(),
+                              ),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text('Error deleting account: $e')),
+                            );
+                          }
                         }
                       },
                       icon: const Icon(Icons.delete, color: Colors.white),

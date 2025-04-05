@@ -123,17 +123,17 @@ class LoginController {
       print("🧠 Therapist approved, navigating to dashboard...");
       print("👤 Fetching user info for: $userId");
 
-      Map<String, dynamic> userInfo = await _doctorServices.getUserInfo(userId);
+      UserModel user = await _doctorServices.getUserInfo(userId);
 
-      print("✅ User info fetched: $userInfo");
+      print("✅ User info fetched: ${user.username}");
 
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => DoctorDashboard(
             sessionId: userId,
-            therapistInfo: therapist.toMap(),
-            userInfo: userInfo,
+            therapistInfo: therapist, // Pass the therapist model directly
+            userInfo: user, // Pass the user model directly
           ),
         ),
       );

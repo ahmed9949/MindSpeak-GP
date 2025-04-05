@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:mind_speak_app/models/sessiondata.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:mind_speak_app/controllers/sessioncontrollerCl.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 

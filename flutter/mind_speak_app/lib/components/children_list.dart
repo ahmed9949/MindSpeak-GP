@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/components/child_item.dart';
+import 'package:mind_speak_app/models/Child.dart';
 import 'package:mind_speak_app/service/doctor_dashboard_service.dart';
 
 class ChildrenList extends StatelessWidget {
-  final List<Map<String, dynamic>> children;
+  final List<ChildModel> children;
   final bool isLoading;
   final DoctorDashboardService doctorServices;
 

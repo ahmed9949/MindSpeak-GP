@@ -239,173 +239,247 @@ class _ProfilePageState extends State<ProfilePage> {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
-      resizeToAvoidBottomInset: true,
-      appBar: AppBar(
-        backgroundColor:
-            themeProvider.isDarkMode ? Colors.grey[900] : Colors.blue,
-        title: const Center(
-          child: Text(
-            'Profile Page',
-            style: TextStyle(color: Colors.white),
+        resizeToAvoidBottomInset: true,
+        appBar: AppBar(
+          backgroundColor: themeProvider.isDarkMode
+              ? Colors.black.withOpacity(0.8) // Dark mode with opacity
+              : Colors.blueAccent, // Vibrant light mode color
+          elevation: 5, // Adds a subtle shadow for depth
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons
+                    .account_circle_rounded, // Optional: Add an icon to make it more personalized
+                color: Colors.white,
+                size: 30,
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Profile Page',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22, // Slightly larger title
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            IconButton(
+              icon: Icon(
+                themeProvider.isDarkMode
+                    ? Icons.wb_sunny_outlined
+                    : Icons.nightlight_round_rounded,
+                color: Colors.white,
+                size: 30,
+              ),
+              onPressed: () {
+                themeProvider.toggleTheme();
+              },
+            ),
+          ],
+          shape: RoundedRectangleBorder(
+            // Adding rounded corners to the AppBar
+            borderRadius: BorderRadius.vertical(
+              bottom: Radius.circular(20),
+            ),
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              themeProvider.isDarkMode
-                  ? Icons.wb_sunny
-                  : Icons.nightlight_round,
-              color: Colors.white,
-            ),
-            onPressed: () {
-              themeProvider.toggleTheme();
-            },
-          ),
-        ],
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Parent Info',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 10),
-                    Card(
-                      elevation: 4,
-                      child: ListTile(
-                        title:
-                            Text('Name: ${parentData?['username'] ?? 'N/A'}'),
-                        subtitle:
-                            Text('Email: ${parentData?['email'] ?? 'N/A'}'),
+        body: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Parent Info Section
+                      Text(
+                        'Parent Info',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: themeProvider.isDarkMode
+                                  ? Colors.white
+                                  : Colors.black,
+                            ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: deleteParentAccount,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 12,
-                          horizontal: 20,
-                        ),
+                      const SizedBox(height: 10),
+                      Card(
+                        elevation: 6,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          title: Text(
+                            'Name: ${parentData?['username'] ?? 'N/A'}',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                          subtitle: Text(
+                            'Email: ${parentData?['email'] ?? 'N/A'}',
+                            style: TextStyle(
+                                fontSize: 14, color: Colors.grey[600]),
+                          ),
                         ),
                       ),
-                      child: const Center(
-                        child: Row(
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: deleteParentAccount,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 14, horizontal: 24),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 5,
+                        ),
+                        child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.delete, color: Colors.white),
                             SizedBox(width: 8),
                             Text(
                               'Delete Account',
-                              style: TextStyle(color: Colors.white),
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 16),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                    const Divider(height: 30),
-                    Text(
-                      'child',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 10),
-                    childrenData.isNotEmpty
-                        ? ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: childrenData.length,
-                            itemBuilder: (context, index) {
-                              final child = childrenData[index];
-                              return Card(
-                                margin:
-                                    const EdgeInsets.symmetric(vertical: 8.0),
-                                elevation: 4,
-                                child: ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundImage: child['childPhoto'] != null
-                                        ? NetworkImage(child['childPhoto'])
-                                        : null,
-                                    child: child['childPhoto'] == null
-                                        ? const Icon(Icons.person)
-                                        : null,
+                      const Divider(height: 30),
+
+                      // Children Section
+                      Text(
+                        'Children Info',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: themeProvider.isDarkMode
+                                  ? Colors.white
+                                  : Colors.black,
+                            ),
+                      ),
+                      const SizedBox(height: 10),
+                      childrenData.isNotEmpty
+                          ? ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: childrenData.length,
+                              itemBuilder: (context, index) {
+                                final child = childrenData[index];
+                                return Card(
+                                  margin:
+                                      const EdgeInsets.symmetric(vertical: 8.0),
+                                  elevation: 6,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                  title: Text(child['name']),
-                                  subtitle: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text('Age: ${child['age']}'),
-                                      Text(
-                                          'Interest: ${child['childInterest']}'),
-                                      Text(
-                                          'Therapist: ${child['therapistName']}'),
-                                    ],
-                                  ),
-                                  trailing: IconButton(
-                                    icon: const Icon(Icons.edit,
-                                        color: Colors.blue),
-                                    onPressed: () => _showUpdateDialog(child),
-                                  ),
-                                ),
-                              );
-                            },
-                          )
-                        : const Text('No children added yet.'),
-                    const Divider(height: 30),
-                    Text(
-                      'Cars Trials Forms',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 10),
-                    carsData.isNotEmpty
-                        ? ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: carsData.length,
-                            itemBuilder: (context, index) {
-                              final car = carsData[index];
-                              return Card(
-                                margin:
-                                    const EdgeInsets.symmetric(vertical: 8.0),
-                                elevation: 4,
-                                child: ExpansionTile(
-                                  title:
-                                      Text('Cars Form Trial ${car['trial']}'),
-                                  children: [
-                                    ListTile(
-                                      title: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text('Child ID: ${car['childId']}'),
-                                          Text(
-                                              'Total Score: ${car['totalScore']}'),
-                                          Text(
-                                            'Selected Questions: ${(car['selectedQuestions'] as List<dynamic>?)?.join(", ") ?? 'N/A'}',
-                                          ),
-                                          Text('Status: ${car['status']}'),
-                                        ],
+                                  child: ListTile(
+                                    leading: CircleAvatar(
+                                      backgroundImage: child['childPhoto'] !=
+                                              null
+                                          ? NetworkImage(child['childPhoto'])
+                                          : null,
+                                      child: child['childPhoto'] == null
+                                          ? const Icon(Icons.person)
+                                          : null,
+                                    ),
+                                    title: Text(
+                                      child['name'],
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
                                       ),
                                     ),
-                                  ],
-                                ),
-                              );
-                            },
-                          )
-                        : const Text('No cars trials available.'),
-                  ],
+                                    subtitle: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Age: ${child['age']}'),
+                                        Text(
+                                            'Interest: ${child['childInterest']}'),
+                                        Text(
+                                            'Therapist: ${child['therapistName']}'),
+                                      ],
+                                    ),
+                                    trailing: IconButton(
+                                      icon: const Icon(Icons.edit,
+                                          color: Colors.blue),
+                                      onPressed: () => _showUpdateDialog(child),
+                                    ),
+                                  ),
+                                );
+                              },
+                            )
+                          : const Text(
+                              'No children added yet.',
+                              style:
+                                  TextStyle(fontSize: 16, color: Colors.grey),
+                            ),
+                      const Divider(height: 30),
+
+                      // Cars Trials Forms Section
+                      Text(
+                        'Cars Trials Forms',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: themeProvider.isDarkMode
+                                  ? Colors.white
+                                  : Colors.black,
+                            ),
+                      ),
+                      const SizedBox(height: 10),
+                      carsData.isNotEmpty
+                          ? ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: carsData.length,
+                              itemBuilder: (context, index) {
+                                final car = carsData[index];
+                                return Card(
+                                  margin:
+                                      const EdgeInsets.symmetric(vertical: 8.0),
+                                  elevation: 6,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: ExpansionTile(
+                                    title: Text(
+                                      'Cars Form Trial ${car['trial']}',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    children: [
+                                      ListTile(
+                                        title: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text('Child ID: ${car['childId']}'),
+                                            Text(
+                                                'Total Score: ${car['totalScore']}'),
+                                            Text(
+                                              'Selected Questions: ${(car['selectedQuestions'] as List<dynamic>?)?.join(", ") ?? 'N/A'}',
+                                            ),
+                                            Text('Status: ${car['status']}'),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            )
+                          : const Text(
+                              'No cars trials available.',
+                              style:
+                                  TextStyle(fontSize: 16, color: Colors.grey),
+                            ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-    );
+              ));
   }
 }

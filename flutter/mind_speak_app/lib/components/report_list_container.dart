@@ -9,13 +9,7 @@ class ReportListContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue[50]!, Colors.blue[100]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
+      color: Colors.white,
       padding: const EdgeInsets.all(16.0),
       child: reports.isEmpty
           ? const Center(

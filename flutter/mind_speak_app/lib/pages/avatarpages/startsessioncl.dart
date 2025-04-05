@@ -88,71 +88,131 @@ Remember to:
 ''';
   }
 
-  Future<void> _startSession() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  // Future<void> _startSession() async {
+    
+  //   setState(() {
+  //     _isLoading = true;
+  //     _errorMessage = null;
+  //   });
 
-    try {
-      final sessionProvider =
-          Provider.of<SessionProvider>(context, listen: false);
-      final childId = sessionProvider.childId;
+  //   try {
+  //     final childId = Provider.of<SessionProvider>(context, listen: false).childId;
+  //     if (childId == null || childId.isEmpty) {
+  //       throw Exception('No child selected');
+  //     }
 
-      if (childId == null || childId.isEmpty) {
-        throw Exception(
-            'No child ID found. Please ensure a child profile is created.');
-      }
+  //     final childData = await _fetchChildData(childId);
+  //     if (childData == null) {
+  //       throw Exception('Failed to fetch child data');
+  //     }
 
-      final childData = await _fetchChildData(childId);
-      if (childData == null) {
-        throw Exception('Failed to fetch child data.');
-      }
+  //     final String therapistId = childData['therapistId'] ?? '';
+  //     await _sessionController.startSession(childId, therapistId);
 
-      final therapistId = childData['therapistId'] ?? '';
+  //     final prompt = _generateInitialPrompt(childData);
+  //     final responseText = await _model.sendMessage(prompt);
+
+  //     if (responseText.isEmpty) {
+  //       throw Exception('Failed to generate initial response');
+  //     }
+
+  //     await _sessionController.addTherapistMessage(responseText);
+
+  //     if (mounted) {
+  //       Navigator.push(
+  //         context,
+  //         MaterialPageRoute(
+  //           builder: (context) => MultiProvider(
+  //             providers: [
+  //               ChangeNotifierProvider.value(value: _sessionController),
+  //               Provider.value(value: _analyzerController),
+  //             ],
+  //             child: SessionView(
+  //               initialPrompt: prompt,
+  //               initialResponse: responseText,
+  //               childData: childData,
+  //             ),
+  //           ),
+  //         ),
+  //       );
+  //     }
+  //   } catch (e) {
+  //     setState(() {
+  //       _errorMessage = 'Error starting session: $e';
+  //     });
+  //   } finally {
+  //     setState(() {
+  //       _isLoading = false;
+  //     });
+  //   }
+  // }
+
+Future<void> _startSession() async {
+  setState(() {
+    _isLoading = true;
+    _errorMessage = null;
+  });
+
+  try {
+    final childId = Provider.of<SessionProvider>(context, listen: false).childId;
+    if (childId == null || childId.isEmpty) {
+      throw Exception('No child selected');
+    }
+
+    final childData = await _fetchChildData(childId);
+    if (childData == null) {
+      throw Exception('Failed to fetch child data.');
+    }
+
+    final therapistId = childData['therapistId'] ?? '';
       if (therapistId.isEmpty) {
         throw Exception('No therapist assigned to this child.');
       }
 
-      await _sessionController.startSession(childId, therapistId);
+    await _sessionController.startSession(childId, therapistId);
 
-      final prompt = _generateInitialPrompt(childData);
-      final responseText = await _model.sendMessage(prompt);
+    final prompt = _generateInitialPrompt(childData);
+    
+    // Clear any previous conversation history
+    _model.clearConversation();
+    
+    // Send initial prompt with child data for context
+    final responseText = await _model.sendMessage(prompt, childData: childData);
 
-      if (responseText.isEmpty) {
-        throw Exception('Failed to generate initial response.');
-      }
+    if (responseText.isEmpty) {
+      throw Exception('Failed to generate initial response');
+    }
 
-      await _sessionController.addTherapistMessage(responseText);
+    await _sessionController.addTherapistMessage(responseText);
 
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MultiProvider(
-              providers: [
-                ChangeNotifierProvider.value(value: _sessionController),
-                Provider.value(value: _analyzerController),
-              ],
-              child: SessionView(
-                initialPrompt: prompt,
-                initialResponse: responseText,
-                childData: childData,
-              ),
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MultiProvider(
+            providers: [
+              ChangeNotifierProvider.value(value: _sessionController),
+              Provider.value(value: _analyzerController),
+            ],
+            child: SessionView(
+              initialPrompt: prompt,
+              initialResponse: responseText,
+              childData: childData,
             ),
           ),
-        );
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Error starting session: ${e.toString()}';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+        ),
+      );
     }
+  } catch (e) {
+    setState(() {
+      _errorMessage = 'Error starting session: $e';
+    });
+  } finally {
+    setState(() {
+      _isLoading = false;
+    });
   }
+}
 
   @override
   Widget build(BuildContext context) {

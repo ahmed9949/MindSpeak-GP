@@ -9,6 +9,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mind_speak_app/pages/avatarpages/startsessioncl.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
+import 'package:mind_speak_app/service/avatarservice/TestViewTTs.dart';
 import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
@@ -462,7 +463,45 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 30),
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: MediaQuery.of(context).size.width *
+                            0.04), // Dynamic padding
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment
+                          .spaceBetween, // Ensures even spacing between cards
+                      children: [
+                        _buildTopCard(
+                          context,
+                          "Doctors",
+                          "assets/doctor.png",
+                          const SearchPage(),
+                        ),
+                        _buildTopCard(context, "3d session",
+                            "assets/predict.png", const StartSessionPage()),
+                        _buildTopCard(
+                          context,
+                          "Cars",
+                          "assets/cars.png",
+                          const CarsForm(),
+                        ),
+                        _buildTopCard(
+                          context,
+                          "Prediction",
+                          "assets/predict.png",
+                          GptTtsTestPage(),
+                        ),
+                        _buildTopCard(
+                          context,
+                          "Profile",
+                          "assets/profile.jpg",
+                          ProfilePage(controller: ProfileController()),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 35),
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(

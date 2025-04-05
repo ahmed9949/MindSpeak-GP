@@ -1,6 +1,8 @@
+// lib/views/session/session_view.dart
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/models/session_statistics.dart';
 import 'package:mind_speak_app/models/sessionstate.dart';
+import 'package:mind_speak_app/service/avatarservice/chatgptttsservice.dart';
 import 'package:mind_speak_app/service/avatarservice/conversationsetup.dart';
 import 'package:mind_speak_app/service/avatarservice/openai.dart';
 import 'package:provider/provider.dart';
@@ -34,6 +36,8 @@ class _SessionViewState extends State<SessionView> {
 
   final stt.SpeechToText _speech = stt.SpeechToText();
   final FlutterTts _flutterTts = FlutterTts();
+  final ChatGptTtsService _ttsService = ChatGptTtsService();
+
   bool _isListening = false;
   bool _isSpeaking = false;
   bool _callStarted = false;
@@ -47,7 +51,7 @@ class _SessionViewState extends State<SessionView> {
     _childName = widget.childData['name'];
     _chatModel = ConversationModule.createGenerativeModel();
     _initSpeech();
-    _initTts();
+    // _initTts();
     controller.onModelLoaded.addListener(_onModelLoaded);
     _callStarted = true;
   }
@@ -71,17 +75,17 @@ class _SessionViewState extends State<SessionView> {
     );
   }
 
-  Future<void> _initTts() async {
-    await _flutterTts.setLanguage("ar-EG");
-    await _flutterTts.setPitch(1.0);
-    await _flutterTts.setSpeechRate(0.5);
-    _flutterTts.setCompletionHandler(() {
-      if (mounted) {
-        setState(() => _isSpeaking = false);
-        _playAnimation(allowedAnimations[0]);
-      }
-    });
-  }
+  // Future<void> _initTts() async {
+  //   await _flutterTts.setLanguage("ar-EG");
+  //   await _flutterTts.setPitch(1.0);
+  //   await _flutterTts.setSpeechRate(0.5);
+  //   _flutterTts.setCompletionHandler(() {
+  //     if (mounted) {
+  //       setState(() => _isSpeaking = false);
+  //       _playAnimation(allowedAnimations[0]);
+  //     }
+  //   });
+  // }
 
   void _onModelLoaded() {
     if (controller.onModelLoaded.value && mounted) {
@@ -144,6 +148,29 @@ class _SessionViewState extends State<SessionView> {
     }
   }
 
+//   Future<void> _processUserInput(String text) async {
+//     if (text.isEmpty) return;
+//     final sessionController =
+//         Provider.of<SessionController>(context, listen: false);
+//     await sessionController.addChildMessage(text);
+
+//     try {
+//       final promptContext = '''
+// Child's message: $text
+
+// Respond in Egyptian Arabic. Keep your response under 2-3 sentences.
+// Be supportive and encouraging while focusing on the child's interests.
+// ''';
+//       final aiResponse = await _chatModel.sendMessage(promptContext);
+//       await sessionController.addTherapistMessage(aiResponse);
+//       await _speak(aiResponse);
+//     } catch (e) {
+//       const errorMsg = "عذراً، حدث خطأ أثناء معالجة طلبك.";
+//       await sessionController.addTherapistMessage(errorMsg);
+//       await _speak(errorMsg);
+//     }
+//   }
+
   Future<void> _processUserInput(String text) async {
     if (text.isEmpty) return;
     final sessionController =
@@ -157,9 +184,19 @@ Child's message: $text
 Respond in Egyptian Arabic. Keep your response under 2-3 sentences.
 Be supportive and encouraging while focusing on the child's interests.
 ''';
-      final aiResponse = await _chatModel.sendMessage(promptContext);
-      await sessionController.addTherapistMessage(aiResponse);
-      await _speak(aiResponse);
+
+      // Pass child data on first message to set up context properly
+      if (sessionController.state.conversation.length <= 1) {
+        // First user message after initial system message
+        final aiResponse = await _chatModel.sendMessage(promptContext,
+            childData: widget.childData);
+        await sessionController.addTherapistMessage(aiResponse);
+        await _speak(aiResponse);
+      } else {
+        final aiResponse = await _chatModel.sendMessage(promptContext);
+        await sessionController.addTherapistMessage(aiResponse);
+        await _speak(aiResponse);
+      }
     } catch (e) {
       const errorMsg = "عذراً، حدث خطأ أثناء معالجة طلبك.";
       await sessionController.addTherapistMessage(errorMsg);
@@ -171,7 +208,7 @@ Be supportive and encouraging while focusing on the child's interests.
     if (!_isSpeaking && mounted) {
       setState(() => _isSpeaking = true);
       _playAnimation(allowedAnimations[1]);
-      await _flutterTts.speak(text);
+      await _ttsService.speak(text);
     }
   }
 
@@ -179,7 +216,7 @@ Be supportive and encouraging while focusing on the child's interests.
     final sessionController =
         Provider.of<SessionController>(context, listen: false);
     if (_isListening) await _speech.stop();
-    if (_isSpeaking) await _flutterTts.stop();
+    if (_isSpeaking) await _ttsService.stop();
 
     final goodbyeMessage =
         _childName != null ? "الى اللقاء $_childName" : "الى اللقاء";
@@ -191,7 +228,7 @@ Be supportive and encouraging while focusing on the child's interests.
     });
 
     _playAnimation(allowedAnimations[1]);
-    await _flutterTts.speak(goodbyeMessage);
+    await _ttsService.speak(goodbyeMessage);
 
     setState(() {
       _callStarted = false;
@@ -248,7 +285,7 @@ Be supportive and encouraging while focusing on the child's interests.
   void dispose() {
     controller.onModelLoaded.removeListener(_onModelLoaded);
     _speech.stop();
-    _flutterTts.stop();
+    _ttsService.stop();
     super.dispose();
   }
 
@@ -376,7 +413,7 @@ Be supportive and encouraging while focusing on the child's interests.
                       child: ElevatedButton.icon(
                         onPressed: _isSpeaking
                             ? () async {
-                                await _flutterTts.stop();
+                                await _ttsService.stop();
                                 setState(() => _isSpeaking = false);
                                 _playAnimation(allowedAnimations[0]);
                               }

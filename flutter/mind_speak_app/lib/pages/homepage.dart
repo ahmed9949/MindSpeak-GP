@@ -423,25 +423,49 @@ class _HomePageState extends State<HomePage> {
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
+                      mainAxisAlignment: MainAxisAlignment
+                          .center, // Center the items horizontally
                       children: [
-                        _buildTopCard(context, "Doctors", "assets/doctor.png",
-                            const SearchPage(),
-                            isDark: themeProvider.isDarkMode),
-                        const SizedBox(width: 12),
-                        _buildTopCard(context, "3D Session",
-                            "assets/predict.png", const StartSessionPage(),
-                            isDark: themeProvider.isDarkMode),
-                        const SizedBox(width: 12),
-                        _buildTopCard(context, "Cars", "assets/cars.png",
-                            const CarsForm(),
-                            isDark: themeProvider.isDarkMode),
-                        const SizedBox(width: 12),
-                        _buildTopCard(context, "Profile", "assets/profile.jpg",
-                            ProfilePage(controller: ProfileController()),
-                            isDark: themeProvider.isDarkMode),
+                        SizedBox(
+                            width:
+                                35), // Add padding to the left side for spacing
+                        _buildTopCard(
+                          context,
+                          "Doctors",
+                          "assets/doctor.png",
+                          const SearchPage(),
+                          isDark: themeProvider.isDarkMode,
+                        ),
+                        SizedBox(width: 20), // Add spacing between cards
+                        _buildTopCard(
+                          context,
+                          "3D Session",
+                          "assets/predict.png",
+                          const StartSessionPage(),
+                          isDark: themeProvider.isDarkMode,
+                        ),
+                        SizedBox(width: 20), // Add spacing between cards
+                        _buildTopCard(
+                          context,
+                          "Cars",
+                          "assets/cars.png",
+                          const CarsForm(),
+                          isDark: themeProvider.isDarkMode,
+                        ),
+                        SizedBox(width: 20), // Add spacing between cards
+                        _buildTopCard(
+                          context,
+                          "Profile",
+                          "assets/profile.jpg",
+                          ProfilePage(controller: ProfileController()),
+                          isDark: themeProvider.isDarkMode,
+                        ),
+                        SizedBox(
+                            width:
+                                20), // Add padding to the right side for spacing
                       ],
                     ),
-                  ),
+                  )
                 ],
               ),
             ),
@@ -463,7 +487,6 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 30),
                   Padding(
                     padding: EdgeInsets.symmetric(
                         horizontal: MediaQuery.of(context).size.width *
@@ -471,180 +494,160 @@ class _HomePageState extends State<HomePage> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment
                           .spaceBetween, // Ensures even spacing between cards
-                      children: [
-                        _buildTopCard(
-                          context,
-                          "Doctors",
-                          "assets/doctor.png",
-                          const SearchPage(),
-                        ),
-                        _buildTopCard(context, "3d session",
-                            "assets/predict.png", const StartSessionPage()),
-                        _buildTopCard(
-                          context,
-                          "Cars",
-                          "assets/cars.png",
-                          const CarsForm(),
-                        ),
-                        _buildTopCard(
-                          context,
-                          "Prediction",
-                          "assets/predict.png",
-                          GptTtsTestPage(),
-                        ),
-                        _buildTopCard(
-                          context,
-                          "Profile",
-                          "assets/profile.jpg",
-                          ProfilePage(controller: ProfileController()),
-                        ),
-                      ],
                     ),
                   ),
-                  const SizedBox(height: 35),
                   Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.transparent,
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(20),
-                          topRight: Radius.circular(20),
+                    child: SingleChildScrollView(
+                      // Wrapping the whole content to make it scrollable
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.transparent,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(20),
+                            topRight: Radius.circular(20),
+                          ),
                         ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  "Top Therapists",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                    color: themeProvider.isDarkMode
-                                        ? Colors.white
-                                        : Colors.black,
-                                  ),
-                                ),
-                                Text(
-                                  "Found: ${therapists.length}",
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            therapists.isEmpty
-                                ? const Center(
-                                    child: Padding(
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 20),
-                                      child: Text(
-                                        "No therapists available",
-                                        style: TextStyle(
-                                          color: Colors.grey,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                : SizedBox(
-                                    height: 150,
-                                    child: ListView.builder(
-                                      scrollDirection: Axis.horizontal,
-                                      physics: const BouncingScrollPhysics(),
-                                      itemCount: therapists.length,
-                                      itemBuilder: (context, index) {
-                                        final therapist = therapists[index];
-                                        return Padding(
-                                          padding:
-                                              const EdgeInsets.only(right: 10),
-                                          child: _buildTherapistCard(therapist,
-                                              isDark: themeProvider.isDarkMode),
-                                        );
-                                      },
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Top Therapists Section
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    "Top Therapists",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                      color: themeProvider.isDarkMode
+                                          ? Colors.white
+                                          : Colors.black,
                                     ),
                                   ),
-                            const SizedBox(height: 20),
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: themeProvider.isDarkMode
-                                    ? Colors.grey[850]
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black12,
-                                    blurRadius: 10,
-                                    offset: Offset(0, 4),
+                                  Text(
+                                    "Found: ${therapists.length}",
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey,
+                                    ),
                                   ),
                                 ],
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "Quick Tips for Parents",
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 18,
-                                          color: themeProvider.isDarkMode
-                                              ? Colors.white
-                                              : Colors.black,
+                              const SizedBox(height: 10),
+                              therapists.isEmpty
+                                  ? const Center(
+                                      child: Padding(
+                                        padding:
+                                            EdgeInsets.symmetric(vertical: 20),
+                                        child: Text(
+                                          "No therapists available",
+                                          style: TextStyle(
+                                            color: Colors.grey,
+                                            fontSize: 16,
+                                          ),
                                         ),
                                       ),
-                                      const Icon(Icons.tips_and_updates,
-                                          color: Colors.blueAccent, size: 24),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 10),
-                                  SizedBox(
-                                    height: 120,
-                                    child: PageView(
-                                      scrollDirection: Axis.horizontal,
+                                    )
+                                  : SizedBox(
+                                      height: 200,
+                                      child: ListView.builder(
+                                        scrollDirection: Axis.horizontal,
+                                        physics: const BouncingScrollPhysics(),
+                                        itemCount: therapists.length,
+                                        itemBuilder: (context, index) {
+                                          final therapist = therapists[index];
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                                right: 12),
+                                            child: _buildTherapistCard(
+                                              therapist,
+                                              isDark: themeProvider.isDarkMode,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                              const SizedBox(height: 20),
+
+                              // Quick Tips for Parents Section
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: themeProvider.isDarkMode
+                                      ? Colors.grey[850]
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black12,
+                                      blurRadius: 10,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
-                                        _buildTipCard(
-                                            Icons.visibility,
-                                            "Encourage eye contact with interactive games.",
-                                            context),
-                                        _buildTipCard(
-                                            Icons.schedule,
-                                            "Use visual schedules to reduce anxiety.",
-                                            context),
-                                        _buildTipCard(
-                                            Icons.emoji_events,
-                                            "Reward small achievements with positive reinforcement.",
-                                            context),
-                                        _buildTipCard(
-                                            Icons.hearing,
-                                            "Use clear and slow speech when communicating.",
-                                            context),
-                                        _buildTipCard(
-                                            Icons.groups,
-                                            "Encourage social interactions through storytelling.",
-                                            context),
+                                        Text(
+                                          "Quick Tips for Parents",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 18,
+                                            color: themeProvider.isDarkMode
+                                                ? Colors.white
+                                                : Colors.black,
+                                          ),
+                                        ),
+                                        const Icon(Icons.tips_and_updates,
+                                            color: Colors.blueAccent, size: 24),
                                       ],
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(height: 10),
+                                    SizedBox(
+                                      height: 120,
+                                      child: PageView(
+                                        scrollDirection: Axis.horizontal,
+                                        children: [
+                                          _buildTipCard(
+                                              Icons.visibility,
+                                              "Encourage eye contact with interactive games.",
+                                              context),
+                                          _buildTipCard(
+                                              Icons.schedule,
+                                              "Use visual schedules to reduce anxiety.",
+                                              context),
+                                          _buildTipCard(
+                                              Icons.emoji_events,
+                                              "Reward small achievements with positive reinforcement.",
+                                              context),
+                                          _buildTipCard(
+                                              Icons.hearing,
+                                              "Use clear and slow speech when communicating.",
+                                              context),
+                                          _buildTipCard(
+                                              Icons.groups,
+                                              "Encourage social interactions through storytelling.",
+                                              context),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 20),
-                          ],
+                              const SizedBox(height: 20),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  )
                 ],
               ),
             ),

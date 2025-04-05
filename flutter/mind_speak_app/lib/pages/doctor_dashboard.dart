@@ -111,22 +111,13 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
           ),
         ],
         backgroundColor: Colors.blue,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Welcome, $doctorName",
-              style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "$specialization | ${children.length} patients",
-              style: const TextStyle(fontSize: 14, color: Colors.white70),
-            ),
-          ],
+        title: const Text(
+          "Therapist Dashboard",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         centerTitle: true,
         elevation: 0,

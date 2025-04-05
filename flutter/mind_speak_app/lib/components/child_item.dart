@@ -7,31 +7,25 @@ class ChildItem extends StatelessWidget {
   final ChildModel child;
   final DoctorDashboardService doctorServices;
 
-  const ChildItem(
-      {super.key, required this.child, required this.doctorServices});
+  const ChildItem({
+    super.key,
+    required this.child,
+    required this.doctorServices,
+  });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () async {
-        try {
-          final childId = child.childId;
-          final reports = await doctorServices.fetchReport(childId);
-
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ChildReportsPage(
-                childName: child.name,
-                reports: reports,
-              ),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChildReportsPage(
+              childId: child.childId,
+              childName: child.name,
             ),
-          );
-        } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error fetching reports: $e')),
-          );
-        }
+          ),
+        );
       },
       child: Card(
         margin: const EdgeInsets.symmetric(vertical: 8),

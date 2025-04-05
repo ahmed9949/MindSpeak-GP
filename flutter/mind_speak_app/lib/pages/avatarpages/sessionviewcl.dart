@@ -1,15 +1,23 @@
-// lib/views/session/session_view.dart
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:mind_speak_app/models/session_statistics.dart';
-import 'package:mind_speak_app/models/sessionstate.dart';
-import 'package:mind_speak_app/service/avatarservice/chatgptttsservice.dart';
-import 'package:mind_speak_app/service/avatarservice/conversationsetup.dart';
-import 'package:mind_speak_app/service/avatarservice/openai.dart';
-import 'package:provider/provider.dart';
-import 'package:flutter_tts/flutter_tts.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:mind_speak_app/controllers/sessioncontrollerCl.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
+import 'package:flutter_sound/flutter_sound.dart';
+import 'package:image/image.dart' as img;
+import 'package:mind_speak_app/controllers/detectioncontroller.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:permission_handler/permission_handler.dart';
+import 'package:camera/camera.dart';
+
+import 'package:mind_speak_app/service/avatarservice/chatgptttsservice.dart';
+import 'package:mind_speak_app/service/avatarservice/openai.dart';
+import 'package:mind_speak_app/controllers/sessioncontrollerCl.dart';
 
 class SessionView extends StatefulWidget {
   final String initialPrompt;
@@ -28,177 +36,281 @@ class SessionView extends StatefulWidget {
 }
 
 class _SessionViewState extends State<SessionView> {
+  final GlobalKey _avatarKey = GlobalKey();
   final Flutter3DController controller = Flutter3DController();
-  bool isModelLoaded = false;
-  bool isLoading = true;
-  String? errorMessage; 
-  final List<String> allowedAnimations = ['idle.001', 'newtalk'];
-
   final stt.SpeechToText _speech = stt.SpeechToText();
-  final FlutterTts _flutterTts = FlutterTts();
+  final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   final ChatGptTtsService _ttsService = ChatGptTtsService();
 
+  late AiService _aiService;
+  late DetectionController _detectionController;
+  late ChatGptModel _chatModel;
+  late String? _sessionId;
+
+  // Camera variables
+  late CameraController _cameraController;
+  bool _isCameraInitialized = false;
+
+  Timer? _frameTimer;
+  bool _isRecording = false;
   bool _isListening = false;
   bool _isSpeaking = false;
-  bool _callStarted = false;
   String? _childName;
-  final Map<String, dynamic> _detectionStats = {};
-  late ChatGptModel _chatModel;
+  String? _voiceEmotion;
+  String? _facialEmotion;
 
   @override
   void initState() {
     super.initState();
-    _childName = widget.childData['name'];
-    _chatModel = ConversationModule.createGenerativeModel();
-    _initSpeech();
-    // _initTts();
-    controller.onModelLoaded.addListener(_onModelLoaded);
-    _callStarted = true;
+    _initializeSession();
   }
 
-  Future<void> _initSpeech() async {
-    await _speech.initialize(
-      onStatus: (status) {
-        if (status == 'notListening' || status == 'done') {
-          if (mounted) {
-            setState(() => _isListening = false);
-            _playAnimation(allowedAnimations[0]);
-          }
-        }
-      },
-      onError: (error) {
-        if (mounted) {
-          setState(() => _isListening = false);
-          _playAnimation(allowedAnimations[0]);
-        }
-      },
-    );
+  Future<void> ensureCameraPermission() async {
+    var status = await Permission.camera.status;
+    if (!status.isGranted) {
+      status = await Permission.camera.request();
+      if (!status.isGranted) {
+        throw Exception("Camera permission denied");
+      }
+    }
   }
 
-  // Future<void> _initTts() async {
-  //   await _flutterTts.setLanguage("ar-EG");
-  //   await _flutterTts.setPitch(1.0);
-  //   await _flutterTts.setSpeechRate(0.5);
-  //   _flutterTts.setCompletionHandler(() {
-  //     if (mounted) {
-  //       setState(() => _isSpeaking = false);
-  //       _playAnimation(allowedAnimations[0]);
-  //     }
-  //   });
-  // }
+  Future<void> _initializeSession() async {
+    try {
+      await ensureCameraPermission();
+      _chatModel = Provider.of<ChatGptModel>(context, listen: false);
+      _aiService = AiService();
+      _detectionController = DetectionController();
+      _sessionId = Provider.of<SessionController>(context, listen: false)
+          .state
+          .sessionId;
+      _childName = widget.childData['name'];
+      controller.onModelLoaded.addListener(_onModelLoaded);
+      await _initializeCamera();
+      await _initSpeech();
+      await _initRecorder();
+      _startFrameTimer();
+    } catch (e) {
+      debugPrint('❌ Permission error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Camera permission is required')),
+      );
+    }
+  }
+
+  Future<void> _initializeCamera() async {
+    try {
+      final cameras = await availableCameras();
+      CameraDescription? frontCamera;
+      for (var camera in cameras) {
+        if (camera.lensDirection == CameraLensDirection.front) {
+          frontCamera = camera;
+          break;
+        }
+      }
+
+      _cameraController = CameraController(
+        frontCamera ?? cameras.first,
+        ResolutionPreset.medium,
+        enableAudio: false,
+        imageFormatGroup: Platform.isAndroid
+            ? ImageFormatGroup.yuv420
+            : ImageFormatGroup.bgra8888,
+      );
+
+      await _cameraController.initialize();
+      setState(() => _isCameraInitialized = true);
+      debugPrint('✅ Camera initialized successfully');
+    } catch (e) {
+      debugPrint('❌ Error initializing camera: $e');
+    }
+  }
 
   void _onModelLoaded() {
     if (controller.onModelLoaded.value && mounted) {
-      setState(() {
-        isModelLoaded = true;
-        isLoading = false;
-      });
-      _playAnimation(allowedAnimations[0]);
+      _playAnimation("idle.001");
       if (widget.initialResponse.isNotEmpty) {
         _speak(widget.initialResponse);
       }
     }
   }
 
-  void _playAnimation(String animationName) {
+  Future<void> _initSpeech() async {
+    await _speech.initialize(
+      onStatus: (status) {
+        if (status == 'notListening' || status == 'done') {
+          setState(() => _isListening = false);
+          _playAnimation("idle.001");
+        }
+      },
+      onError: (error) {
+        setState(() => _isListening = false);
+        _playAnimation("idle.001");
+      },
+    );
+  }
+
+  Future<void> _initRecorder() async {
+    await _recorder.openRecorder();
+  }
+
+  void _startFrameTimer() {
+    _frameTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      await _captureAndAnalyzeFrame();
+    });
+  }
+
+  Future<void> _captureAndAnalyzeFrame() async {
     try {
-      controller.playAnimation(animationName: animationName);
-      if (animationName == allowedAnimations[1]) {
-      } else {
-        controller.resetCameraTarget();
-        controller.resetCameraOrbit();
+      if (!_isCameraInitialized || !_cameraController.value.isInitialized) {
+        debugPrint('⚠️ Camera not initialized, skipping frame capture');
+        return;
       }
+
+      // Capture frame from camera
+      final XFile imageFile = await _cameraController.takePicture();
+
+      // Analyze the captured frame
+      await _analyzeAllFrameData(File(imageFile.path));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Animation error: $e'), backgroundColor: Colors.red),
-      );
+      debugPrint('❌ Error capturing frame: $e');
     }
   }
 
-  Future<void> _toggleListening() async {
+  Future<void> _analyzeAllFrameData(File frame) async {
     try {
-      if (!_isListening) {
-        bool available = await _speech.initialize();
-        if (available) {
-          setState(() => _isListening = true);
-          _playAnimation(allowedAnimations[0]);
-          await _speech.listen(
-            onResult: (result) {
-              if (result.finalResult) {
-                _processUserInput(result.recognizedWords);
-              }
+      final detectionData = <String, dynamic>{
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+      // 👁️ 1. Eye Gaze Analysis (using base64)
+      try {
+        List<int> imageBytes = await frame.readAsBytes();
+        String base64Image = base64Encode(imageBytes);
+
+        // Analyze gaze using base64 image
+        final gazeResult = await _aiService.analyzeGazeFromBase64(base64Image);
+        if (gazeResult != null) {
+          detectionData['gaze'] = {
+            'status': gazeResult['focus_status'] ?? 'Unknown',
+            'focused_percentage': gazeResult['focused_percentage'] ?? 0,
+            'not_focused_percentage': gazeResult['not_focused_percentage'] ?? 0,
+          };
+        }
+      } catch (e) {
+        debugPrint('❌ Error in gaze detection: $e');
+      }
+
+      // 🔍 2. Behavior Detection
+      try {
+        final behaviorResult = await _aiService.analyzeBehavior(frame);
+        if (behaviorResult != null && behaviorResult['behavior'] != null) {
+          detectionData['behavior'] = behaviorResult['behavior'];
+        }
+      } catch (e) {
+        debugPrint('❌ Error in behavior detection: $e');
+      }
+
+      // 😊 3. Facial Emotion Detection
+      try {
+        final emotionResult = await _aiService.analyzeEmotionFromImage(frame);
+        if (emotionResult != null && emotionResult['emotion'] != null) {
+          detectionData['emotion'] = emotionResult['emotion'];
+          setState(() => _facialEmotion = emotionResult['emotion']);
+        }
+      } catch (e) {
+        debugPrint('❌ Error in emotion detection: $e');
+      }
+
+      // Log detection data
+      debugPrint('Detection data: ${jsonEncode(detectionData)}');
+
+      // ✅ Save to Firestore
+      if (_sessionId != null) {
+        await _detectionController.addDetection(
+          sessionId: _sessionId!,
+          detectionData: detectionData,
+        );
+      } else {
+        debugPrint('❌ Cannot save detection: No session ID available');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error in _analyzeAllFrameData: $e');
+      debugPrint('Stack trace: $stackTrace');
+    }
+  }
+
+  Future<void> _recordAndAnalyzeVoice(String sttText) async {
+    if (_isRecording) return;
+
+    final tempDir = await getTemporaryDirectory();
+    final filePath =
+        '${tempDir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.wav';
+
+    try {
+      debugPrint('🎙️ Starting voice recording...');
+      setState(() => _isRecording = true);
+
+      await _recorder.startRecorder(toFile: filePath);
+      // Record for a few seconds to capture enough audio for analysis
+      await Future.delayed(const Duration(seconds: 3));
+      await _recorder.stopRecorder();
+
+      final fileStats = await File(filePath).stat();
+      debugPrint('🎙️ Voice recording completed: ${fileStats.size} bytes');
+
+      // Analyze the voice recording
+      final result = await _aiService.analyzeEmotionFromVoice(File(filePath));
+
+      if (result != null && mounted) {
+        debugPrint('🎧 Voice emotion detected: ${result['emotion']}');
+        setState(() => _voiceEmotion = result['emotion']);
+
+        // Save voice emotion detection to Firestore
+        if (_sessionId != null) {
+          await _detectionController.addDetection(
+            sessionId: _sessionId!,
+            detectionData: {
+              'timestamp': DateTime.now().toIso8601String(),
+              'voiceEmotion': result['emotion'],
+              'speechText': sttText,
             },
-            listenMode: stt.ListenMode.dictation,
-            partialResults: true,
-            listenFor: const Duration(seconds: 60),
-            pauseFor: const Duration(seconds: 3),
-            cancelOnError: false,
-            localeId: 'ar-EG',
           );
         }
-      } else {
-        setState(() => _isListening = false);
-        await _speech.stop();
-        _playAnimation(allowedAnimations[0]);
       }
-    } catch (e) {
-      setState(() => _isListening = false);
-      _playAnimation(allowedAnimations[0]);
+    } catch (e, stackTrace) {
+      debugPrint('❌ Voice analysis error: $e');
+      debugPrint('Stack trace: $stackTrace');
+    } finally {
+      setState(() => _isRecording = false);
+
+      // Clean up the temporary file
+      try {
+        if (await File(filePath).exists()) {
+          await File(filePath).delete();
+        }
+      } catch (e) {
+        debugPrint('Error cleaning up audio file: $e');
+      }
     }
   }
-
-//   Future<void> _processUserInput(String text) async {
-//     if (text.isEmpty) return;
-//     final sessionController =
-//         Provider.of<SessionController>(context, listen: false);
-//     await sessionController.addChildMessage(text);
-
-//     try {
-//       final promptContext = '''
-// Child's message: $text
-
-// Respond in Egyptian Arabic. Keep your response under 2-3 sentences.
-// Be supportive and encouraging while focusing on the child's interests.
-// ''';
-//       final aiResponse = await _chatModel.sendMessage(promptContext);
-//       await sessionController.addTherapistMessage(aiResponse);
-//       await _speak(aiResponse);
-//     } catch (e) {
-//       const errorMsg = "عذراً، حدث خطأ أثناء معالجة طلبك.";
-//       await sessionController.addTherapistMessage(errorMsg);
-//       await _speak(errorMsg);
-//     }
-//   }
 
   Future<void> _processUserInput(String text) async {
     if (text.isEmpty) return;
     final sessionController =
         Provider.of<SessionController>(context, listen: false);
     await sessionController.addChildMessage(text);
+    await _recordAndAnalyzeVoice(text);
 
     try {
-      final promptContext = '''
-Child's message: $text
-
-Respond in Egyptian Arabic. Keep your response under 2-3 sentences.
-Be supportive and encouraging while focusing on the child's interests.
-''';
-
-      // Pass child data on first message to set up context properly
-      if (sessionController.state.conversation.length <= 1) {
-        // First user message after initial system message
-        final aiResponse = await _chatModel.sendMessage(promptContext,
-            childData: widget.childData);
-        await sessionController.addTherapistMessage(aiResponse);
-        await _speak(aiResponse);
-      } else {
-        final aiResponse = await _chatModel.sendMessage(promptContext);
-        await sessionController.addTherapistMessage(aiResponse);
-        await _speak(aiResponse);
-      }
+      final prompt =
+          "Child's message: $text\n\nRespond in Egyptian Arabic. Be encouraging, short, and positive.";
+      final aiResponse =
+          await _chatModel.sendMessage(prompt, childData: widget.childData);
+      await sessionController.addTherapistMessage(aiResponse);
+      await _speak(aiResponse);
     } catch (e) {
-      const errorMsg = "عذراً، حدث خطأ أثناء معالجة طلبك.";
+      const errorMsg = "عذراً، حدث خطأ أثناء المعالجة.";
       await sessionController.addTherapistMessage(errorMsg);
       await _speak(errorMsg);
     }
@@ -207,78 +319,72 @@ Be supportive and encouraging while focusing on the child's interests.
   Future<void> _speak(String text) async {
     if (!_isSpeaking && mounted) {
       setState(() => _isSpeaking = true);
-      _playAnimation(allowedAnimations[1]);
+      _playAnimation("newtalk");
       await _ttsService.speak(text);
+      setState(() => _isSpeaking = false);
+      _playAnimation("idle.001");
     }
   }
 
-  Future<void> _endCall() async {
+  void _playAnimation(String animation) {
+    try {
+      controller.playAnimation(animationName: animation);
+    } catch (e) {
+      debugPrint('Animation error: $e');
+    }
+  }
+
+  Future<void> _endSession() async {
     final sessionController =
         Provider.of<SessionController>(context, listen: false);
     if (_isListening) await _speech.stop();
     if (_isSpeaking) await _ttsService.stop();
-
-    final goodbyeMessage =
+    final goodbye =
         _childName != null ? "الى اللقاء $_childName" : "الى اللقاء";
-    await sessionController.addTherapistMessage(goodbyeMessage);
+    await sessionController.addTherapistMessage(goodbye);
+    await _speak(goodbye);
 
-    setState(() {
-      _isListening = false;
-      _isSpeaking = true;
-    });
-
-    _playAnimation(allowedAnimations[1]);
-    await _ttsService.speak(goodbyeMessage);
-
-    setState(() {
-      _callStarted = false;
-      _isSpeaking = false;
-    });
-
-    _playAnimation(allowedAnimations[0]);
-
-    try {
-      final stats = await sessionController.endSession(_detectionStats);
-      if (mounted) _showSessionSummary(stats);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Error ending session: $e'),
-            backgroundColor: Colors.red),
+    // Fetch detection summary from Flask
+    final summary = await _aiService.endConversationAndFetchSummary();
+    if (summary != null) {
+      await _detectionController.addDetection(
+        sessionId: _sessionId!,
+        detectionData: summary,
       );
     }
-  }
 
-  void _showSessionSummary(SessionStatistics stats) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Session Summary'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Session #${stats.sessionNumber}'),
-              Text('Duration: ${stats.sessionDuration.inMinutes} minutes'),
-              Text('Total Messages: ${stats.totalMessages}'),
-              Text('Child Messages: ${stats.childMessages}'),
-              Text('Therapist Messages: ${stats.drMessages}'),
-              Text('Average Words/Message: ${stats.wordsPerMessage}'),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pop();
-            },
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
+    // End session and get stats
+    final stats = await sessionController.endSession({});
+
+    // Generate recommendations
+    final sessionData = await sessionController.getSessionById(_sessionId!);
+    if (sessionData != null) {
+      final childId = sessionData.childId;
+      final allSessions = await sessionController.getSessionsForChild(childId);
+      final aggregateStats = widget.childData['aggregateStats'] ??
+          {
+            'totalSessions': 1,
+            'averageSessionDuration': 0,
+            'averageMessagesPerSession': 0
+          };
+
+      final recommendations =
+          await Provider.of<SessionAnalyzerController>(context, listen: false)
+              .generateRecommendations(
+        childData: widget.childData,
+        recentSessions: allSessions,
+        aggregateStats: aggregateStats,
+      );
+
+      await sessionController.generateRecommendations(
+        childId,
+        recommendations['parents'] ?? '',
+        recommendations['therapists'] ?? '',
+      );
+    }
+
+    // Navigate out after save
+    if (mounted) Navigator.pop(context);
   }
 
   @override
@@ -286,169 +392,110 @@ Be supportive and encouraging while focusing on the child's interests.
     controller.onModelLoaded.removeListener(_onModelLoaded);
     _speech.stop();
     _ttsService.stop();
+    _frameTimer?.cancel();
+    _recorder.closeRecorder();
+    _cameraController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final sessionController = Provider.of<SessionController>(context);
-    final sessionState = sessionController.state;
-
     return Scaffold(
-      appBar: AppBar(
-        title: Text(sessionState.sessionNumber > 0
-            ? 'Session #${sessionState.sessionNumber}'
-            : '3D Voice Chat'),
-      ),
-      body: Column(
+      appBar: AppBar(title: const Text("Therapy Session")),
+      body: Stack(
         children: [
-          Expanded(
-            flex: 2,
-            child: Stack(
-              children: [
-                Flutter3DViewer(
-                  src: 'assets/models/banotamixamonewtalk.glb',
-                  controller: controller,
-                  activeGestureInterceptor: true,
-                  onProgress: (progress) {
-                    setState(() {
-                      isLoading = progress < 1;
-                    });
-                  },
-                  onLoad: (modelAddress) {},
-                  onError: (error) {
-                    setState(() {
-                      errorMessage = 'Failed to load model: $error';
-                      isLoading = false;
-                    });
-                  },
+          Column(
+            children: [
+              Expanded(
+                flex: 3,
+                child: RepaintBoundary(
+                  key: _avatarKey,
+                  child: Flutter3DViewer(
+                    src: 'assets/models/banotamixamonewtalk.glb',
+                    controller: controller,
+                    activeGestureInterceptor: true,
+                  ),
                 ),
-                if (isLoading)
-                  Container(
-                    color: Colors.black45,
-                    child: const Center(child: CircularProgressIndicator()),
-                  ),
-                if (errorMessage != null)
-                  Container(
-                    color: Colors.black45,
-                    padding: const EdgeInsets.all(16),
-                    child: Center(
-                      child: Text(
-                        errorMessage!,
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              itemCount: sessionState.conversation.length,
-              itemBuilder: (context, index) {
-                final message = sessionState.conversation[index];
-                final isUser = message.containsKey('child');
-                final text = isUser ? message['child']! : message['dr']!;
+              ),
 
-                return Align(
-                  alignment:
-                      isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4.0),
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      color: isUser ? Colors.blue[100] : Colors.grey[300],
-                      borderRadius: BorderRadius.circular(15.0),
-                    ),
-                    child: Text(
-                      text,
-                      style: const TextStyle(fontSize: 16.0),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                if (sessionState.status != SessionStatus.active) {
-                  return Center(
-                    child: sessionState.status == SessionStatus.error
-                        ? Text(sessionState.errorMessage ?? 'Unknown error')
-                        : const CircularProgressIndicator(),
-                  );
-                }
-
-                return Wrap(
-                  spacing: 8.0,
-                  runSpacing: 8.0,
-                  alignment: WrapAlignment.spaceEvenly,
+              // Optional: Emotion status display
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    SizedBox(
-                      width: constraints.maxWidth > 600
-                          ? (constraints.maxWidth - 32) / 3
-                          : (constraints.maxWidth - 16) / 2,
-                      child: ElevatedButton.icon(
-                        onPressed: _isSpeaking ? null : _toggleListening,
-                        icon: Icon(_isListening ? Icons.mic : Icons.mic_none),
-                        label: Text(_isListening ? 'Recording...' : 'Record'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              _isListening ? Colors.red : Colors.blue,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: constraints.maxWidth > 600
-                          ? (constraints.maxWidth - 32) / 3
-                          : (constraints.maxWidth - 16) / 2,
-                      child: ElevatedButton.icon(
-                        onPressed: _isSpeaking
-                            ? () async {
-                                await _ttsService.stop();
-                                setState(() => _isSpeaking = false);
-                                _playAnimation(allowedAnimations[0]);
-                              }
-                            : null,
-                        icon: const Icon(Icons.stop),
-                        label: const Text('Stop TTS'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: constraints.maxWidth > 600
-                          ? (constraints.maxWidth - 32) / 3
-                          : constraints.maxWidth - 16,
-                      child: ElevatedButton.icon(
-                        onPressed: _endCall,
-                        icon: const Icon(Icons.call_end),
-                        label: const Text('End Call'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                    ),
+                    Text("Facial: ${_facialEmotion ?? 'Unknown'}"),
+                    Text("Voice: ${_voiceEmotion ?? 'Not analyzed'}"),
                   ],
-                );
-              },
+                ),
+              ),
+
+              ElevatedButton(
+                onPressed: () async {
+                  if (!_isListening) {
+                    final available = await _speech.initialize();
+                    if (available) {
+                      setState(() => _isListening = true);
+                      _playAnimation("idle.001");
+                      await _speech.listen(
+                        onResult: (result) {
+                          if (result.finalResult) {
+                            _processUserInput(result.recognizedWords);
+                            setState(() => _isListening = false);
+                          }
+                        },
+                        listenMode: stt.ListenMode.dictation,
+                        partialResults: true,
+                        localeId: 'ar-EG',
+                      );
+                    }
+                  } else {
+                    await _speech.stop();
+                    setState(() => _isListening = false);
+                  }
+                },
+                child: Text(_isListening ? "Recording..." : "Start Talking"),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _isSpeaking
+                        ? () async {
+                            await _ttsService.stop();
+                            setState(() => _isSpeaking = false);
+                            _playAnimation("idle.001");
+                          }
+                        : null,
+                    icon: const Icon(Icons.stop),
+                    label: const Text("Stop TTS"),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: _endSession,
+                    icon: const Icon(Icons.call_end),
+                    label: const Text("End Call"),
+                    style:
+                        ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  )
+                ],
+              )
+            ],
+          ),
+
+          // Hidden camera preview (for capturing frames)
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Opacity(
+              opacity: 0.0, // Make invisible
+              child: SizedBox(
+                width: 1, // Minimal size
+                height: 1,
+                child: _isCameraInitialized
+                    ? CameraPreview(_cameraController)
+                    : Container(),
+              ),
             ),
           ),
         ],

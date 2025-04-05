@@ -9,6 +9,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mind_speak_app/pages/avatarpages/startsessioncl.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
+import 'package:mind_speak_app/service/avatarservice/TestViewTTs.dart';
 import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
@@ -338,12 +339,12 @@ class _HomePageState extends State<HomePage> {
                           "assets/cars.png",
                           const CarsForm(),
                         ),
-                        // _buildTopCard(
-                        //   context,
-                        //   "Prediction",
-                        //   "assets/predict.png",
-                        //   ConversationScreen(),
-                        // ),
+                        _buildTopCard(
+                          context,
+                          "Prediction",
+                          "assets/predict.png",
+                          GptTtsTestPage(),
+                        ),
                         _buildTopCard(
                           context,
                           "Profile",

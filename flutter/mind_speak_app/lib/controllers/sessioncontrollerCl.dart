@@ -234,13 +234,13 @@ class SessionController extends ChangeNotifier {
   }
 }
 
-// lib/controllers/session/session_analyzer_controller.dart
- 
+
+// // In sessioncontrollerCl.dart (SessionAnalyzerController)
 // class SessionAnalyzerController {
-//   final GenerativeModel _model;
-  
+//   final ChatGptModel _model;
+
 //   SessionAnalyzerController(this._model);
-  
+
 //   Future<Map<String, String>> generateRecommendations({
 //     required Map<String, dynamic> childData,
 //     required List<SessionData> recentSessions,
@@ -297,11 +297,9 @@ class SessionController extends ChangeNotifier {
 // ''';
 
 //     try {
-//       final chat = _model.startChat();
-//       final response = await chat.sendMessage(Content.text(analysisPrompt));
-//       final recommendations = response.text ?? "عذراً، لم نتمكن من توليد التوصيات.";
-
-//       return _splitRecommendations(recommendations);
+//       // Instead of starting a chat, we directly send the prompt.
+//       final response = await _model.sendMessage(analysisPrompt);
+//       return _splitRecommendations(response);
 //     } catch (e) {
 //       return {
 //         'parents': 'عذراً، حدث خطأ في توليد التوصيات للوالدين.',
@@ -311,17 +309,15 @@ class SessionController extends ChangeNotifier {
 //   }
 
 //   Map<String, String> _splitRecommendations(String fullText) {
-//     final parts = fullText.split('2. For Therapists:');
+//     final parts = fullText.split('2.');
 //     if (parts.length != 2) {
 //       return {
 //         'parents': fullText,
 //         'therapists': ''
 //       };
 //     }
-    
-//     String parentsSection = parts[0].replaceFirst('1. For Parents:', '').trim();
+//     String parentsSection = parts[0].replaceFirst('1.', '').trim();
 //     String therapistsSection = parts[1].trim();
-    
 //     return {
 //       'parents': parentsSection,
 //       'therapists': therapistsSection
@@ -331,7 +327,6 @@ class SessionController extends ChangeNotifier {
 
 
 
-// In sessioncontrollerCl.dart (SessionAnalyzerController)
 class SessionAnalyzerController {
   final ChatGptModel _model;
 
@@ -342,6 +337,9 @@ class SessionAnalyzerController {
     required List<SessionData> recentSessions,
     required Map<String, dynamic> aggregateStats,
   }) async {
+    // Clear any existing conversation history
+    _model.clearConversation();
+    
     final String childInfo = '''
 Child Information:
 - Name: ${childData['name']}
@@ -393,7 +391,7 @@ Please structure your response in clear sections for parents and therapists.
 ''';
 
     try {
-      // Instead of starting a chat, we directly send the prompt.
+      // Send the complete prompt with all context
       final response = await _model.sendMessage(analysisPrompt);
       return _splitRecommendations(response);
     } catch (e) {

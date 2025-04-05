@@ -7,6 +7,7 @@ import 'package:mind_speak_app/models/User.dart';
 class DoctorDashboardService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  
 
   Future<List<ChildModel>> fetchChildren(String therapistId) async {
     try {

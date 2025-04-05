@@ -139,7 +139,6 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                   String bio = bioController.text;
                   String phoneNumber = phoneController.text;
 
-                  // Validate phone number
                   if (phoneNumber.length != 11 ||
                       int.tryParse(phoneNumber) == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -150,7 +149,6 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                   }
 
                   try {
-                    // Create updated models
                     UserModel updatedUser = UserModel(
                       userId: userInfo.userId,
                       email: email,
@@ -170,13 +168,11 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                       status: therapistInfo.status,
                     );
 
-                    // Update in Firebase
                     await _doctorServices.updateUserInfo(
                         userInfo.userId, updatedUser);
                     await _doctorServices.updateTherapistInfo(
                         therapistInfo.therapistId, updatedTherapist);
 
-                    // Refresh the data
                     await refreshData();
 
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -202,91 +198,96 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
               ),
             ),
             const SizedBox(height: 32),
-            const Text(
-              'Delete Account',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.red,
+            Center(
+              child: const Text(
+                'Delete Account',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
               ),
             ),
             const SizedBox(height: 8),
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              color: Colors.red.shade50,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    const Text(
-                      'Warning: Deleting your account is permanent. You will lose all your data.',
-                      style: TextStyle(fontSize: 16, color: Colors.red),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: () async {
-                        bool confirmDelete = await showDialog(
-                          context: context,
-                          builder: (BuildContext context) => AlertDialog(
-                            title: const Text('Confirm Deletion'),
-                            content: const Text(
-                                'Are you sure you want to delete your account? This action cannot be undone.'),
-                            actions: <Widget>[
-                              TextButton(
-                                child: const Text('Cancel'),
-                                onPressed: () =>
-                                    Navigator.of(context).pop(false),
-                              ),
-                              TextButton(
-                                child: const Text('Delete'),
-                                onPressed: () =>
-                                    Navigator.of(context).pop(true),
-                              ),
-                            ],
-                          ),
-                        );
+            Center(
+              child: Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                color: Colors.red.shade100,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Warning: Deleting your account is permanent. You will lose all your data.',
+                        style: TextStyle(fontSize: 16, color: Colors.red),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          bool confirmDelete = await showDialog(
+                            context: context,
+                            builder: (BuildContext context) => AlertDialog(
+                              title: const Text('Confirm Deletion'),
+                              content: const Text(
+                                  'Are you sure you want to delete your account? This action cannot be undone.'),
+                              actions: <Widget>[
+                                TextButton(
+                                  child: const Text('Cancel'),
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(false),
+                                ),
+                                TextButton(
+                                  child: const Text('Delete'),
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(true),
+                                ),
+                              ],
+                            ),
+                          );
 
-                        if (confirmDelete) {
-                          try {
-                            await _doctorServices.deleteAccount(
-                              userInfo.userId,
-                              therapistInfo.therapistId,
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content:
-                                      Text('Account deleted successfully')),
-                            );
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const LogIn(),
-                              ),
-                            );
-                          } catch (e) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text('Error deleting account: $e')),
-                            );
+                          if (confirmDelete) {
+                            try {
+                              await _doctorServices.deleteAccount(
+                                userInfo.userId,
+                                therapistInfo.therapistId,
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content:
+                                        Text('Account deleted successfully')),
+                              );
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const LogIn(),
+                                ),
+                              );
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content:
+                                        Text('Error deleting account: $e')),
+                              );
+                            }
                           }
-                        }
-                      },
-                      icon: const Icon(Icons.delete, color: Colors.white),
-                      label: const Text('Delete Account',
-                          style: TextStyle(color: Colors.white)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                        },
+                        icon: const Icon(Icons.delete, color: Colors.white),
+                        label: const Text('Delete Account',
+                            style: TextStyle(color: Colors.white)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

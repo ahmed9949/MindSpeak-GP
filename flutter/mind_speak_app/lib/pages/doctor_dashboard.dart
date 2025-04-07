@@ -68,16 +68,15 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.isDarkMode;
 
     final pages = [
       Column(
         children: [
-          // Add the dashboard count cards component
           DashboardCountCards(
             sessionId: widget.sessionId,
             children: children,
           ),
-          // Then display the existing children list
           Expanded(
             child: ChildrenList(
               children: children,
@@ -95,47 +94,72 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.logout),
-          onPressed: () => logout(context),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(themeProvider.isDarkMode
-                ? Icons.wb_sunny
-                : Icons.nightlight_round),
-            onPressed: () {
-              themeProvider.toggleTheme();
-            },
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(100),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [Colors.grey[850]!, Colors.black]
+                  : [Colors.blue.shade400, Colors.deepPurple.shade400],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(24),
+            ),
           ),
-        ],
-        backgroundColor: Colors.blue,
-        title: const Text(
-          "Therapist Dashboard",
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Logout Button
+                  IconButton(
+                    icon: const Icon(Icons.logout, color: Colors.white),
+                    onPressed: () => logout(context),
+                  ),
+                  const Text(
+                    "Therapist Dashboard",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  // Theme Toggle
+                  IconButton(
+                    icon: Icon(
+                      isDark ? Icons.wb_sunny : Icons.nightlight_round,
+                      color: Colors.white,
+                    ),
+                    onPressed: () => themeProvider.toggleTheme(),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
-        centerTitle: true,
-        elevation: 0,
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: pages,
+      body: Container(
+        color: isDark ? Colors.black : Colors.grey[100],
+        child: IndexedStack(
+          index: _currentIndex,
+          children: pages,
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _loadChildrenData,
-        backgroundColor: Colors.blue,
-        child: const Icon(
-          Icons.refresh,
-          color: Colors.black,
-        ),
+        tooltip: 'Refresh Children Data',
+        backgroundColor: Colors.deepPurple,
+        child: const Icon(Icons.refresh, color: Colors.white),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
+        selectedItemColor: Colors.deepPurple,
+        unselectedItemColor: isDark ? Colors.grey : Colors.black54,
+        backgroundColor: isDark ? Colors.grey[900] : Colors.white,
         onTap: (index) {
           setState(() {
             _currentIndex = index;

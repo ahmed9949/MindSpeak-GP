@@ -166,16 +166,33 @@ class _SearchPageState extends State<SearchPage> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.isDarkMode;
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: true,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [Colors.grey[850]!, Colors.black]
+                  : [Colors.blue.shade400, Colors.deepPurple.shade400],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(20),
+            ),
+          ),
+        ),
         title: const Text(
           'Search Therapists',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
-        backgroundColor:
-            themeProvider.isDarkMode ? Colors.grey[900] : Colors.blue,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+        ),
       ),
       body: SafeArea(
         child: ValueListenableBuilder<bool>(
@@ -184,17 +201,38 @@ class _SearchPageState extends State<SearchPage> {
             if (isLoading) {
               return const Center(child: CircularProgressIndicator());
             }
+
             return Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: TextField(
-                    onChanged: _controller.searchTherapists,
-                    decoration: InputDecoration(
-                      hintText: 'Search therapist by name',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[850] : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: isDark
+                              ? Colors.black45
+                              : Colors.grey.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      onChanged: _controller.searchTherapists,
+                      style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black),
+                      decoration: InputDecoration(
+                        hintText: 'Search therapist by name',
+                        hintStyle: TextStyle(
+                            color: isDark ? Colors.grey[400] : Colors.grey),
+                        prefixIcon: Icon(Icons.search,
+                            color: isDark ? Colors.white : Colors.grey),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 14),
                       ),
                     ),
                   ),
@@ -205,7 +243,10 @@ class _SearchPageState extends State<SearchPage> {
                     builder: (context, filteredTherapists, _) {
                       if (filteredTherapists.isEmpty) {
                         return const Center(
-                          child: Text('No therapists found.'),
+                          child: Text(
+                            'No therapists found.',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
                         );
                       }
 
@@ -216,22 +257,13 @@ class _SearchPageState extends State<SearchPage> {
                           crossAxisCount: 2,
                           crossAxisSpacing: 16,
                           mainAxisSpacing: 16,
-                          childAspectRatio: 0.8,
+                          childAspectRatio: 0.75,
                         ),
                         itemCount: filteredTherapists.length,
                         itemBuilder: (context, index) {
                           final therapist = filteredTherapists[index];
-                          // Get user information for this therapist
                           final userInfo = _controller
                               .getUserForTherapist(therapist.therapistId);
-
-                          // Debug print to help diagnose
-                          print(
-                              'Building card for therapist ${therapist.therapistId}');
-                          print('User info available: ${userInfo != null}');
-                          if (userInfo != null) {
-                            print('Username: ${userInfo.username}');
-                          }
 
                           return GestureDetector(
                             onTap: () => _showTherapistDetails(therapist),
@@ -239,38 +271,31 @@ class _SearchPageState extends State<SearchPage> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(15),
                               ),
-                              elevation: 4,
+                              color: isDark ? Colors.grey[850] : Colors.white,
+                              elevation: 5,
+                              shadowColor: Colors.black26,
                               child: Column(
                                 children: [
                                   if (therapist.therapistImage.isNotEmpty)
-                                    LayoutBuilder(
-                                      builder: (context, constraints) {
-                                        double imageHeight =
-                                            constraints.maxWidth * 0.75;
-                                        return ClipRRect(
-                                          borderRadius:
-                                              const BorderRadius.vertical(
-                                            top: Radius.circular(15),
-                                          ),
-                                          child: Image.network(
-                                            therapist.therapistImage,
-                                            height: imageHeight,
-                                            width: double.infinity,
-                                            fit: BoxFit.cover,
-                                            errorBuilder:
-                                                (context, error, stackTrace) {
-                                              return Container(
-                                                height: imageHeight,
-                                                width: double.infinity,
-                                                color: Colors.grey[300],
-                                                child: const Icon(Icons.person,
-                                                    size: 60,
-                                                    color: Colors.grey),
-                                              );
-                                            },
-                                          ),
-                                        );
-                                      },
+                                    ClipRRect(
+                                      borderRadius: const BorderRadius.vertical(
+                                        top: Radius.circular(15),
+                                      ),
+                                      child: Image.network(
+                                        therapist.therapistImage,
+                                        height: 120,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                          return Container(
+                                            height: 120,
+                                            color: Colors.grey[300],
+                                            child: const Icon(Icons.person,
+                                                size: 60, color: Colors.grey),
+                                          );
+                                        },
+                                      ),
                                     )
                                   else
                                     Container(
@@ -280,15 +305,40 @@ class _SearchPageState extends State<SearchPage> {
                                       child: const Icon(Icons.person,
                                           size: 60, color: Colors.grey),
                                     ),
+                                  const SizedBox(height: 10),
                                   Padding(
-                                    padding: const EdgeInsets.all(8.0),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8.0),
                                     child: Text(
                                       userInfo?.username ?? 'Unknown',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark
+                                            ? Colors.white
+                                            : Colors.black87,
                                       ),
                                       textAlign: TextAlign.center,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8.0),
+                                    child: Text(
+                                      therapist.bio.isNotEmpty
+                                          ? therapist.bio
+                                          : 'No bio available',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: isDark
+                                            ? Colors.grey[300]
+                                            : Colors.grey[700],
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),

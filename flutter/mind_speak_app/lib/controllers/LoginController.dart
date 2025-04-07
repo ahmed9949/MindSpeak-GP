@@ -11,6 +11,7 @@ import 'package:mind_speak_app/pages/homepage.dart';
 import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/doctor_dashboard.dart';
 import 'package:mind_speak_app/service/doctor_dashboard_service.dart';
+import 'package:lottie/lottie.dart';
 
 class LoginController {
   final BuildContext context;
@@ -45,6 +46,15 @@ class LoginController {
   Future<void> userLogin() async {
     if (!formKey.currentState!.validate()) return;
 
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Center(
+        child: Lottie.asset('assets/loading.json', width: 150, height: 150),
+      ),
+    );
+
     try {
       print("🔐 Starting login...");
       String email = mailController.text.trim();
@@ -60,12 +70,19 @@ class LoginController {
       final sessionProvider =
           Provider.of<SessionProvider>(context, listen: false);
       await sessionProvider.saveSession(user.userId, user.role);
-
-      await _navigateBasedOnRole(user.role, user.userId);
+      // ✅ CLOSE the dialog **BEFORE** navigation
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
 
       _showSuccessSnackBar("Logged in Successfully");
+
+      // ✅ THEN navigate (from a clean context)
+      await _navigateBasedOnRole(user.role, user.userId);
     } catch (e) {
-      print("❌ Error during login: $e");
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop(); // Close loading if there's error too
+      }
       _showErrorSnackBar(e.toString());
     }
   }

@@ -234,9 +234,11 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
                 child: AppBar(
                   elevation: 0,
                   flexibleSpace: Container(
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [Colors.blueAccent, Colors.deepPurple],
+                        colors: themeProvider.isDarkMode
+                            ? [Colors.grey[900]!, Colors.black]
+                            : [Color(0xFF6A11CB), Color(0xFF2575FC)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),

@@ -75,6 +75,7 @@ dependencies:
   chat_gpt_sdk: ^3.1.4
   audioplayers: ^6.4.0
   flutter_sound: ^9.28.0
+  lottie: ^3.3.1
 
 dev_dependencies:
   flutter_test:
@@ -113,6 +114,8 @@ flutter:
     - assets/
     - assets/models/business_man.glb
     - assets/models/banotamixamonewtalk.glb
+    - assets/loading.json
+    - assets/background_animation.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

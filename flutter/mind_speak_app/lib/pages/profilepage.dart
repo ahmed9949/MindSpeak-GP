@@ -241,26 +241,33 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
         resizeToAvoidBottomInset: true,
         appBar: AppBar(
-          backgroundColor: themeProvider.isDarkMode
-              ? Colors.black.withOpacity(0.8) // Dark mode with opacity
-              : Colors.blueAccent, // Vibrant light mode color
-          elevation: 5, // Adds a subtle shadow for depth
+          automaticallyImplyLeading: true, // ✅ Enables the back button
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: themeProvider.isDarkMode
+                    ? [Colors.grey[850]!, Colors.black]
+                    : [Colors.blue.shade400, Colors.deepPurple.shade400],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(20),
+              ),
+            ),
+          ),
+          elevation: 5,
           title: Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons
-                    .account_circle_rounded, // Optional: Add an icon to make it more personalized
-                color: Colors.white,
-                size: 30,
-              ),
-              const SizedBox(width: 10),
-              const Text(
+            children: const [
+              Icon(Icons.account_circle_rounded, color: Colors.white, size: 30),
+              SizedBox(width: 10),
+              Text(
                 'Profile Page',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 22, // Slightly larger title
+                  fontSize: 22,
                 ),
               ),
             ],
@@ -279,8 +286,7 @@ class _ProfilePageState extends State<ProfilePage> {
               },
             ),
           ],
-          shape: RoundedRectangleBorder(
-            // Adding rounded corners to the AppBar
+          shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(
               bottom: Radius.circular(20),
             ),

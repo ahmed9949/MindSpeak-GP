@@ -1,162 +1,214 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/controllers/ProfileController.dart';
-import 'package:mind_speak_app/pages/avatarpages/aggregatestats.dart';
-import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/homepage.dart';
-import 'package:mind_speak_app/pages/logout.dart';
-import 'package:mind_speak_app/pages/predict.dart';
 import 'package:mind_speak_app/pages/profilepage.dart';
 import 'package:mind_speak_app/pages/searchpage.dart';
+import 'package:mind_speak_app/pages/carsfrom.dart';
+import 'package:mind_speak_app/pages/predict.dart';
+import 'package:mind_speak_app/pages/avatarpages/aggregatestats.dart';
 import 'package:mind_speak_app/pages/avatarpages/sessionreportCL.dart';
+import 'package:mind_speak_app/pages/logout.dart';
 import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
+import 'package:mind_speak_app/providers/session_provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class NavigationDrawe extends StatelessWidget {
+class NavigationDrawe extends StatefulWidget {
   const NavigationDrawe({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Access the current theme provider
-    final themeProvider = Provider.of<ThemeProvider>(context);
+  State<NavigationDrawe> createState() => _NavigationDraweState();
+}
 
-    // Set colors dynamically based on the theme
-    final backgroundColor =
-        themeProvider.isDarkMode ? Colors.grey[900] : Colors.blue;
-    final textColor = themeProvider.isDarkMode ? Colors.white : Colors.black;
-    final iconColor = themeProvider.isDarkMode ? Colors.white : Colors.black;
+class _NavigationDraweState extends State<NavigationDrawe> {
+  String? childName;
+  String? childPhoto;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchChildInfo();
+  }
+
+  Future<void> fetchChildInfo() async {
+    final sessionProvider =
+        Provider.of<SessionProvider>(context, listen: false);
+
+    final userId = sessionProvider.userId;
+    if (userId == null) return;
+
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('child')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        final data = querySnapshot.docs.first.data();
+        setState(() {
+          childName = data['name'];
+          childPhoto = data['childPhoto'];
+        });
+      }
+    } catch (e) {
+      print('❌ Error fetching child info: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.isDarkMode;
+
+    final backgroundColor = isDark ? Colors.grey[900] : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black;
+    final iconColor = isDark ? Colors.white : Colors.blueGrey;
 
     return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: <Widget>[
-          DrawerHeader(
-            decoration: BoxDecoration(
-              color: backgroundColor,
-            ),
-            child: Text(
-              'Navigation Drawer',
-              style: TextStyle(
-                color: textColor,
-                fontSize: 24,
+      child: Container(
+        color: backgroundColor,
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            UserAccountsDrawerHeader(
+              // ✅ Remove const
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: themeProvider.isDarkMode
+                      ? [Colors.grey[850]!, Colors.black]
+                      : [Colors.blue.shade400, Colors.deepPurple.shade400],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              accountName: Text(
+                "Welcome, $childName",
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              accountEmail: null,
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: Colors.white,
+                backgroundImage:
+                    childPhoto != null ? NetworkImage(childPhoto!) : null,
+                child: childPhoto == null
+                    ? const Icon(Icons.person, color: Colors.blueGrey, size: 36)
+                    : null,
               ),
             ),
-          ),
-          ListTile(
-            leading: Icon(Icons.home, color: iconColor),
-            title: Text(
-              'Home',
-              style: TextStyle(color: textColor),
+            _buildSectionTitle("Main", textColor),
+            _buildDrawerItem(
+              icon: Icons.home,
+              label: "Home",
+              iconColor: iconColor,
+              textColor: textColor,
+              onTap: () => _navigate(context, const HomePage()),
             ),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const HomePage()));
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.person, color: iconColor),
-            title: Text(
-              'Profile',
-              style: TextStyle(color: textColor),
+            _buildDrawerItem(
+              icon: Icons.person,
+              label: "Profile",
+              iconColor: iconColor,
+              textColor: textColor,
+              onTap: () => _navigate(
+                  context, ProfilePage(controller: ProfileController())),
             ),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) =>
-                          ProfilePage(controller: ProfileController())));
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.settings, color: iconColor),
-            title: Text(
-              'Settings',
-              style: TextStyle(color: textColor),
+            _buildDrawerItem(
+              icon: Icons.settings,
+              label: "Settings",
+              iconColor: iconColor,
+              textColor: textColor,
+              onTap: () => Navigator.pop(context),
             ),
-            onTap: () {
-              Navigator.pop(context);
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.search, color: iconColor),
-            title: Text(
-              'Search therapist',
-              style: TextStyle(color: textColor),
+            Divider(color: isDark ? Colors.grey : Colors.blueGrey[100]),
+            _buildSectionTitle("Therapy Tools", textColor),
+            _buildDrawerItem(
+              icon: Icons.search,
+              label: "Search Therapist",
+              iconColor: iconColor,
+              textColor: textColor,
+              onTap: () => _navigate(context, const SearchPage()),
             ),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const SearchPage()));
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.mobile_screen_share, color: iconColor),
-            title: Text(
-              'Prediction',
-              style: TextStyle(color: textColor),
+            _buildDrawerItem(
+              icon: Icons.mobile_screen_share,
+              label: "Prediction",
+              iconColor: iconColor,
+              textColor: textColor,
+              onTap: () => _navigate(context, const PredictScreen()),
             ),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const PredictScreen()));
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.info_sharp, color: iconColor),
-            title: Text(
-              'Cars Details',
-              style: TextStyle(color: textColor),
+            _buildDrawerItem(
+              icon: Icons.info_sharp,
+              label: "Cars Details",
+              iconColor: iconColor,
+              textColor: textColor,
+              onTap: () => _navigate(context, const CarsForm()),
             ),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const CarsForm()));
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.logout, color: iconColor),
-            title: Text(
-              'Logout',
-              style: TextStyle(color: textColor),
+            Divider(color: isDark ? Colors.grey : Colors.blueGrey[100]),
+            _buildSectionTitle("Progress", textColor),
+            _buildDrawerItem(
+              icon: Icons.report,
+              label: "Overall Progress",
+              iconColor: iconColor,
+              textColor: textColor,
+              onTap: () => _navigate(context, const AggregateStatsPage()),
             ),
-            onTap: () {
-              logout(context);
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.report, color: iconColor),
-            title: Text(
-              'over all progress',
-              style: TextStyle(color: textColor),
+            _buildDrawerItem(
+              icon: Icons.insert_chart_outlined,
+              label: "Last Session Report",
+              iconColor: iconColor,
+              textColor: textColor,
+              onTap: () => _navigate(context, const SessionReportPage()),
             ),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const AggregateStatsPage()));
-            },
-          ),
-          
-          ListTile(
-            leading: Icon(Icons.report, color: iconColor),
-            title: Text(
-              'last session report',
-              style: TextStyle(color: textColor),
+            Divider(color: isDark ? Colors.grey : Colors.blueGrey[100]),
+            _buildDrawerItem(
+              icon: Icons.logout,
+              label: "Logout",
+              iconColor: Colors.red,
+              textColor: Colors.red,
+              onTap: () => logout(context),
             ),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const SessionReportPage()));
-            },
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String label,
+    required Color iconColor,
+    required Color textColor,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: iconColor),
+      title: Text(
+        label,
+        style: TextStyle(
+            color: textColor, fontSize: 16, fontWeight: FontWeight.w500),
+      ),
+      onTap: onTap,
+    );
+  }
+
+  Widget _buildSectionTitle(String title, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+      child: Text(
+        title,
+        style: TextStyle(
+          color: color.withOpacity(0.7),
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  void _navigate(BuildContext context, Widget page) {
+    Navigator.pop(context);
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 }

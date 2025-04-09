@@ -39,7 +39,7 @@ android {
 
 
         applicationId "com.example.mind_speak_app"
-    minSdkVersion 23
+    minSdkVersion 24
     targetSdkVersion 33
     versionCode flutter.versionCode
     versionName flutter.versionName

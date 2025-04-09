@@ -55,16 +55,16 @@ class ChatGptModel {
     });
   }
 
-  /// Sends a prompt to the ChatGPT API with the entire conversation history
   Future<String> sendMessage(String prompt,
       {Map<String, dynamic>? childData}) async {
-    // If childData is provided, add or update the system message with child info
-    if (childData != null) {
-      final name = childData['name'] ?? '';
-      final age = childData['age']?.toString() ?? '';
-      final interest = childData['childInterest'] ?? '';
+    try {
+      // If childData is provided, add or update the system message with child info
+      if (childData != null) {
+        final name = childData['name'] ?? '';
+        final age = childData['age']?.toString() ?? '';
+        final interest = childData['childInterest'] ?? '';
 
-      String systemPrompt = '''
+        String systemPrompt = '''
 You are a therapist for children with autism, focused on enhancing communication skills.
 Talk in Egyptian Arabic.
 
@@ -82,50 +82,59 @@ Your approach:
 6. Always respond in Arabic
 ''';
 
-      // Replace system message or add it if not present
-      if (_conversationHistory.isNotEmpty &&
-          _conversationHistory[0]["role"] == "system") {
-        _conversationHistory[0] = {"role": "system", "content": systemPrompt};
-      } else {
-        _conversationHistory
-            .insert(0, {"role": "system", "content": systemPrompt});
+        // Replace system message or add it if not present
+        if (_conversationHistory.isNotEmpty &&
+            _conversationHistory[0]["role"] == "system") {
+          _conversationHistory[0] = {"role": "system", "content": systemPrompt};
+        } else {
+          _conversationHistory
+              .insert(0, {"role": "system", "content": systemPrompt});
+        }
       }
-    }
 
-    // Add user message to history
-    _conversationHistory.add({"role": "user", "content": prompt});
+      // Add user message to history
+      _conversationHistory.add({"role": "user", "content": prompt});
 
-    // Ensure conversation doesn't get too long (API limit)
-    if (_conversationHistory.length > 20) {
-      // Keep system message and last 10 messages
-      final systemMessage = _conversationHistory[0];
-      _conversationHistory.removeRange(1, _conversationHistory.length - 10);
-      _conversationHistory.insert(0, systemMessage);
-    }
+      // Ensure conversation doesn't get too long (API limit)
+      if (_conversationHistory.length > 20) {
+        // Keep system message and last 10 messages
+        final systemMessage = _conversationHistory[0];
+        _conversationHistory.removeRange(1, _conversationHistory.length - 10);
+        _conversationHistory.insert(0, systemMessage);
+      }
 
-    final url = Uri.parse("https://api.openai.com/v1/chat/completions");
-    final headers = {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer $apiKey",
-    };
+      final url = Uri.parse("https://api.openai.com/v1/chat/completions");
+      final headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $apiKey",
+      };
 
-    final body = json.encode({
-      "model": model,
-      "messages": _conversationHistory,
-    });
+      final body = json.encode({
+        "model": model,
+        "messages": _conversationHistory,
+      });
 
-    final response = await http.post(url, headers: headers, body: body);
-    if (response.statusCode == 200) {
-      final data = json.decode(utf8.decode(response.bodyBytes));
-      final reply = data["choices"][0]["message"]["content"];
+      // Log request details for debugging
+      print("Sending request to OpenAI API with model: $model");
 
-      // Add assistant response to history
-      _conversationHistory.add({"role": "assistant", "content": reply});
+      final response = await http.post(url, headers: headers, body: body);
+      if (response.statusCode == 200) {
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        final reply = data["choices"][0]["message"]["content"];
 
-      return reply;
-    } else {
-      print("OpenAI API error: ${response.statusCode} - ${response.body}");
-      throw Exception("OpenAI API error: ${response.body}");
+        // Add assistant response to history
+        _conversationHistory.add({"role": "assistant", "content": reply});
+
+        return reply;
+      } else {
+        final errorDetails =
+            "Status: ${response.statusCode}, Body: ${response.body}";
+        print("OpenAI API error: $errorDetails");
+        throw Exception("OpenAI API error: $errorDetails");
+      }
+    } catch (e) {
+      print("Exception in ChatGptModel.sendMessage: $e");
+      rethrow; // Re-throw to allow proper error handling upstream
     }
   }
 

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:audioplayers/audioplayers.dart';
@@ -11,9 +12,12 @@ class ChatGptTtsService {
 
   final AudioPlayer _audioPlayer = AudioPlayer();
 
-  Future<void> speak(String text) async {
+ Future<void> speak(String text) async {
+  try {
     final url = Uri.parse("https://api.openai.com/v1/audio/speech");
-
+    
+    print("Sending TTS request for text: \"${text.substring(0, min(30, text.length))}...\"");
+    
     final response = await http.post(
       url,
       headers: {
@@ -28,15 +32,21 @@ class ChatGptTtsService {
     );
 
     if (response.statusCode == 200) {
+      print("TTS API returned audio data successfully");
       Uint8List audioBytes = response.bodyBytes;
       await _audioPlayer.play(BytesSource(audioBytes));
+      print("Audio playback started");
     } else {
       print('TTS API error: ${response.statusCode} - ${response.body}');
-      throw Exception('Failed to generate speech.');
+      throw Exception('Failed to generate speech: ${response.statusCode}');
     }
+  } catch (e) {
+    print('Error in speak method: $e');
+    throw Exception('TTS service error: $e');
   }
+}
 
-  Future<void> stop() async {
+ Future<void> stop() async {
     await _audioPlayer.stop();
   }
 }

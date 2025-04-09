@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -129,8 +130,18 @@ class _SessionViewState extends State<SessionView> {
   void _onModelLoaded() {
     if (controller.onModelLoaded.value && mounted) {
       _playAnimation("idle.001");
+      debugPrint(
+          '3D Model loaded, initial response: "${widget.initialResponse}"');
+
       if (widget.initialResponse.isNotEmpty) {
-        _speak(widget.initialResponse);
+        // Add a slight delay to ensure the UI is ready
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            _speak(widget.initialResponse);
+          }
+        });
+      } else {
+        debugPrint('Warning: Empty initial response provided');
       }
     }
   }
@@ -177,6 +188,69 @@ class _SessionViewState extends State<SessionView> {
     }
   }
 
+  // Future<void> _analyzeAllFrameData(File frame) async {
+  //   try {
+  //     final detectionData = <String, dynamic>{
+  //       'timestamp': DateTime.now().toIso8601String(),
+  //     };
+
+  //     // 👁️ 1. Eye Gaze Analysis (using base64)
+  //     try {
+  //       List<int> imageBytes = await frame.readAsBytes();
+  //       String base64Image = base64Encode(imageBytes);
+
+  //       // Analyze gaze using base64 image
+  //       final gazeResult = await _aiService.analyzeGazeFromBase64(base64Image);
+  //       if (gazeResult != null) {
+  //         detectionData['gaze'] = {
+  //           'status': gazeResult['focus_status'] ?? 'Unknown',
+  //           'focused_percentage': gazeResult['focused_percentage'] ?? 0,
+  //           'not_focused_percentage': gazeResult['not_focused_percentage'] ?? 0,
+  //         };
+  //       }
+  //     } catch (e) {
+  //       debugPrint('❌ Error in gaze detection: $e');
+  //     }
+
+  //     // 🔍 2. Behavior Detection
+  //     try {
+  //       final behaviorResult = await _aiService.analyzeBehavior(frame);
+  //       if (behaviorResult != null && behaviorResult['behavior'] != null) {
+  //         detectionData['behavior'] = behaviorResult['behavior'];
+  //       }
+  //     } catch (e) {
+  //       debugPrint('❌ Error in behavior detection: $e');
+  //     }
+
+  //     // 😊 3. Facial Emotion Detection
+  //     try {
+  //       final emotionResult = await _aiService.analyzeEmotionFromImage(frame);
+  //       if (emotionResult != null && emotionResult['emotion'] != null) {
+  //         detectionData['emotion'] = emotionResult['emotion'];
+  //         setState(() => _facialEmotion = emotionResult['emotion']);
+  //       }
+  //     } catch (e) {
+  //       debugPrint('❌ Error in emotion detection: $e');
+  //     }
+
+  //     // Log detection data
+  //     debugPrint('Detection data: ${jsonEncode(detectionData)}');
+
+  //     // ✅ Save to Firestore
+  //     if (_sessionId != null) {
+  //       await _detectionController.addDetection(
+  //         sessionId: _sessionId!,
+  //         detectionData: detectionData,
+  //       );
+  //     } else {
+  //       debugPrint('❌ Cannot save detection: No session ID available');
+  //     }
+  //   } catch (e, stackTrace) {
+  //     debugPrint('❌ Error in _analyzeAllFrameData: $e');
+  //     debugPrint('Stack trace: $stackTrace');
+  //   }
+  // }
+
   Future<void> _analyzeAllFrameData(File frame) async {
     try {
       final detectionData = <String, dynamic>{
@@ -196,6 +270,19 @@ class _SessionViewState extends State<SessionView> {
             'focused_percentage': gazeResult['focused_percentage'] ?? 0,
             'not_focused_percentage': gazeResult['not_focused_percentage'] ?? 0,
           };
+
+          // Update UI with focus status
+          if (mounted) {
+            if (gazeResult['focus_status']?.contains('Focused') ?? false) {
+              _playAnimation("idle.001"); // Play focused animation
+            } else {
+              // Optional: Play a subtle "attention" animation if not focused
+              // But don't interrupt speaking animation
+              if (!_isSpeaking) {
+                _playAnimation("idle.001");
+              }
+            }
+          }
         }
       } catch (e) {
         debugPrint('❌ Error in gaze detection: $e');
@@ -222,7 +309,7 @@ class _SessionViewState extends State<SessionView> {
         debugPrint('❌ Error in emotion detection: $e');
       }
 
-      // Log detection data
+      // Log detection data to console
       debugPrint('Detection data: ${jsonEncode(detectionData)}');
 
       // ✅ Save to Firestore
@@ -318,11 +405,22 @@ class _SessionViewState extends State<SessionView> {
 
   Future<void> _speak(String text) async {
     if (!_isSpeaking && mounted) {
-      setState(() => _isSpeaking = true);
-      _playAnimation("newtalk");
-      await _ttsService.speak(text);
-      setState(() => _isSpeaking = false);
-      _playAnimation("idle.001");
+      try {
+        setState(() => _isSpeaking = true);
+        _playAnimation("newtalk");
+        debugPrint(
+            'Starting TTS for text: "${text.substring(0, min(30, text.length))}..."');
+        await _ttsService.speak(text);
+        debugPrint('TTS completed successfully');
+      } catch (e) {
+        debugPrint('❌ Error in TTS service: $e');
+        // Don't rethrow - we want to continue with animation cleanup
+      } finally {
+        if (mounted) {
+          setState(() => _isSpeaking = false);
+          _playAnimation("idle.001");
+        }
+      }
     }
   }
 

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/Repositories/sessionrepoC.dart';
 import 'package:mind_speak_app/controllers/sessioncontrollerCl.dart';
@@ -89,7 +91,7 @@ Remember to:
   }
 
   // Future<void> _startSession() async {
-    
+
   //   setState(() {
   //     _isLoading = true;
   //     _errorMessage = null;
@@ -146,73 +148,81 @@ Remember to:
   //     });
   //   }
   // }
+  Future<void> _startSession() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-Future<void> _startSession() async {
-  setState(() {
-    _isLoading = true;
-    _errorMessage = null;
-  });
+    try {
+      final childId =
+          Provider.of<SessionProvider>(context, listen: false).childId;
+      if (childId == null || childId.isEmpty) {
+        throw Exception('No child selected');
+      }
 
-  try {
-    final childId = Provider.of<SessionProvider>(context, listen: false).childId;
-    if (childId == null || childId.isEmpty) {
-      throw Exception('No child selected');
-    }
+      final childData = await _fetchChildData(childId);
+      if (childData == null) {
+        throw Exception('Failed to fetch child data.');
+      }
 
-    final childData = await _fetchChildData(childId);
-    if (childData == null) {
-      throw Exception('Failed to fetch child data.');
-    }
-
-    final therapistId = childData['therapistId'] ?? '';
+      final therapistId = childData['therapistId'] ?? '';
       if (therapistId.isEmpty) {
         throw Exception('No therapist assigned to this child.');
       }
 
-    await _sessionController.startSession(childId, therapistId);
+      await _sessionController.startSession(childId, therapistId);
 
-    final prompt = _generateInitialPrompt(childData);
-    
-    // Clear any previous conversation history
-    _model.clearConversation();
-    
-    // Send initial prompt with child data for context
-    final responseText = await _model.sendMessage(prompt, childData: childData);
+      final prompt = _generateInitialPrompt(childData);
+      debugPrint(
+          'Sending initial prompt to API: ${prompt.substring(0, min(100, prompt.length))}...');
 
-    if (responseText.isEmpty) {
-      throw Exception('Failed to generate initial response');
-    }
+      // Clear any previous conversation history
+      _model.clearConversation();
 
-    await _sessionController.addTherapistMessage(responseText);
+      // Send initial prompt with child data for context
+      final responseText =
+          await _model.sendMessage(prompt, childData: childData);
 
-    if (mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => MultiProvider(
-            providers: [
-              ChangeNotifierProvider.value(value: _sessionController),
-              Provider.value(value: _analyzerController),
-            ],
-            child: SessionView(
-              initialPrompt: prompt,
-              initialResponse: responseText,
-              childData: childData,
+      debugPrint('API response received: $responseText');
+
+      if (responseText.isEmpty) {
+        throw Exception('Failed to generate initial response');
+      }
+
+      await _sessionController.addTherapistMessage(responseText);
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MultiProvider(
+              providers: [
+                ChangeNotifierProvider.value(value: _sessionController),
+                Provider.value(value: _analyzerController),
+                // Add the ChatGptModel provider to ensure it's available
+                Provider.value(value: _model),
+              ],
+              child: SessionView(
+                initialPrompt: prompt,
+                initialResponse: responseText,
+                childData: childData,
+              ),
             ),
           ),
-        ),
-      );
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error starting session: $e');
+      setState(() {
+        _errorMessage = 'Error starting session: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
-  } catch (e) {
-    setState(() {
-      _errorMessage = 'Error starting session: $e';
-    });
-  } finally {
-    setState(() {
-      _isLoading = false;
-    });
   }
-}
 
   @override
   Widget build(BuildContext context) {

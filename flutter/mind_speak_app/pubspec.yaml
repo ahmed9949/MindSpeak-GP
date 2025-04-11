@@ -105,7 +105,6 @@ flutter:
     - assets/google.png
     - assets/car.PNG
     - assets/images/superheros/
-    - assets/logo.webp
     - assets/avatar.png
     - assets/cars.png
     - assets/doctor.png
@@ -116,7 +115,8 @@ flutter:
     - assets/models/banotamixamonewtalk.glb
     - assets/loading.json
     - assets/background_animation.json
-
+    - assets/MindSpeakLogo.png
+    - assets/Login_background.json
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

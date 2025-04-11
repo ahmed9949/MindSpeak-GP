@@ -79,9 +79,12 @@ class _LogInState extends State<LogIn> with SingleTickerProviderStateMixin {
                   flexibleSpace: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: themeProvider.isDarkMode
-                            ? [Colors.grey[900]!, Colors.black]
-                            : [Color(0xFF6A11CB), Color(0xFF2575FC)],
+                        colors: [
+                          Color.fromARGB(
+                              255, 249, 207, 165), // same as background
+                          Color(0xFFFCE38A)
+                              .withOpacity(0.4), // soft yellow wash
+                        ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -98,9 +101,8 @@ class _LogInState extends State<LogIn> with SingleTickerProviderStateMixin {
                     "Welcome Back!",
                     style: TextStyle(
                       fontSize: 22,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                      letterSpacing: 1.2,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF7A7A7A), // soft gray
                     ),
                   ),
                   actions: [
@@ -128,7 +130,7 @@ class _LogInState extends State<LogIn> with SingleTickerProviderStateMixin {
               child: Opacity(
                 opacity: 1,
                 child: Lottie.asset(
-                  "assets/background_animation.json",
+                  "assets/Login_background.json",
                   fit: BoxFit.cover,
                 ),
               ),
@@ -157,14 +159,16 @@ class _LogInState extends State<LogIn> with SingleTickerProviderStateMixin {
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.purple.withOpacity(0.2),
+                                    color:
+                                        const Color.fromARGB(255, 255, 255, 255)
+                                            .withOpacity(0.2),
                                     blurRadius: 20,
                                     spreadRadius: 5,
                                   ),
                                 ],
                               ),
                               child: Image.asset(
-                                "assets/logo.webp",
+                                "assets/MindSpeakLogo.png",
                                 fit: BoxFit.contain,
                               ),
                             ),
@@ -203,10 +207,14 @@ class _LogInState extends State<LogIn> with SingleTickerProviderStateMixin {
                                       padding: const EdgeInsets.symmetric(
                                           vertical: 13.0, horizontal: 30.0),
                                       decoration: BoxDecoration(
-                                        gradient: const LinearGradient(
+                                        gradient: LinearGradient(
                                           colors: [
-                                            Color(0xFF6A11CB),
-                                            Color(0xFF2575FC)
+                                            Color(0xFFFDEBD0).withOpacity(
+                                                1), // Light pastel peach
+                                            Color(0xFFFAD4D4)
+                                                .withOpacity(1), // Peach blush
+                                            Color(0xFFFCE38A)
+                                                .withOpacity(1), // Soft gold
                                           ],
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
@@ -214,20 +222,21 @@ class _LogInState extends State<LogIn> with SingleTickerProviderStateMixin {
                                         borderRadius: BorderRadius.circular(30),
                                         boxShadow: [
                                           BoxShadow(
-                                            color:
-                                                Colors.black.withOpacity(0.1),
-                                            blurRadius: 10,
-                                            offset: Offset(0, 5),
-                                          )
+                                            color: Color(0xFFFAD4D4)
+                                                .withOpacity(0.9),
+                                            blurRadius: 8,
+                                            offset: Offset(0, 4),
+                                          ),
                                         ],
                                       ),
                                       child: const Center(
                                         child: Text(
                                           "Sign In",
                                           style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 22.0,
-                                            fontWeight: FontWeight.w500,
+                                            color: Color(
+                                                0xFF4A4A4A), // soft charcoal for readability
+                                            fontSize: 18.0,
+                                            fontWeight: FontWeight.w600,
                                           ),
                                         ),
                                       ),
@@ -361,22 +370,47 @@ class _LogInState extends State<LogIn> with SingleTickerProviderStateMixin {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 30.0),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFedf0f8),
+        gradient: isDark
+            ? null
+            : LinearGradient(
+                colors: [
+                  Color(0xFFFFFCF9), // Cream White
+                  Color(0xFFFDEBD0), // Light pastel peach
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+        color: isDark ? const Color(0xFF1E1E1E) : null,
         borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: isDark
+              ? const Color(0xFF3A3A3A)
+              : const Color(0xFFFAD4D4).withOpacity(0.6), // soft blush border
+          width: 1.2,
+        ),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: const Color(0xFFFAD4D4).withOpacity(0.15),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3),
+                ),
+              ],
       ),
       child: TextFormField(
         controller: controller,
         validator: validator,
         obscureText: obscure,
         style: TextStyle(
-          color: isDark ? Colors.white : Colors.black,
+          color: isDark ? Colors.white : const Color(0xFF4A4A4A),
         ),
         decoration: InputDecoration(
           border: InputBorder.none,
           hintText: hint,
           hintStyle: TextStyle(
-            color: isDark ? Colors.white60 : const Color(0xFFb2b7bf),
-            fontSize: 18.0,
+            color: isDark ? Colors.white60 : const Color(0xFF9E9E9E),
+            fontSize: 17.0,
           ),
         ),
       ),

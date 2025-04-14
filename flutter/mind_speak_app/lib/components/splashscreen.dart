@@ -50,7 +50,7 @@ class _SplashScreenState extends State<SplashScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
-                'assets/logo.webp', // Replace with your logo image path
+                'assets/MindSpeakLogo.png', // Replace with your logo image path
                 height: 150,
               ),
               const SizedBox(height: 20),

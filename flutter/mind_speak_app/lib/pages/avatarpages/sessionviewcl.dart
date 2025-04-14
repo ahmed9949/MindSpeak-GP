@@ -15,10 +15,10 @@ import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:camera/camera.dart';
-
 import 'package:mind_speak_app/service/avatarservice/chatgptttsservice.dart';
 import 'package:mind_speak_app/service/avatarservice/openai.dart';
 import 'package:mind_speak_app/controllers/sessioncontrollerCl.dart';
+import 'package:mind_speak_app/components/game_card.dart';
 
 class SessionView extends StatefulWidget {
   final String initialPrompt;
@@ -485,6 +485,27 @@ class _SessionViewState extends State<SessionView> {
     if (mounted) Navigator.pop(context);
   }
 
+  void _showMiniGame() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => MiniGameCard(
+        category: 'Animals', // or Fruits, Body_Parts
+        type: 'Cat', // or Elephant, Mango, etc.
+        onCorrect: (points) {
+          debugPrint('✅ Correct! Points awarded: $points');
+        },
+        onFinished: () {
+          debugPrint('🎮 Mini-game finished.');
+        },
+      ),
+    );
+  }
+
   @override
   void dispose() {
     controller.onModelLoaded.removeListener(_onModelLoaded);
@@ -558,6 +579,11 @@ class _SessionViewState extends State<SessionView> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
+                  ElevatedButton.icon(
+                    onPressed: _showMiniGame,
+                    icon: Icon(Icons.games),
+                    label: Text("Play Game 🎮"),
+                  ),
                   ElevatedButton.icon(
                     onPressed: _isSpeaking
                         ? () async {

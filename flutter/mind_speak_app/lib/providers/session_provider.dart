@@ -8,6 +8,8 @@ class SessionProvider extends ChangeNotifier {
   String? _childId;
   bool _isLoggedIn = false;
   bool _isLoading = true;
+  List<Map<String, dynamic>> _sessionDataList = [];
+  List<Map<String, dynamic>> get sessionDataList => _sessionDataList;
 
   // Getters
   String? get userId => _userId;
@@ -97,38 +99,35 @@ class SessionProvider extends ChangeNotifier {
     }
 
     try {
-      print('Fetching child ID for user: $_userId'); // Debug log
+      print('Fetching child ID for user: $_userId');
 
       QuerySnapshot querySnapshot = await FirebaseFirestore.instance
           .collection('child')
           .where('userId', isEqualTo: _userId)
-          .limit(1) // Only get the first matching document
+          .limit(1)
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
-        // Try both approaches to find the childId
         final doc = querySnapshot.docs.first;
         final data = doc.data() as Map<String, dynamic>;
 
-        // Check if 'childId' exists as a field in the document
-        if (data.containsKey('childId')) {
-          _childId = data['childId'];
-        } else {
-          // Otherwise use the document ID as the childId
-          _childId = doc.id;
-        }
+        // Assign childId from field or fallback to doc ID
+        _childId = data.containsKey('childId') ? data['childId'] : doc.id;
 
-        print('Child ID fetched: $_childId'); // Debug log
+        print('Child ID fetched: $_childId');
+
+        // ✅ Now that _childId is ready, fetch session data
+        await fetchSessionDataFromFirestore();
       } else {
         _childId = null;
-        print('No child documents found for user $_userId'); // Debug log
+        print('No child documents found for user $_userId');
       }
     } catch (e) {
       print('Error fetching child ID: $e');
       _childId = null;
     }
 
-    notifyListeners(); // Notify listeners of the change
+    notifyListeners(); // Safe to notify at the end
   }
 
   // Method to add a new child and get its ID
@@ -152,5 +151,41 @@ class SessionProvider extends ChangeNotifier {
       print('Error adding child: $e');
       return null;
     }
+  }
+
+  Future<void> fetchSessionDataFromFirestore() async {
+    if (_childId == null) {
+      _sessionDataList = [];
+      notifyListeners();
+      return;
+    }
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('sessions')
+          .where('childId', isEqualTo: _childId)
+          .orderBy('date', descending: true)
+          .get();
+
+      _sessionDataList = snapshot.docs
+          .map((doc) => doc.data() as Map<String, dynamic>)
+          .toList();
+
+      notifyListeners();
+    } catch (e) {
+      print("Error fetching sessions: $e");
+      _sessionDataList = [];
+      notifyListeners();
+    }
+  }
+
+  int get thisWeekSessionCount {
+    final now = DateTime.now();
+    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+
+    return _sessionDataList.where((session) {
+      final date = session['date']?.toDate();
+      return date != null && date.isAfter(startOfWeek);
+    }).length;
   }
 }

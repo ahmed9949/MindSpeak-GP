@@ -2,13 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:flutter_sound/flutter_sound.dart';
-import 'package:image/image.dart' as img;
 import 'package:mind_speak_app/controllers/detectioncontroller.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
@@ -94,7 +90,7 @@ class _SessionViewState extends State<SessionView> {
     } catch (e) {
       debugPrint('❌ Permission error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Camera permission is required')),
+        const SnackBar(content: Text('Camera permission is required')),
       );
     }
   }

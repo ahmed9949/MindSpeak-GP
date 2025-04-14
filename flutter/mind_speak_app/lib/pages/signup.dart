@@ -5,6 +5,9 @@ import 'package:mind_speak_app/controllers/SignupController.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/pages/login.dart';
 import 'package:provider/provider.dart';
+import 'package:mind_speak_app/providers/color_provider.dart';
+
+
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -14,6 +17,41 @@ class SignUp extends StatefulWidget {
 }
 
 class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
+
+
+  final List<List<Color>> gradientThemes = [
+  [Color(0xFFF9CFA5), Color(0xFFFCE38A)], // peachy yellow
+  [Color(0xFF42E695), Color(0xFF3BB2B8)], // mint to teal
+  [Color(0xFFFCE38A), Color(0xFFF38181)], // yellow to soft red
+  [Color(0xFF00C9FF), Color(0xFF92FE9D)], // sky blue to green
+  [Color(0xFF7F00FF), Color(0xFFE100FF)], // purple to pink
+  [Color(0xFF6A11CB), Color(0xFF2575FC)], // indigo to blue
+  [Color(0xFFFFA17F), Color(0xFF00223E)], // sunset orange to navy
+  [Color(0xFFF7971E), Color(0xFFFFD200)], // orange to yellow
+  [Color(0xFF614385), Color(0xFF516395)], // violet to soft blue
+  [Color(0xFF00B4DB), Color(0xFF0083B0)], // blue ocean
+  [Color(0xFF4568DC), Color(0xFFB06AB3)], // purple blend
+  [Color(0xFFFF512F), Color(0xFFDD2476)], // coral pink
+  [Color(0xFFDA4453), Color(0xFF89216B)], // red to dark magenta
+  [Color(0xFFBBD2C5), Color(0xFF536976)], // soft white to grey
+  [Color(0xFF0F2027), Color(0xFF2C5364)], // dark grays
+  [Color(0xFFFF5F6D), Color(0xFFFFC371)], // pink to yellow
+  [Color(0xFF4CA1AF), Color(0xFFC4E0E5)], // teal ice
+  [Color(0xFFFFB75E), Color(0xFFED8F03)], // golden orange
+  [Color(0xFF83A4D4), Color(0xFFB6FBFF)], // light blue
+  [Color(0xFF2193B0), Color(0xFF6DD5ED)], // clean blue
+  [Color(0xFFE65C00), Color(0xFFF9D423)], // orange to light gold
+  [Color(0xFF1E9600), Color(0xFFFFF200)], // lime to yellow
+  [Color(0xFFFFEFBA), Color(0xFFFFFFD5)], // soft cream
+  [Color(0xFF8E2DE2), Color(0xFF4A00E0)], // violet electric
+  [Color(0xFF373B44), Color(0xFF4286f4)], // grey to royal blue
+  [Color(0xFFff9966), Color(0xFFff5e62)], // peach blend
+  [Color(0xFF00F260), Color(0xFF0575E6)], // neon green to blue
+  [Color(0xFFe1eec3), Color(0xFFf05053)], // pale yellow to coral
+  [Color(0xFFd3cce3), Color(0xFFe9e4f0)], // lavender white
+  [Color(0xFFa1c4fd), Color(0xFFc2e9fb)], // clean sky
+];
+
   late AnimationController _animationController;
   late Animation<Offset> _usernameSlide;
   late Animation<Offset> _emailSlide;
@@ -220,6 +258,8 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final colorProvider = Provider.of<ColorProvider>(context);
+
 
     return Scaffold(
       appBar: PreferredSize(
@@ -236,14 +276,15 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
                   flexibleSpace: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: themeProvider.isDarkMode
-                            ? [Colors.grey[900]!, Colors.black]
-                            : [Color(0xFF6A11CB), Color(0xFF2575FC)],
+                       colors: themeProvider.isDarkMode
+    ? [Colors.grey[900]!, Colors.black]
+    : [colorProvider.primaryColor, colorProvider.primaryColor.withOpacity(0.9)],
+
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       borderRadius:
-                          BorderRadius.vertical(bottom: Radius.circular(25)),
+                          const BorderRadius.vertical(bottom: Radius.circular(25)),
                     ),
                   ),
                   centerTitle: true,
@@ -821,8 +862,57 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
                               ),
                             ),
                           ],
+                          
                         ),
                       ],
+                      Padding(
+  padding: const EdgeInsets.only(top: 20.0, bottom: 10),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        'Choose Theme Color:',
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+      ),
+      const SizedBox(height: 10),
+     Wrap(
+  spacing: 10,
+  runSpacing: 10,
+  children: gradientThemes.map((gradientColors) {
+    return GestureDetector(
+      onTap: () {
+        colorProvider.setPrimaryColor(gradientColors[0]); // Base color for app-wide usage
+      },
+      child: Container(
+        width: 50,
+        height: 50,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: gradientColors,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: colorProvider.primaryColor == gradientColors[0]
+                ? Colors.black
+                : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: colorProvider.primaryColor == gradientColors[0]
+            ? const Icon(Icons.check, color: Colors.white)
+            : null,
+      ),
+    );
+  }).toList(),
+),
+
+
+    ],
+  ),
+),
+
                       const SizedBox(height: 30.0),
                       ElevatedButton.icon(
                         onPressed: () {
@@ -839,6 +929,7 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
                             });
                           });
                         },
+                        
                         icon: const Icon(Icons.check_circle_outline,
                             color: Colors.white),
                         label: const Text(
@@ -849,7 +940,7 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
                               color: Colors.white),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
+                     backgroundColor: colorProvider.primaryColor,
                           padding: const EdgeInsets.symmetric(
                               horizontal: 30, vertical: 15),
                           shape: RoundedRectangleBorder(

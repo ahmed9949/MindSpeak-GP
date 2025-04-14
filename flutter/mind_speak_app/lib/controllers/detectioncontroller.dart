@@ -147,7 +147,7 @@ import 'package:http/http.dart' as http;
 
 class DetectionController with ChangeNotifier {
   final FirebaseFirestore _firestore;
-  bool _aiServicesAvailable = true;
+  final bool _aiServicesAvailable = true;
 
   DetectionController({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;

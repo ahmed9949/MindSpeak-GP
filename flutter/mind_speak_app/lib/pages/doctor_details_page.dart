@@ -198,8 +198,8 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
               ),
             ),
             const SizedBox(height: 32),
-            Center(
-              child: const Text(
+            const Center(
+              child: Text(
                 'Delete Account',
                 style: TextStyle(
                   fontSize: 22,

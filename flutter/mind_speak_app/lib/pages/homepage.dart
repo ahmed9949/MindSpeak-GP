@@ -666,14 +666,14 @@ class _HomePageState extends State<HomePage> {
                                                 Colors.blueGrey.shade700,
                                               ]
                                             : [
-                                                Color(0xFFFFC1CC),
-                                                Color(0xFFBDE0FE),
+                                                const Color(0xFFFFC1CC),
+                                                const Color(0xFFBDE0FE),
                                               ],
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                       ),
                                       borderRadius: BorderRadius.circular(20),
-                                      boxShadow: [
+                                      boxShadow: const [
                                         BoxShadow(
                                           color: Colors.black12,
                                           blurRadius: 10,

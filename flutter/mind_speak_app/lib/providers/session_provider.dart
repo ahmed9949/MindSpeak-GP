@@ -168,7 +168,7 @@ class SessionProvider extends ChangeNotifier {
           .get();
 
       _sessionDataList = snapshot.docs
-          .map((doc) => doc.data() as Map<String, dynamic>)
+          .map((doc) => doc.data())
           .toList();
 
       notifyListeners();

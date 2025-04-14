@@ -214,11 +214,10 @@ class _LogInState extends State<LogIn> with SingleTickerProviderStateMixin {
                                           vertical: 13.0, horizontal: 30.0),
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
-                                          colors: [
-                                            colorProvider.primaryColor
-                                                .withOpacity(0.8),
-                                            colorProvider.primaryColor,
-                                          ],
+                                          colors: themeProvider.isDarkMode
+    ? [Colors.grey[900]!, Colors.black]
+    : [colorProvider.primaryColor, colorProvider.primaryColor.withOpacity(0.9)],
+
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
                                         ),
@@ -374,7 +373,7 @@ class _LogInState extends State<LogIn> with SingleTickerProviderStateMixin {
       decoration: BoxDecoration(
         gradient: isDark
             ? null
-            : LinearGradient(
+            : const LinearGradient(
                 colors: [
                   Color(0xFFFFFCF9),
                   Color(0xFFFDEBD0),

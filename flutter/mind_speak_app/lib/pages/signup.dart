@@ -20,36 +20,36 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
 
 
   final List<List<Color>> gradientThemes = [
-  [Color(0xFFF9CFA5), Color(0xFFFCE38A)], // peachy yellow
-  [Color(0xFF42E695), Color(0xFF3BB2B8)], // mint to teal
-  [Color(0xFFFCE38A), Color(0xFFF38181)], // yellow to soft red
-  [Color(0xFF00C9FF), Color(0xFF92FE9D)], // sky blue to green
-  [Color(0xFF7F00FF), Color(0xFFE100FF)], // purple to pink
-  [Color(0xFF6A11CB), Color(0xFF2575FC)], // indigo to blue
-  [Color(0xFFFFA17F), Color(0xFF00223E)], // sunset orange to navy
-  [Color(0xFFF7971E), Color(0xFFFFD200)], // orange to yellow
-  [Color(0xFF614385), Color(0xFF516395)], // violet to soft blue
-  [Color(0xFF00B4DB), Color(0xFF0083B0)], // blue ocean
-  [Color(0xFF4568DC), Color(0xFFB06AB3)], // purple blend
-  [Color(0xFFFF512F), Color(0xFFDD2476)], // coral pink
-  [Color(0xFFDA4453), Color(0xFF89216B)], // red to dark magenta
-  [Color(0xFFBBD2C5), Color(0xFF536976)], // soft white to grey
-  [Color(0xFF0F2027), Color(0xFF2C5364)], // dark grays
-  [Color(0xFFFF5F6D), Color(0xFFFFC371)], // pink to yellow
-  [Color(0xFF4CA1AF), Color(0xFFC4E0E5)], // teal ice
-  [Color(0xFFFFB75E), Color(0xFFED8F03)], // golden orange
-  [Color(0xFF83A4D4), Color(0xFFB6FBFF)], // light blue
-  [Color(0xFF2193B0), Color(0xFF6DD5ED)], // clean blue
-  [Color(0xFFE65C00), Color(0xFFF9D423)], // orange to light gold
-  [Color(0xFF1E9600), Color(0xFFFFF200)], // lime to yellow
-  [Color(0xFFFFEFBA), Color(0xFFFFFFD5)], // soft cream
-  [Color(0xFF8E2DE2), Color(0xFF4A00E0)], // violet electric
-  [Color(0xFF373B44), Color(0xFF4286f4)], // grey to royal blue
-  [Color(0xFFff9966), Color(0xFFff5e62)], // peach blend
-  [Color(0xFF00F260), Color(0xFF0575E6)], // neon green to blue
-  [Color(0xFFe1eec3), Color(0xFFf05053)], // pale yellow to coral
-  [Color(0xFFd3cce3), Color(0xFFe9e4f0)], // lavender white
-  [Color(0xFFa1c4fd), Color(0xFFc2e9fb)], // clean sky
+  [const Color(0xFFF9CFA5), const Color(0xFFFCE38A)], // peachy yellow
+  [const Color(0xFF42E695), const Color(0xFF3BB2B8)], // mint to teal
+  [const Color(0xFFFCE38A), const Color(0xFFF38181)], // yellow to soft red
+  [const Color(0xFF00C9FF), const Color(0xFF92FE9D)], // sky blue to green
+  [const Color(0xFF7F00FF), const Color(0xFFE100FF)], // purple to pink
+  [const Color(0xFF6A11CB), const Color(0xFF2575FC)], // indigo to blue
+  [const Color(0xFFFFA17F), const Color(0xFF00223E)], // sunset orange to navy
+  [const Color(0xFFF7971E), const Color(0xFFFFD200)], // orange to yellow
+  [const Color(0xFF614385), const Color(0xFF516395)], // violet to soft blue
+  [const Color(0xFF00B4DB), const Color(0xFF0083B0)], // blue ocean
+  [const Color(0xFF4568DC), const Color(0xFFB06AB3)], // purple blend
+  [const Color(0xFFFF512F), const Color(0xFFDD2476)], // coral pink
+  [const Color(0xFFDA4453), const Color(0xFF89216B)], // red to dark magenta
+  [const Color(0xFFBBD2C5), const Color(0xFF536976)], // soft white to grey
+  [const Color(0xFF0F2027), const Color(0xFF2C5364)], // dark grays
+  [const Color(0xFFFF5F6D), const Color(0xFFFFC371)], // pink to yellow
+  [const Color(0xFF4CA1AF), const Color(0xFFC4E0E5)], // teal ice
+  [const Color(0xFFFFB75E), const Color(0xFFED8F03)], // golden orange
+  [const Color(0xFF83A4D4), const Color(0xFFB6FBFF)], // light blue
+  [const Color(0xFF2193B0), const Color(0xFF6DD5ED)], // clean blue
+  [const Color(0xFFE65C00), const Color(0xFFF9D423)], // orange to light gold
+  [const Color(0xFF1E9600), const Color(0xFFFFF200)], // lime to yellow
+  [const Color(0xFFFFEFBA), const Color(0xFFFFFFD5)], // soft cream
+  [const Color(0xFF8E2DE2), const Color(0xFF4A00E0)], // violet electric
+  [const Color(0xFF373B44), const Color(0xFF4286f4)], // grey to royal blue
+  [const Color(0xFFff9966), const Color(0xFFff5e62)], // peach blend
+  [const Color(0xFF00F260), const Color(0xFF0575E6)], // neon green to blue
+  [const Color(0xFFe1eec3), const Color(0xFFf05053)], // pale yellow to coral
+  [const Color(0xFFd3cce3), const Color(0xFFe9e4f0)], // lavender white
+  [const Color(0xFFa1c4fd), const Color(0xFFc2e9fb)], // clean sky
 ];
 
   late AnimationController _animationController;
@@ -914,42 +914,62 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
 ),
 
                       const SizedBox(height: 30.0),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            isLoading = true;
-                          });
-                          _signUpController.registration().then((_) {
-                            setState(() {
-                              isLoading = false;
-                            });
-                          }).catchError((error) {
-                            setState(() {
-                              isLoading = false;
-                            });
-                          });
-                        },
-                        
-                        icon: const Icon(Icons.check_circle_outline,
-                            color: Colors.white),
-                        label: const Text(
-                          "Register",
-                          style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                     backgroundColor: colorProvider.primaryColor,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 30, vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          elevation: 6,
-                          shadowColor: Colors.blueAccent.withOpacity(0.5),
-                        ),
-                      ),
+                      Container(
+  decoration: BoxDecoration(
+    gradient: LinearGradient(
+      colors: themeProvider.isDarkMode
+          ? [Colors.grey[900]!, Colors.black]
+          : [
+              colorProvider.primaryColor,
+              colorProvider.primaryColor.withOpacity(0.9)
+            ],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    borderRadius: BorderRadius.circular(30),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.blueAccent.withOpacity(0.5),
+        blurRadius: 6,
+        offset: Offset(0, 3),
+      ),
+    ],
+  ),
+  child: ElevatedButton.icon(
+    onPressed: () {
+      setState(() {
+        isLoading = true;
+      });
+      _signUpController.registration().then((_) {
+        setState(() {
+          isLoading = false;
+        });
+      }).catchError((error) {
+        setState(() {
+          isLoading = false;
+        });
+      });
+    },
+    icon: const Icon(Icons.check_circle_outline, color: Colors.white),
+    label: const Text(
+      "Register",
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+      ),
+    ),
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Colors.transparent,
+      shadowColor: Colors.transparent,
+      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(30),
+      ),
+    ),
+  ),
+),
+
                       const SizedBox(height: 20.0),
                       GestureDetector(
                         onTap: () {

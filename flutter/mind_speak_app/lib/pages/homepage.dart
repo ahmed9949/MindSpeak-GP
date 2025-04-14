@@ -644,6 +644,78 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ),
                               const SizedBox(height: 20),
+                              Consumer<SessionProvider>(
+                                builder: (context, sessionProvider, _) {
+                                  final sessionCount =
+                                      sessionProvider.thisWeekSessionCount;
+                                  final improvementText = sessionCount >= 3
+                                      ? "Great progress this week!"
+                                      : sessionCount > 0
+                                          ? "Keep practicing together."
+                                          : "Start a session to begin tracking.";
+
+                                  final isDark = themeProvider.isDarkMode;
+
+                                  return Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: isDark
+                                            ? [
+                                                Colors.blueGrey.shade800,
+                                                Colors.blueGrey.shade700,
+                                              ]
+                                            : [
+                                                Color(0xFFFFC1CC),
+                                                Color(0xFFBDE0FE),
+                                              ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black12,
+                                          blurRadius: 10,
+                                          offset: Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.insights,
+                                            size: 40, color: Colors.white),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                "Child Progress",
+                                                style: TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                "Sessions this week: $sessionCount\n$improvementText",
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.white
+                                                      .withOpacity(0.9),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
                             ],
                           ),
                         ),

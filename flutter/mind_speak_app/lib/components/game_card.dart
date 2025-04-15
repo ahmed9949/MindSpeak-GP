@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/service/avatarservice/game_image_service.dart';
-import 'dart:math';
+import 'package:mind_speak_app/service/avatarservice/chatgptttsservice.dart';
 
 class MiniGameCard extends StatefulWidget {
   final String category;
   final String type;
   final Function(int) onCorrect;
   final Function() onFinished;
+  final ChatGptTtsService ttsService;
+  final Future<void> Function()? onImagesLoaded;
 
   const MiniGameCard({
     super.key,
@@ -14,6 +16,8 @@ class MiniGameCard extends StatefulWidget {
     required this.type,
     required this.onCorrect,
     required this.onFinished,
+    required this.ttsService,
+    this.onImagesLoaded,
   });
 
   @override
@@ -22,6 +26,8 @@ class MiniGameCard extends StatefulWidget {
 
 class _MiniGameCardState extends State<MiniGameCard> {
   final GameImageService _imageService = GameImageService();
+  final ChatGptTtsService _ttsService = ChatGptTtsService();
+
   List<String> imageUrls = [];
   int correctIndex = 0;
   bool isLoading = true;
@@ -35,16 +41,18 @@ class _MiniGameCardState extends State<MiniGameCard> {
 
   Future<void> loadImages() async {
     setState(() => isLoading = true);
-
     try {
       final images =
-          await _imageService.getTwoRandomImages(widget.category, widget.type);
-      correctIndex = Random().nextInt(2);
+          await _imageService.getTwoLabeledImages(widget.category, widget.type);
 
-      setState(() {
-        imageUrls = images;
-        isLoading = false;
-      });
+      correctIndex = images.indexWhere((img) => img['isCorrect']);
+      imageUrls = images.map((img) => img['url'] as String).toList();
+
+      setState(() => isLoading = false);
+
+      // ✅ Only speak now, AFTER images are loaded
+      final instruction = "فين الـ ${widget.type.toLowerCase()}؟";
+      await widget.ttsService.speak(instruction);
     } catch (e) {
       setState(() => isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -56,13 +64,17 @@ class _MiniGameCardState extends State<MiniGameCard> {
     }
   }
 
-  void handleSelection(int index) {
+  void handleSelection(int index) async {
     setState(() => hasSelected = true);
 
+    if (index == correctIndex) {
+      await _ttsService.speak("شاطر جدًا، إجابة صحيحة!");
+      widget.onCorrect(1);
+    } else {
+      await _ttsService.speak("قربت! المرة الجاية هتعرفها");
+    }
+
     Future.delayed(const Duration(seconds: 1), () {
-      if (index == correctIndex) {
-        widget.onCorrect(1); // 1 point
-      }
       widget.onFinished();
       Navigator.pop(context);
     });

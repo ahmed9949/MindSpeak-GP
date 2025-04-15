@@ -10,6 +10,7 @@ import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:image/image.dart' as img;
 import 'package:mind_speak_app/controllers/detectioncontroller.dart';
+import 'package:mind_speak_app/service/avatarservice/game_image_service.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -59,6 +60,8 @@ class _SessionViewState extends State<SessionView> {
   String? _childName;
   String? _voiceEmotion;
   String? _facialEmotion;
+
+  int _totalScore = 0;
 
   @override
   void initState() {
@@ -485,7 +488,21 @@ class _SessionViewState extends State<SessionView> {
     if (mounted) Navigator.pop(context);
   }
 
-  void _showMiniGame() {
+  Future<void> _showRandomMiniGame() async {
+    final categories = ['Animals', 'Fruits', 'Body_Parts'];
+    final selectedCategory = categories[Random().nextInt(categories.length)];
+
+    final imageService = GameImageService();
+    final types = await imageService.getTypesInCategory(selectedCategory);
+
+    if (types.isEmpty) {
+      debugPrint("⚠️ No types found in category $selectedCategory");
+      return;
+    }
+
+    final selectedType = types[Random().nextInt(types.length)];
+    final prompt = "فين صورة الـ ${selectedType.toLowerCase()}؟";
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -493,16 +510,25 @@ class _SessionViewState extends State<SessionView> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => MiniGameCard(
-        category: 'Animals', // or Fruits, Body_Parts
-        type: 'Cat', // or Elephant, Mango, etc.
-        onCorrect: (points) {
-          debugPrint('✅ Correct! Points awarded: $points');
-        },
-        onFinished: () {
-          debugPrint('🎮 Mini-game finished.');
-        },
-      ),
+      builder: (_) {
+        return MiniGameCard(
+          category: selectedCategory,
+          type: selectedType,
+          onCorrect: (points) {
+            setState(() {
+              _totalScore += points;
+            });
+            debugPrint('✅ Correct! Total points: $_totalScore');
+          },
+          onFinished: () {
+            debugPrint('🎮 Mini-game round finished');
+          },
+          onImagesLoaded: () async {
+            await _ttsService.speak(prompt); // Use existing instance
+          },
+          ttsService: _ttsService, // ✅ Add this line to fix the error
+        );
+      },
     );
   }
 
@@ -541,11 +567,21 @@ class _SessionViewState extends State<SessionView> {
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                child: Column(
                   children: [
-                    Text("Facial: ${_facialEmotion ?? 'Unknown'}"),
-                    Text("Voice: ${_voiceEmotion ?? 'Not analyzed'}"),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Text("Facial: ${_facialEmotion ?? 'Unknown'}"),
+                        Text("Voice: ${_voiceEmotion ?? 'Not analyzed'}"),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      "Total Points: $_totalScore",
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
                   ],
                 ),
               ),
@@ -580,7 +616,7 @@ class _SessionViewState extends State<SessionView> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   ElevatedButton.icon(
-                    onPressed: _showMiniGame,
+                    onPressed: _showRandomMiniGame,
                     icon: Icon(Icons.games),
                     label: Text("Play Game 🎮"),
                   ),

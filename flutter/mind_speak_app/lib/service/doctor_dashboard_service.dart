@@ -69,7 +69,7 @@ class DoctorDashboardService {
       }
 
       final doc = snapshot.docs.first;
-      final data = doc.data() as Map<String, dynamic>;
+      final data = doc.data();
       return TherapistModel.fromFirestore(data, doc.id);
     } catch (e) {
       throw Exception('Failed to fetch therapist info: $e');

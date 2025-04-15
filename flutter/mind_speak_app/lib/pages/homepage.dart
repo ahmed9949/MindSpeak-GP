@@ -9,8 +9,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mind_speak_app/pages/avatarpages/startsessioncl.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
-import 'package:mind_speak_app/service/avatarservice/TestViewTTs.dart';
 import 'package:provider/provider.dart';
+import 'package:mind_speak_app/providers/color_provider.dart';
+
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -24,6 +25,7 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> therapists = [];
   String? childPhoto;
   bool isLoading = true;
+  
 
   @override
   void initState() {
@@ -31,6 +33,7 @@ class _HomePageState extends State<HomePage> {
     fetchChildPhoto();
     _fetchTherapists();
   }
+  
 
   Future<void> fetchChildPhoto() async {
     try {
@@ -60,6 +63,7 @@ class _HomePageState extends State<HomePage> {
       print('Error fetching child photo: $e');
     }
   }
+  
 
   Future<void> _fetchTherapists() async {
     try {
@@ -117,6 +121,7 @@ class _HomePageState extends State<HomePage> {
         }
       }
 
+
       setState(() {
         therapists = tempTherapists;
         isLoading = false;
@@ -131,6 +136,7 @@ class _HomePageState extends State<HomePage> {
       });
     }
   }
+  
 
   void checkCarsFormAndStartSession(BuildContext context) async {
     final sessionProvider =
@@ -193,16 +199,8 @@ class _HomePageState extends State<HomePage> {
         return;
       }
 
+
       final rawData = carsSnapshot.docs.first.data();
-      if (rawData is! Map<String, dynamic>) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Invalid Cars form data.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
 
       final formStatus = rawData['status'] ?? false;
 
@@ -239,8 +237,10 @@ class _HomePageState extends State<HomePage> {
       );
     }
   }
+  
 
   Widget _buildTopCard(
+    
     BuildContext context,
     String title,
     String iconPath,
@@ -326,6 +326,8 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final colorProvider = Provider.of<ColorProvider>(context);
+
 
     return Scaffold(
       drawer: const NavigationDrawe(),
@@ -335,9 +337,9 @@ class _HomePageState extends State<HomePage> {
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: themeProvider.isDarkMode
-                  ? [Colors.grey[850]!, Colors.black]
-                  : [Colors.blue.shade400, Colors.deepPurple.shade400],
+                               colors: themeProvider.isDarkMode
+    ? [Colors.grey[900]!, Colors.black]
+    : [colorProvider.primaryColor, colorProvider.primaryColor.withOpacity(0.9)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -426,7 +428,7 @@ class _HomePageState extends State<HomePage> {
                       mainAxisAlignment: MainAxisAlignment
                           .center, // Center the items horizontally
                       children: [
-                        SizedBox(
+                        const SizedBox(
                             width:
                                 35), // Add padding to the left side for spacing
                         _buildTopCard(
@@ -436,7 +438,7 @@ class _HomePageState extends State<HomePage> {
                           const SearchPage(),
                           isDark: themeProvider.isDarkMode,
                         ),
-                        SizedBox(width: 20), // Add spacing between cards
+                        const SizedBox(width: 20), // Add spacing between cards
                         _buildTopCard(
                           context,
                           "3D Session",
@@ -444,7 +446,7 @@ class _HomePageState extends State<HomePage> {
                           const StartSessionPage(),
                           isDark: themeProvider.isDarkMode,
                         ),
-                        SizedBox(width: 20), // Add spacing between cards
+                        const SizedBox(width: 20), // Add spacing between cards
                         _buildTopCard(
                           context,
                           "Cars",
@@ -452,7 +454,7 @@ class _HomePageState extends State<HomePage> {
                           const CarsForm(),
                           isDark: themeProvider.isDarkMode,
                         ),
-                        SizedBox(width: 20), // Add spacing between cards
+                        const SizedBox(width: 20), // Add spacing between cards
                         _buildTopCard(
                           context,
                           "Profile",
@@ -460,7 +462,7 @@ class _HomePageState extends State<HomePage> {
                           ProfilePage(controller: ProfileController()),
                           isDark: themeProvider.isDarkMode,
                         ),
-                        SizedBox(
+                        const SizedBox(
                             width:
                                 20), // Add padding to the right side for spacing
                       ],
@@ -491,7 +493,7 @@ class _HomePageState extends State<HomePage> {
                     padding: EdgeInsets.symmetric(
                         horizontal: MediaQuery.of(context).size.width *
                             0.04), // Dynamic padding
-                    child: Row(
+                    child: const Row(
                       mainAxisAlignment: MainAxisAlignment
                           .spaceBetween, // Ensures even spacing between cards
                     ),
@@ -500,9 +502,9 @@ class _HomePageState extends State<HomePage> {
                     child: SingleChildScrollView(
                       // Wrapping the whole content to make it scrollable
                       child: Container(
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           color: Colors.transparent,
-                          borderRadius: const BorderRadius.only(
+                          borderRadius: BorderRadius.only(
                             topLeft: Radius.circular(20),
                             topRight: Radius.circular(20),
                           ),
@@ -664,14 +666,14 @@ class _HomePageState extends State<HomePage> {
                                                 Colors.blueGrey.shade700,
                                               ]
                                             : [
-                                                Color(0xFFFFC1CC),
-                                                Color(0xFFBDE0FE),
+                                                const Color(0xFFFFC1CC),
+                                                const Color(0xFFBDE0FE),
                                               ],
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                       ),
                                       borderRadius: BorderRadius.circular(20),
-                                      boxShadow: [
+                                      boxShadow: const [
                                         BoxShadow(
                                           color: Colors.black12,
                                           blurRadius: 10,

@@ -257,9 +257,9 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
           elevation: 5,
-          title: Row(
+          title: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
+            children: [
               Icon(Icons.account_circle_rounded, color: Colors.white, size: 30),
               SizedBox(width: 10),
               Text(
@@ -319,7 +319,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         child: ListTile(
                           title: Text(
                             'Name: ${parentData?['username'] ?? 'N/A'}',
-                            style: TextStyle(fontSize: 16),
+                            style: const TextStyle(fontSize: 16),
                           ),
                           subtitle: Text(
                             'Email: ${parentData?['email'] ?? 'N/A'}',
@@ -392,7 +392,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     ),
                                     title: Text(
                                       child['name'],
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
                                       ),
@@ -452,7 +452,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   child: ExpansionTile(
                                     title: Text(
                                       'Cars Form Trial ${car['trial']}',
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
                                       ),

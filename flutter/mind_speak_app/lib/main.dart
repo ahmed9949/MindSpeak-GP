@@ -9,6 +9,8 @@ import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:mind_speak_app/service/avatarservice/conversationsetup.dart';
 import 'package:provider/provider.dart';
 import 'providers/theme_provider.dart';
+// ✅ New import for color provider
+import 'providers/color_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +22,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
+        ChangeNotifierProvider(create: (context) => ColorProvider()), // ✅ Add this
         ChangeNotifierProvider(
             create: (context) => SessionProvider()..loadSession()),
         Provider<IAdminRepository>(
@@ -40,12 +43,29 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ThemeProvider>(
-      builder: (context, themeProvider, _) {
+    return Consumer2<ThemeProvider, ColorProvider>(
+      builder: (context, themeProvider, colorProvider, _) {
+        final baseTheme = themeProvider.isDarkMode
+            ? ThemeData.dark()
+            : ThemeData.light();
+
+        final updatedTheme = baseTheme.copyWith(
+          colorScheme: baseTheme.colorScheme.copyWith(
+            primary: colorProvider.primaryColor,
+          ),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colorProvider.primaryColor,
+            ),
+          ),
+          appBarTheme: baseTheme.appBarTheme.copyWith(
+            backgroundColor: colorProvider.primaryColor,
+          ),
+        );
+
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          theme:
-              themeProvider.isDarkMode ? ThemeData.dark() : ThemeData.light(),
+          theme: updatedTheme,
           home: const SplashScreen(),
         );
       },

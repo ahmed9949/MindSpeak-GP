@@ -484,20 +484,51 @@ class _SessionViewState extends State<SessionView> {
     if (mounted) Navigator.pop(context);
   }
 
+  int _currentLevel = 1;
+  final int _maxLevel = 3;
+  List<Map<String, dynamic>>? _cachedImages;
+  String? _cachedCategory;
+  String? _cachedType;
+
   Future<void> _showRandomMiniGame() async {
-    final categories = ['Animals', 'Fruits', 'Body_Parts'];
-    final selectedCategory = categories[Random().nextInt(categories.length)];
-
     final imageService = GameImageService();
-    final types = await imageService.getTypesInCategory(selectedCategory);
 
-    if (types.isEmpty) {
-      debugPrint("⚠️ No types found in category $selectedCategory");
-      return;
+    // If no cached challenge → create one
+    if (_cachedImages == null || _cachedImages!.isEmpty) {
+      final categories = ['Animals', 'Fruits', 'Body_Parts'];
+      final selectedCategory = categories[Random().nextInt(categories.length)];
+      final types = await imageService.getTypesInCategory(selectedCategory);
+
+      if (types.length < _currentLevel + 1) {
+        debugPrint("🚫 Not enough types for level $_currentLevel");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("❌ Not enough types for this level.")),
+        );
+        return;
+      }
+
+      final selectedType = types[Random().nextInt(types.length)];
+      final imageData = await imageService.getLabeledImages(
+        category: selectedCategory,
+        correctType: selectedType,
+        count: _currentLevel + 1, // level 1 = 2 images, etc.
+      );
+
+      if (imageData.length < _currentLevel + 1) {
+        debugPrint("🚫 Not enough images for level $_currentLevel");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("❌ Not enough images for this level.")),
+        );
+        return;
+      }
+
+      // Cache everything for retry
+      _cachedImages = imageData;
+      _cachedCategory = selectedCategory;
+      _cachedType = selectedType;
     }
 
-    final selectedType = types[Random().nextInt(types.length)];
-    final prompt = "فين صورة الـ ${selectedType.toLowerCase()}؟";
+    final prompt = "فين الـ ${_cachedType!.toLowerCase()}؟";
 
     showModalBottomSheet(
       context: context,
@@ -506,25 +537,32 @@ class _SessionViewState extends State<SessionView> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) {
-        return MiniGameCard(
-          category: selectedCategory,
-          type: selectedType,
-          onCorrect: (points) {
-            setState(() {
-              _totalScore += points;
-            });
-            debugPrint('✅ Correct! Total points: $_totalScore');
-          },
-          onFinished: () {
-            debugPrint('🎮 Mini-game round finished');
-          },
-          onImagesLoaded: () async {
-            await _ttsService.speak(prompt); // Use existing instance
-          },
-          ttsService: _ttsService, // ✅ Add this line to fix the error
-        );
-      },
+      builder: (_) => MiniGameCard(
+        category: _cachedCategory!,
+        type: _cachedType!,
+        level: _currentLevel + 1,
+        ttsService: _ttsService,
+        images: _cachedImages!,
+        onCorrect: (points) {
+          _totalScore += points;
+          _ttsService.speak("برافو! أحسنت");
+
+          setState(() {
+            if (_currentLevel < _maxLevel) _currentLevel++;
+            _cachedImages = null; // clear for next level
+          });
+
+          Future.delayed(const Duration(seconds: 1), _showRandomMiniGame);
+        },
+        onWrong: () {
+          _ttsService.speak("حاول تاني");
+          Navigator.pop(context); // 👈 Close current bottom sheet
+          Future.delayed(
+              const Duration(milliseconds: 1100), _showRandomMiniGame);
+        },
+
+        onFinished: () {}, // ✅ Add this to fix the missing required param
+      ),
     );
   }
 

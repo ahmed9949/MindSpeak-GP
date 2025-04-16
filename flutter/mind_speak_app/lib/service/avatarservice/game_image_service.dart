@@ -4,33 +4,36 @@ import 'package:firebase_storage/firebase_storage.dart';
 class GameImageService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  Future<List<Map<String, dynamic>>> getTwoLabeledImages(
-      String category, String correctType) async {
+  Future<List<Map<String, dynamic>>> getLabeledImages({
+    required String category,
+    required String correctType,
+    required int count,
+  }) async {
     final folderRef = _storage.ref().child(category);
     final typesResult = await folderRef.listAll();
     final allTypes = typesResult.prefixes.map((ref) => ref.name).toList();
 
     final distractorTypes = List<String>.from(allTypes)..remove(correctType);
-    if (distractorTypes.isEmpty) {
-      throw Exception("No distractor type found.");
-    }
+    distractorTypes.shuffle();
 
-    final distractorType =
-        distractorTypes[Random().nextInt(distractorTypes.length)];
+    final distractorPool = distractorTypes.take(count - 1).toList();
+
+    final imageItems = <Map<String, dynamic>>[];
 
     final correctImage = await getRandomImage(category, correctType);
-    final distractorImage = await getRandomImage(category, distractorType);
-
-    if (correctImage == null || distractorImage == null) {
-      throw Exception("Images missing in storage.");
+    if (correctImage != null) {
+      imageItems.add({'url': correctImage, 'isCorrect': true});
     }
 
-    final labeledImages = [
-      {'url': correctImage, 'isCorrect': true},
-      {'url': distractorImage, 'isCorrect': false}
-    ]..shuffle();
+    for (final type in distractorPool) {
+      final distractorImage = await getRandomImage(category, type);
+      if (distractorImage != null) {
+        imageItems.add({'url': distractorImage, 'isCorrect': false});
+      }
+    }
 
-    return labeledImages;
+    imageItems.shuffle();
+    return imageItems;
   }
 
   Future<String?> getRandomImage(String category, String type) async {
@@ -42,7 +45,6 @@ class GameImageService {
     return await randomRef.getDownloadURL();
   }
 
-  /// ✅ NEW: Get all available types in a given category (Animals, Fruits, etc.)
   Future<List<String>> getTypesInCategory(String category) async {
     final categoryRef = _storage.ref().child(category);
     final result = await categoryRef.listAll();

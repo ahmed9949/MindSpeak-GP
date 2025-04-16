@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/service/avatarservice/game_image_service.dart';
 import 'package:mind_speak_app/service/avatarservice/chatgptttsservice.dart';
@@ -5,19 +6,23 @@ import 'package:mind_speak_app/service/avatarservice/chatgptttsservice.dart';
 class MiniGameCard extends StatefulWidget {
   final String category;
   final String type;
+  final int level;
   final Function(int) onCorrect;
+  final Function() onWrong;
   final Function() onFinished;
   final ChatGptTtsService ttsService;
-  final Future<void> Function()? onImagesLoaded;
+  final List<Map<String, dynamic>>? images; // ✅ NEW: cached image support
 
   const MiniGameCard({
     super.key,
     required this.category,
     required this.type,
+    required this.level,
     required this.onCorrect,
+    required this.onWrong,
     required this.onFinished,
     required this.ttsService,
-    this.onImagesLoaded,
+    this.images,
   });
 
   @override
@@ -26,8 +31,6 @@ class MiniGameCard extends StatefulWidget {
 
 class _MiniGameCardState extends State<MiniGameCard> {
   final GameImageService _imageService = GameImageService();
-  final ChatGptTtsService _ttsService = ChatGptTtsService();
-
   List<String> imageUrls = [];
   int correctIndex = 0;
   bool isLoading = true;
@@ -36,21 +39,36 @@ class _MiniGameCardState extends State<MiniGameCard> {
   @override
   void initState() {
     super.initState();
-    loadImages();
+
+    // ✅ Use cached images if provided
+    if (widget.images != null && widget.images!.isNotEmpty) {
+      imageUrls = widget.images!.map((img) => img['url'] as String).toList();
+      correctIndex = widget.images!.indexWhere((img) => img['isCorrect']);
+      isLoading = false;
+
+      final instruction = "فين الـ ${widget.type.toLowerCase()}؟";
+      widget.ttsService.speak(instruction);
+    } else {
+      loadImages();
+    }
   }
 
   Future<void> loadImages() async {
     setState(() => isLoading = true);
     try {
-      final images =
-          await _imageService.getTwoLabeledImages(widget.category, widget.type);
+      final images = widget.images ??
+          await _imageService.getLabeledImages(
+            category: widget.category,
+            correctType: widget.type,
+            count: widget.level,
+          );
 
       correctIndex = images.indexWhere((img) => img['isCorrect']);
       imageUrls = images.map((img) => img['url'] as String).toList();
 
       setState(() => isLoading = false);
 
-      // ✅ Only speak now, AFTER images are loaded
+      // ✅ Speak AFTER images are ready
       final instruction = "فين الـ ${widget.type.toLowerCase()}؟";
       await widget.ttsService.speak(instruction);
     } catch (e) {
@@ -64,19 +82,17 @@ class _MiniGameCardState extends State<MiniGameCard> {
     }
   }
 
-  void handleSelection(int index) async {
+  void handleSelection(int index) {
     setState(() => hasSelected = true);
 
-    if (index == correctIndex) {
-      await _ttsService.speak("شاطر جدًا، إجابة صحيحة!");
-      widget.onCorrect(1);
-    } else {
-      await _ttsService.speak("قربت! المرة الجاية هتعرفها");
-    }
-
     Future.delayed(const Duration(seconds: 1), () {
-      widget.onFinished();
-      Navigator.pop(context);
+      if (index == correctIndex) {
+        widget.onCorrect(1); // ✅ passed
+        Navigator.pop(context); // close game
+      } else {
+        widget.onWrong(); // ❌ retry
+        // ⛔ do NOT close sheet
+      }
     });
   }
 
@@ -89,21 +105,22 @@ class _MiniGameCardState extends State<MiniGameCard> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  "Mini Game",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                Text(
+                  "Where is the ${widget.type.toLowerCase()}?",
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 10),
-                Text("Where is the ${widget.type.toLowerCase()}?"),
                 const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(2, (index) {
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 16,
+                  alignment: WrapAlignment.center,
+                  children: List.generate(imageUrls.length, (index) {
                     return GestureDetector(
                       onTap: () => handleSelection(index),
                       child: Container(
-                        height: 140,
-                        width: 140,
+                        height: 120,
+                        width: 120,
                         decoration: BoxDecoration(
                           border: Border.all(
                             color: hasSelected
@@ -126,6 +143,7 @@ class _MiniGameCardState extends State<MiniGameCard> {
                     );
                   }),
                 ),
+                const SizedBox(height: 20),
               ],
             ),
           );

@@ -1,7 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:mind_speak_app/service/avatarservice/game_image_service.dart';
 import 'package:mind_speak_app/service/avatarservice/chatgptttsservice.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class MiniGameCard extends StatefulWidget {
   final String category;
@@ -11,7 +13,7 @@ class MiniGameCard extends StatefulWidget {
   final Function() onWrong;
   final Function() onFinished;
   final ChatGptTtsService ttsService;
-  final List<Map<String, dynamic>>? images; // ✅ NEW: cached image support
+  final List<Map<String, dynamic>>? images;
 
   const MiniGameCard({
     super.key,
@@ -35,19 +37,21 @@ class _MiniGameCardState extends State<MiniGameCard> {
   int correctIndex = 0;
   bool isLoading = true;
   bool hasSelected = false;
+  bool showWinAnimation = false;
+  int? wrongIndex;
+  bool shake = false;
+  late final AudioPlayer _player;
 
   @override
   void initState() {
     super.initState();
+    _player = AudioPlayer();
 
-    // ✅ Use cached images if provided
     if (widget.images != null && widget.images!.isNotEmpty) {
       imageUrls = widget.images!.map((img) => img['url'] as String).toList();
       correctIndex = widget.images!.indexWhere((img) => img['isCorrect']);
       isLoading = false;
-
-      final instruction = "فين الـ ${widget.type.toLowerCase()}؟";
-      widget.ttsService.speak(instruction);
+      widget.ttsService.speak("فين الـ ${widget.type.toLowerCase()}؟");
     } else {
       loadImages();
     }
@@ -68,9 +72,7 @@ class _MiniGameCardState extends State<MiniGameCard> {
 
       setState(() => isLoading = false);
 
-      // ✅ Speak AFTER images are ready
-      final instruction = "فين الـ ${widget.type.toLowerCase()}؟";
-      await widget.ttsService.speak(instruction);
+      await widget.ttsService.speak("فين الـ ${widget.type.toLowerCase()}؟");
     } catch (e) {
       setState(() => isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -82,70 +84,130 @@ class _MiniGameCardState extends State<MiniGameCard> {
     }
   }
 
-  void handleSelection(int index) {
-    setState(() => hasSelected = true);
+  // MiniGameCard.dart
+  void handleSelection(int index) async {
+    if (hasSelected) return;
 
-    Future.delayed(const Duration(seconds: 1), () {
-      if (index == correctIndex) {
-        widget.onCorrect(1); // ✅ passed
-        Navigator.pop(context); // close game
-      } else {
-        widget.onWrong(); // ❌ retry
-        // ⛔ do NOT close sheet
+    setState(() {
+      hasSelected = true;
+      if (index != correctIndex) {
+        wrongIndex = index;
+        shake = true;
       }
     });
+
+    // 🔥 Removed delay or kept it very small for smoother effect
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    if (index == correctIndex) {
+      await _player.play(AssetSource('audio/correct-answer.wav'));
+      setState(() => showWinAnimation = true); // 🎉 Trigger immediately
+      await widget.ttsService.speak("برافو! أحسنت");
+
+      await Future.delayed(const Duration(seconds: 2)); // Show confetti
+
+      widget.onCorrect(1);
+      widget.onFinished();
+
+      if (context.mounted) Navigator.pop(context);
+    } else {
+      await _player.play(AssetSource('audio/wrong-answer.wav'));
+      await widget.ttsService.speak("حاول تاني");
+
+      setState(() {
+        shake = false;
+        hasSelected = false;
+      });
+      widget.onWrong();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  "Where is the ${widget.type.toLowerCase()}?",
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 20),
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
-                  alignment: WrapAlignment.center,
-                  children: List.generate(imageUrls.length, (index) {
-                    return GestureDetector(
-                      onTap: () => handleSelection(index),
-                      child: Container(
-                        height: 120,
-                        width: 120,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: hasSelected
-                                ? (index == correctIndex
-                                    ? Colors.green
-                                    : Colors.red)
-                                : Colors.transparent,
-                            width: 3,
+    return SafeArea(
+      child: SingleChildScrollView(
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "Where is the ${widget.type.toLowerCase()}?",
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: List.generate(imageUrls.length, (index) {
+                      return TweenAnimationBuilder<double>(
+                        tween: Tween<double>(
+                            begin: 0,
+                            end: (shake && index == wrongIndex) ? 1 : 0),
+                        duration: const Duration(milliseconds: 400),
+                        builder: (context, value, child) {
+                          final offset = sin(value * pi * 4) * 10;
+                          return Transform.translate(
+                            offset: Offset(offset, 0),
+                            child: child,
+                          );
+                        },
+                        child: GestureDetector(
+                          onTap: () => handleSelection(index),
+                          child: Container(
+                            height: 150,
+                            width: 150,
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: hasSelected
+                                    ? (index == correctIndex
+                                        ? Colors.green
+                                        : Colors.red)
+                                    : Colors.transparent,
+                                width: 3,
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: Image.network(
+                                imageUrls[index],
+                                fit: BoxFit.cover,
+                              ),
+                            ),
                           ),
-                          borderRadius: BorderRadius.circular(16),
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(14),
-                          child: Image.network(
-                            imageUrls[index],
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-                const SizedBox(height: 20),
-              ],
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 100),
+                ],
+              ),
             ),
-          );
+            if (showWinAnimation)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Lottie.asset('assets/more stars.json',
+                          height: 120, repeat: false),
+                      const SizedBox(height: 10),
+                      Lottie.asset('assets/Confetti.json',
+                          height: 160, repeat: false),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }

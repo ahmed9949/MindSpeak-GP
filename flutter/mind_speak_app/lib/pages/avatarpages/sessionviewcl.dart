@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:flutter_sound/flutter_sound.dart';
+import 'package:lottie/lottie.dart';
 import 'package:mind_speak_app/controllers/detectioncontroller.dart';
 import 'package:mind_speak_app/service/avatarservice/game_image_service.dart';
 import 'package:path_provider/path_provider.dart';
@@ -186,69 +188,6 @@ class _SessionViewState extends State<SessionView> {
       debugPrint('❌ Error capturing frame: $e');
     }
   }
-
-  // Future<void> _analyzeAllFrameData(File frame) async {
-  //   try {
-  //     final detectionData = <String, dynamic>{
-  //       'timestamp': DateTime.now().toIso8601String(),
-  //     };
-
-  //     // 👁️ 1. Eye Gaze Analysis (using base64)
-  //     try {
-  //       List<int> imageBytes = await frame.readAsBytes();
-  //       String base64Image = base64Encode(imageBytes);
-
-  //       // Analyze gaze using base64 image
-  //       final gazeResult = await _aiService.analyzeGazeFromBase64(base64Image);
-  //       if (gazeResult != null) {
-  //         detectionData['gaze'] = {
-  //           'status': gazeResult['focus_status'] ?? 'Unknown',
-  //           'focused_percentage': gazeResult['focused_percentage'] ?? 0,
-  //           'not_focused_percentage': gazeResult['not_focused_percentage'] ?? 0,
-  //         };
-  //       }
-  //     } catch (e) {
-  //       debugPrint('❌ Error in gaze detection: $e');
-  //     }
-
-  //     // 🔍 2. Behavior Detection
-  //     try {
-  //       final behaviorResult = await _aiService.analyzeBehavior(frame);
-  //       if (behaviorResult != null && behaviorResult['behavior'] != null) {
-  //         detectionData['behavior'] = behaviorResult['behavior'];
-  //       }
-  //     } catch (e) {
-  //       debugPrint('❌ Error in behavior detection: $e');
-  //     }
-
-  //     // 😊 3. Facial Emotion Detection
-  //     try {
-  //       final emotionResult = await _aiService.analyzeEmotionFromImage(frame);
-  //       if (emotionResult != null && emotionResult['emotion'] != null) {
-  //         detectionData['emotion'] = emotionResult['emotion'];
-  //         setState(() => _facialEmotion = emotionResult['emotion']);
-  //       }
-  //     } catch (e) {
-  //       debugPrint('❌ Error in emotion detection: $e');
-  //     }
-
-  //     // Log detection data
-  //     debugPrint('Detection data: ${jsonEncode(detectionData)}');
-
-  //     // ✅ Save to Firestore
-  //     if (_sessionId != null) {
-  //       await _detectionController.addDetection(
-  //         sessionId: _sessionId!,
-  //         detectionData: detectionData,
-  //       );
-  //     } else {
-  //       debugPrint('❌ Cannot save detection: No session ID available');
-  //     }
-  //   } catch (e, stackTrace) {
-  //     debugPrint('❌ Error in _analyzeAllFrameData: $e');
-  //     debugPrint('Stack trace: $stackTrace');
-  //   }
-  // }
 
   Future<void> _analyzeAllFrameData(File frame) async {
     try {
@@ -493,14 +432,12 @@ class _SessionViewState extends State<SessionView> {
   Future<void> _showRandomMiniGame() async {
     final imageService = GameImageService();
 
-    // If no cached challenge → create one
     if (_cachedImages == null || _cachedImages!.isEmpty) {
       final categories = ['Animals', 'Fruits', 'Body_Parts'];
       final selectedCategory = categories[Random().nextInt(categories.length)];
       final types = await imageService.getTypesInCategory(selectedCategory);
 
       if (types.length < _currentLevel + 1) {
-        debugPrint("🚫 Not enough types for level $_currentLevel");
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("❌ Not enough types for this level.")),
         );
@@ -511,57 +448,103 @@ class _SessionViewState extends State<SessionView> {
       final imageData = await imageService.getLabeledImages(
         category: selectedCategory,
         correctType: selectedType,
-        count: _currentLevel + 1, // level 1 = 2 images, etc.
+        count: _currentLevel + 1,
       );
 
       if (imageData.length < _currentLevel + 1) {
-        debugPrint("🚫 Not enough images for level $_currentLevel");
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("❌ Not enough images for this level.")),
         );
         return;
       }
 
-      // Cache everything for retry
       _cachedImages = imageData;
       _cachedCategory = selectedCategory;
       _cachedType = selectedType;
     }
 
-    final prompt = "فين الـ ${_cachedType!.toLowerCase()}؟";
+    final outerContext = context;
 
     showModalBottomSheet(
-      context: context,
+      context: outerContext,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => MiniGameCard(
-        category: _cachedCategory!,
-        type: _cachedType!,
-        level: _currentLevel + 1,
-        ttsService: _ttsService,
-        images: _cachedImages!,
-        onCorrect: (points) {
-          _totalScore += points;
-          _ttsService.speak("برافو! أحسنت");
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        builder: (_, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            padding: const EdgeInsets.all(12),
+            child: SingleChildScrollView(
+              controller: scrollController,
+              child: MiniGameCard(
+                category: _cachedCategory!,
+                type: _cachedType!,
+                level: _currentLevel + 1,
+                ttsService: _ttsService,
+                images: _cachedImages!,
+                onCorrect: (points) async {
+                  _totalScore += points;
 
-          setState(() {
-            if (_currentLevel < _maxLevel) _currentLevel++;
-            _cachedImages = null; // clear for next level
-          });
+                  setState(() {
+                    if (_currentLevel < _maxLevel) _currentLevel++;
+                    _cachedImages = null;
+                  });
 
-          Future.delayed(const Duration(seconds: 1), _showRandomMiniGame);
+                  // 🎉 Show level up animation and audio using overlay (non-blocking)
+                  final overlay = Overlay.of(outerContext);
+                  final overlayEntry = OverlayEntry(
+                    builder: (_) => Positioned.fill(
+                      child: Material(
+                        color: Colors.black.withOpacity(0.6),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Lottie.asset('assets/level up.json', height: 200),
+                            const SizedBox(height: 10),
+                            const Text(
+                              "Level Up!",
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+
+                  overlay.insert(overlayEntry);
+
+                  final levelUpPlayer = AudioPlayer();
+                  await levelUpPlayer.play(
+                    AssetSource('audio/completion-of-level.wav'),
+                  );
+
+                  await Future.delayed(const Duration(milliseconds: 900));
+                  overlayEntry.remove();
+
+                  await Future.delayed(const Duration(milliseconds: 200));
+                  _showRandomMiniGame(); // ⬅️ Continue to next level
+                },
+                onWrong: () {
+                  Navigator.pop(bottomSheetContext);
+                  Future.delayed(
+                      const Duration(milliseconds: 600), _showRandomMiniGame);
+                },
+                onFinished: () {},
+              ),
+            ),
+          );
         },
-        onWrong: () {
-          _ttsService.speak("حاول تاني");
-          Navigator.pop(context); // 👈 Close current bottom sheet
-          Future.delayed(
-              const Duration(milliseconds: 1100), _showRandomMiniGame);
-        },
-
-        onFinished: () {}, // ✅ Add this to fix the missing required param
       ),
     );
   }

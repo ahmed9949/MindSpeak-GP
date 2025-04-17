@@ -9,7 +9,6 @@ import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:mind_speak_app/service/avatarservice/conversationsetup.dart';
 import 'package:provider/provider.dart';
 import 'providers/theme_provider.dart';
-// ✅ New import for color provider
 import 'providers/color_provider.dart';
 
 void main() async {
@@ -22,7 +21,8 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
-        ChangeNotifierProvider(create: (context) => ColorProvider()), // ✅ Add this
+        ChangeNotifierProvider(
+            create: (context) => ColorProvider()), // ✅ Add this
         ChangeNotifierProvider(
             create: (context) => SessionProvider()..loadSession()),
         Provider<IAdminRepository>(
@@ -45,9 +45,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer2<ThemeProvider, ColorProvider>(
       builder: (context, themeProvider, colorProvider, _) {
-        final baseTheme = themeProvider.isDarkMode
-            ? ThemeData.dark()
-            : ThemeData.light();
+        final baseTheme =
+            themeProvider.isDarkMode ? ThemeData.dark() : ThemeData.light();
 
         final updatedTheme = baseTheme.copyWith(
           colorScheme: baseTheme.colorScheme.copyWith(

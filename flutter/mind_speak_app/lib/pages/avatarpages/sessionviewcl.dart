@@ -428,19 +428,23 @@ class _SessionViewState extends State<SessionView> {
   List<Map<String, dynamic>>? _cachedImages;
   String? _cachedCategory;
   String? _cachedType;
+  final AudioPlayer _levelUpPlayer = AudioPlayer(); // Reuse this
 
   Future<void> _showRandomMiniGame() async {
     final imageService = GameImageService();
 
+    // 🧠 Create a new mini-game challenge if no cached one exists
     if (_cachedImages == null || _cachedImages!.isEmpty) {
       final categories = ['Animals', 'Fruits', 'Body_Parts'];
       final selectedCategory = categories[Random().nextInt(categories.length)];
       final types = await imageService.getTypesInCategory(selectedCategory);
 
       if (types.length < _currentLevel + 1) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("❌ Not enough types for this level.")),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("❌ Not enough types for this level.")),
+          );
+        }
         return;
       }
 
@@ -452,9 +456,12 @@ class _SessionViewState extends State<SessionView> {
       );
 
       if (imageData.length < _currentLevel + 1) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("❌ Not enough images for this level.")),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text("❌ Not enough images for this level.")),
+          );
+        }
         return;
       }
 
@@ -492,12 +499,16 @@ class _SessionViewState extends State<SessionView> {
                 onCorrect: (points) async {
                   _totalScore += points;
 
+                  final isLastLevel = _currentLevel >= _maxLevel;
+
                   setState(() {
-                    if (_currentLevel < _maxLevel) _currentLevel++;
+                    if (!isLastLevel) _currentLevel++;
                     _cachedImages = null;
                   });
 
-                  // 🎉 Show level up animation and audio using overlay (non-blocking)
+                  Navigator.pop(bottomSheetContext);
+                  await Future.delayed(const Duration(milliseconds: 200));
+
                   final overlay = Overlay.of(outerContext);
                   final overlayEntry = OverlayEntry(
                     builder: (_) => Positioned.fill(
@@ -506,11 +517,16 @@ class _SessionViewState extends State<SessionView> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Lottie.asset('assets/level up.json', height: 200),
+                            Lottie.asset(
+                              isLastLevel
+                                  ? 'assets/celebration.json'
+                                  : 'assets/level up.json',
+                              height: 200,
+                            ),
                             const SizedBox(height: 10),
-                            const Text(
-                              "Level Up!",
-                              style: TextStyle(
+                            Text(
+                              isLastLevel ? "🎉 Well Done!" : "Level Up!",
+                              style: const TextStyle(
                                 fontSize: 26,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
@@ -524,21 +540,31 @@ class _SessionViewState extends State<SessionView> {
 
                   overlay.insert(overlayEntry);
 
-                  final levelUpPlayer = AudioPlayer();
-                  await levelUpPlayer.play(
-                    AssetSource('audio/completion-of-level.wav'),
-                  );
+                  final player = AudioPlayer();
+                  await Future.wait([
+                    player.play(AssetSource(
+                      isLastLevel
+                          ? 'audio/celebrationAudio.mp3'
+                          : 'audio/completion-of-level.wav',
+                    )),
+                    Future.delayed(const Duration(milliseconds: 1500)),
+                  ]);
 
-                  await Future.delayed(const Duration(milliseconds: 900));
                   overlayEntry.remove();
 
-                  await Future.delayed(const Duration(milliseconds: 200));
-                  _showRandomMiniGame(); // ⬅️ Continue to next level
+                  if (!isLastLevel) {
+                    await Future.delayed(const Duration(milliseconds: 300));
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _showRandomMiniGame();
+                    });
+                  }
                 },
                 onWrong: () {
                   Navigator.pop(bottomSheetContext);
                   Future.delayed(
-                      const Duration(milliseconds: 600), _showRandomMiniGame);
+                    const Duration(milliseconds: 600),
+                    _showRandomMiniGame,
+                  );
                 },
                 onFinished: () {},
               ),

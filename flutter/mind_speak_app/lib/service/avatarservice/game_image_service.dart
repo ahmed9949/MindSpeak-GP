@@ -17,23 +17,34 @@ class GameImageService {
     distractorTypes.shuffle();
 
     final distractorPool = distractorTypes.take(count - 1).toList();
-
     final imageItems = <Map<String, dynamic>>[];
 
-    final correctImage = await getRandomImage(category, correctType);
-    if (correctImage != null) {
-      imageItems.add({'url': correctImage, 'isCorrect': true});
-    }
+    // Prepare futures for all image fetches
+    final futures = <Future<Map<String, dynamic>?>>[];
 
+    // Correct image
+    futures.add(_getImageItem(category, correctType, true));
+
+    // Distractors
     for (final type in distractorPool) {
-      final distractorImage = await getRandomImage(category, type);
-      if (distractorImage != null) {
-        imageItems.add({'url': distractorImage, 'isCorrect': false});
-      }
+      futures.add(_getImageItem(category, type, false));
     }
 
+    final results = await Future.wait(futures);
+    imageItems.addAll(results.whereType<Map<String, dynamic>>());
     imageItems.shuffle();
     return imageItems;
+  }
+
+  Future<Map<String, dynamic>?> _getImageItem(
+      String category, String type, bool isCorrect) async {
+    final typeRef = _storage.ref().child('$category/$type');
+    final result = await typeRef.listAll();
+
+    if (result.items.isEmpty) return null;
+    final randomRef = result.items[Random().nextInt(result.items.length)];
+    final url = await randomRef.getDownloadURL();
+    return {'url': url, 'isCorrect': isCorrect};
   }
 
   Future<String?> getRandomImage(String category, String type) async {

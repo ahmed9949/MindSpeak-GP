@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mind_speak_app/controllers/SearchController.dart';
 import 'package:mind_speak_app/models/Therapist.dart';
 import 'package:mind_speak_app/models/User.dart';
+import 'package:mind_speak_app/providers/color_provider.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
@@ -29,144 +30,177 @@ class _SearchPageState extends State<SearchPage> {
     super.dispose();
   }
 
-  void _showTherapistDetails(TherapistModel therapist) async {
-    // Try to get user info from controller cache
-    UserModel? userInfo =
-        _controller.getUserForTherapist(therapist.therapistId);
+ void _showTherapistDetails(TherapistModel therapist) async {
+  final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+  final colorProvider = Provider.of<ColorProvider>(context, listen: false);
 
-    userInfo ??= await _controller.fetchUserForTherapist(therapist.therapistId);
+  UserModel? userInfo =
+      _controller.getUserForTherapist(therapist.therapistId);
 
-    if (!mounted) return;
+  userInfo ??= await _controller.fetchUserForTherapist(therapist.therapistId);
 
-    // Debug info
-    print('Showing details for therapist: ${therapist.therapistId}');
-    print('User info available: ${userInfo != null}');
-    if (userInfo != null) {
-      print('Username: ${userInfo.username}');
-      print('Email: ${userInfo.email}');
-    }
+  if (!mounted) return;
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (therapist.therapistImage.isNotEmpty)
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        double imageHeight = constraints.maxWidth * 0.6;
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.network(
-                            therapist.therapistImage,
-                            height: imageHeight,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                height: imageHeight,
-                                width: double.infinity,
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.person,
-                                    size: 100, color: Colors.grey),
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    )
-                  else
-                    Container(
-                      height: 200,
-                      width: double.infinity,
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.person,
-                          size: 100, color: Colors.grey),
-                    ),
-                  const SizedBox(height: 16),
-                  Text(
-                    userInfo?.username ?? 'Unknown',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      const Icon(Icons.email, color: Colors.blue),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          userInfo?.email ?? 'N/A',
-                          style: const TextStyle(fontSize: 16),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
+  print('Showing details for therapist: ${therapist.therapistId}');
+  print('User info available: ${userInfo != null}');
+  if (userInfo != null) {
+    print('Username: ${userInfo.username}');
+    print('Email: ${userInfo.email}');
+  }
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      return Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: themeProvider.isDarkMode
+                  ? [Colors.grey[900]!, Colors.black]
+                  : [
+                      colorProvider.primaryColor,
+                      colorProvider.primaryColor.withOpacity(0.9)
                     ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (therapist.therapistImage.isNotEmpty)
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      double imageHeight = constraints.maxWidth * 0.6;
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          therapist.therapistImage,
+                          height: imageHeight,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              height: imageHeight,
+                              width: double.infinity,
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.person,
+                                  size: 100, color: Colors.grey),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  )
+                else
+                  Container(
+                    height: 200,
+                    width: double.infinity,
+                    color: Colors.grey[300],
+                    child: const Icon(Icons.person, size: 100, color: Colors.grey),
                   ),
-                  if (userInfo != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.phone, color: Colors.green),
-                          const SizedBox(width: 8),
-                          Text(
-                            userInfo.phoneNumber.toString(),
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                        ],
+                const SizedBox(height: 16),
+                Text(
+                  userInfo?.username ?? 'Unknown',
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const Icon(Icons.email, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        userInfo?.email ?? 'N/A',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  const SizedBox(height: 16),
-                  Text(
-                    therapist.bio,
-                    style: const TextStyle(fontSize: 16, color: Colors.grey),
-                    textAlign: TextAlign.center,
+                  ],
+                ),
+                if (userInfo != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.phone, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Text(
+                          userInfo.phoneNumber.toString(),
+                          style: const TextStyle(fontSize: 16, color: Colors.white),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final sessionProvider =
-                          Provider.of<SessionProvider>(context, listen: false);
-                      final result = await _controller.assignTherapistToChild(
-                        therapist.therapistId,
-                        sessionProvider.userId,
-                      );
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(result)),
-                      );
-                      Navigator.pop(context);
-                    },
-                    child: const Text('Assign'),
+                const SizedBox(height: 16),
+                Text(
+                  therapist.bio,
+                  style: const TextStyle(fontSize: 16, color: Colors.white70),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: colorProvider.primaryColor,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Close'),
+                  onPressed: () async {
+                    final sessionProvider =
+                        Provider.of<SessionProvider>(context, listen: false);
+                    final result = await _controller.assignTherapistToChild(
+                      therapist.therapistId,
+                      sessionProvider.userId,
+                    );
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(result)),
+                    );
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Assign'),
+                ),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: colorProvider.primaryColor,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                ],
-              ),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ],
             ),
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDark = themeProvider.isDarkMode;
+    final colorProvider = Provider.of<ColorProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -174,9 +208,9 @@ class _SearchPageState extends State<SearchPage> {
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: isDark
-                  ? [Colors.grey[850]!, Colors.black]
-                  : [Colors.blue.shade400, Colors.deepPurple.shade400],
+               colors: themeProvider.isDarkMode
+    ? [Colors.grey[900]!, Colors.black]
+    : [colorProvider.primaryColor, colorProvider.primaryColor.withOpacity(0.9)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),

@@ -240,88 +240,87 @@ class _HomePageState extends State<HomePage> {
   
 
   Widget _buildTopCard(
-    
-    BuildContext context,
-    String title,
-    String iconPath,
-    Widget page, {
-    required bool isDark,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        final sessionProvider =
-            Provider.of<SessionProvider>(context, listen: false);
+  BuildContext context,
+  String title,
+  String iconPath,
+  Widget page,
+) {
+  final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+  final bool isDark = themeProvider.isDarkMode;
 
-        // ✅ Handle "3D Session" card with session check
-        if (title.toLowerCase() == "3d session") {
-          if (sessionProvider.isLoading) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("Loading user session..."),
-                backgroundColor: Colors.orange,
-              ),
-            );
-            return;
-          }
+  return GestureDetector(
+    onTap: () {
+      final sessionProvider = Provider.of<SessionProvider>(context, listen: false);
 
-          if (!sessionProvider.isLoggedIn || sessionProvider.userId == null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("Please log in to start a session."),
-                backgroundColor: Colors.red,
-              ),
-            );
-            return;
-          }
-
-          // ✅ Proceed to session validation
-          checkCarsFormAndStartSession(context);
-        } else {
-          // ✅ Navigate for other cards
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => page),
+      if (title.toLowerCase() == "3d session") {
+        if (sessionProvider.isLoading) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Loading user session..."),
+              backgroundColor: Colors.orange,
+            ),
           );
+          return;
         }
-      },
-      child: Column(
-        children: [
-          Container(
-            height: 60,
-            width: 60,
-            decoration: BoxDecoration(
-              color: isDark ? Colors.grey[800] : Colors.white,
-              borderRadius: BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color: isDark ? Colors.black26 : Colors.grey.withOpacity(0.2),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+
+        if (!sessionProvider.isLoggedIn || sessionProvider.userId == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Please log in to start a session."),
+              backgroundColor: Colors.red,
             ),
-            child: Center(
-              child: Image.asset(
-                iconPath,
-                height: 30,
-                width: 30,
-                color: isDark ? Colors.white : null,
+          );
+          return;
+        }
+
+        checkCarsFormAndStartSession(context);
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => page),
+        );
+      }
+    },
+    child: Column(
+      children: [
+        Container(
+          height: 60,
+          width: 60,
+          decoration: BoxDecoration(
+            color: isDark ? Colors.grey[850] : Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                color: isDark ? Colors.black26 : Colors.grey.withOpacity(0.2),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
+            ],
+          ),
+          child: Center(
+            child: Image.asset(
+              iconPath,
+              height: 30,
+              width: 30,
+              fit: BoxFit.contain,
+              // ❌ No color override to keep original image colors
             ),
           ),
-          const SizedBox(height: 5),
-          Text(
-            title,
-            style: TextStyle(
-              color: isDark ? Colors.white : Colors.black,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          title,
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -436,7 +435,6 @@ class _HomePageState extends State<HomePage> {
                           "Doctors",
                           "assets/doctor.png",
                           const SearchPage(),
-                          isDark: themeProvider.isDarkMode,
                         ),
                         const SizedBox(width: 20), // Add spacing between cards
                         _buildTopCard(
@@ -444,7 +442,6 @@ class _HomePageState extends State<HomePage> {
                           "3D Session",
                           "assets/predict.png",
                           const StartSessionPage(),
-                          isDark: themeProvider.isDarkMode,
                         ),
                         const SizedBox(width: 20), // Add spacing between cards
                         _buildTopCard(
@@ -452,7 +449,6 @@ class _HomePageState extends State<HomePage> {
                           "Cars",
                           "assets/cars.png",
                           const CarsForm(),
-                          isDark: themeProvider.isDarkMode,
                         ),
                         const SizedBox(width: 20), // Add spacing between cards
                         _buildTopCard(
@@ -460,7 +456,6 @@ class _HomePageState extends State<HomePage> {
                           "Profile",
                           "assets/profile.jpg",
                           ProfilePage(controller: ProfileController()),
-                          isDark: themeProvider.isDarkMode,
                         ),
                         const SizedBox(
                             width:

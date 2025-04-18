@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/controllers/ProfileController.dart';
 import 'package:mind_speak_app/pages/login.dart';
+import 'package:mind_speak_app/providers/color_provider.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:provider/provider.dart';
@@ -174,69 +175,105 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _showUpdateDialog(Map<String, dynamic> child) {
-    TextEditingController ageController =
-        TextEditingController(text: child['age'].toString());
-    TextEditingController interestController =
-        TextEditingController(text: child['childInterest']);
+  final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+  final colorProvider = Provider.of<ColorProvider>(context, listen: false);
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Update Child'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: ageController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Age'),
-                ),
-                TextField(
-                  controller: interestController,
-                  decoration: const InputDecoration(labelText: 'Interest'),
-                ),
-                const SizedBox(height: 10),
-                ElevatedButton.icon(
-                  onPressed: () => _pickImage(child['id']),
-                  icon: const Icon(Icons.image),
-                  label: const Text('Update Photo'),
-                ),
-              ],
+  TextEditingController ageController =
+      TextEditingController(text: child['age'].toString());
+  TextEditingController interestController =
+      TextEditingController(text: child['childInterest']);
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        titlePadding: EdgeInsets.zero,
+        title: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: themeProvider.isDarkMode
+                  ? [Colors.grey[900]!, Colors.black]
+                  : [
+                      colorProvider.primaryColor,
+                      colorProvider.primaryColor.withOpacity(0.9)
+                    ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+          child: const Text(
+            'Update Child',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
             ),
-            ElevatedButton(
-              onPressed: () {
-                if (!widget.controller.isValidAge(ageController.text)) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Age must be between 3 and 12'),
-                    backgroundColor: Colors.red,
-                  ));
-                  return;
-                }
-                updateChild(child['id'], {
-                  'age': int.parse(ageController.text),
-                  'childInterest': interestController.text.trim(),
-                });
-                Navigator.pop(context);
-              },
-              child: const Text('Update'),
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: ageController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Age'),
+              ),
+              TextField(
+                controller: interestController,
+                decoration: const InputDecoration(labelText: 'Interest'),
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton.icon(
+                onPressed: () => _pickImage(child['id']),
+                icon: const Icon(Icons.image),
+                label: const Text('Update Photo'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colorProvider.primaryColor,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (!widget.controller.isValidAge(ageController.text)) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('Age must be between 3 and 12'),
+                  backgroundColor: Colors.red,
+                ));
+                return;
+              }
+              updateChild(child['id'], {
+                'age': int.parse(ageController.text),
+                'childInterest': interestController.text.trim(),
+              });
+              Navigator.pop(context);
+            },
+            child: const Text('Update'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colorProvider.primaryColor,
+              foregroundColor: Colors.white,
             ),
-          ],
-        );
-      },
-    );
-  }
+          ),
+        ],
+      );
+    },
+  );
+}
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+        final colorProvider = Provider.of<ColorProvider>(context);
+
 
     return Scaffold(
         resizeToAvoidBottomInset: true,
@@ -246,8 +283,9 @@ class _ProfilePageState extends State<ProfilePage> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: themeProvider.isDarkMode
-                    ? [Colors.grey[850]!, Colors.black]
-                    : [Colors.blue.shade400, Colors.deepPurple.shade400],
+    ? [Colors.grey[900]!, Colors.black]
+    : [colorProvider.primaryColor, colorProvider.primaryColor.withOpacity(0.9)],
+
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),

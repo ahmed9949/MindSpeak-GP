@@ -8,6 +8,7 @@ import 'package:mind_speak_app/pages/predict.dart';
 import 'package:mind_speak_app/pages/avatarpages/aggregatestats.dart';
 import 'package:mind_speak_app/pages/avatarpages/sessionreportCL.dart';
 import 'package:mind_speak_app/pages/logout.dart';
+import 'package:mind_speak_app/providers/color_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
@@ -58,6 +59,7 @@ class _NavigationDraweState extends State<NavigationDrawe> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+     final colorProvider = Provider.of<ColorProvider>(context);
     final isDark = themeProvider.isDarkMode;
 
     final backgroundColor = isDark ? Colors.grey[900] : Colors.white;
@@ -74,9 +76,12 @@ class _NavigationDraweState extends State<NavigationDrawe> {
               // ✅ Remove const
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: themeProvider.isDarkMode
-                      ? [Colors.grey[850]!, Colors.black]
-                      : [Colors.blue.shade400, Colors.deepPurple.shade400],
+               colors: themeProvider.isDarkMode
+          ? [Colors.grey[900]!, Colors.black]
+          : [
+              colorProvider.primaryColor,
+              colorProvider.primaryColor.withOpacity(0.9)
+            ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mind_speak_app/providers/color_provider.dart';
+import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -184,71 +186,94 @@ class _CategorySelectionPageState extends State<CarsForm> {
   }
 
   void showCustomPopup(BuildContext context, String message) {
-    final overlay = Overlay.of(context);
+  final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+  final colorProvider = Provider.of<ColorProvider>(context, listen: false);
+  final overlay = Overlay.of(context);
 
-    // Declare the overlayEntry with a placeholder
-    OverlayEntry? overlayEntry;
-    overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        top: MediaQuery.of(context).size.height / 3,
-        left: MediaQuery.of(context).size.width / 10,
-        width: MediaQuery.of(context).size.width * 0.8,
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8.0),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 10,
-                  offset: Offset(0, 5),
-                ),
-              ],
+  OverlayEntry? overlayEntry;
+  overlayEntry = OverlayEntry(
+    builder: (context) => Positioned(
+      top: MediaQuery.of(context).size.height / 3,
+      left: MediaQuery.of(context).size.width / 10,
+      width: MediaQuery.of(context).size.width * 0.8,
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: themeProvider.isDarkMode
+                  ? [Colors.grey[900]!, Colors.black]
+                  : [
+                      colorProvider.primaryColor,
+                      colorProvider.primaryColor.withOpacity(0.9)
+                    ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'نتيجة التشخيص',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
+            borderRadius: BorderRadius.circular(8.0),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 10,
+                offset: Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'نتيجة التشخيص',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Colors.white,
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  message,
-                  textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: themeProvider.isDarkMode
+                      ? Colors.black
+                      : colorProvider.primaryColor,
                 ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    overlayEntry?.remove();
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (context) => const HomePage()),
-                      (route) => false,
-                    );
-                  },
-                  child: const Text('حسنًا'),
-                ),
-              ],
-            ),
+                onPressed: () {
+                  overlayEntry?.remove();
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const HomePage()),
+                    (route) => false,
+                  );
+                },
+                child: const Text('حسنًا'),
+              ),
+            ],
           ),
         ),
       ),
-    );
+    ),
+  );
 
-    overlay.insert(overlayEntry);
-  }
+  overlay.insert(overlayEntry);
+}
+
 
   @override
    Widget build(BuildContext context) {
+        final themeProvider = Provider.of<ThemeProvider>(context);
+
     
     final sessionProvider = Provider.of<SessionProvider>(context);
+        final colorProvider = Provider.of<ColorProvider>(context);
+
 
     return Scaffold(
       appBar: AppBar(
@@ -371,7 +396,10 @@ class _CategorySelectionPageState extends State<CarsForm> {
             }
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
+            backgroundColor: themeProvider.isDarkMode
+          ? Colors.grey[900]
+          : colorProvider.primaryColor,
+      foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 16.0),
           ),
           child: const Text(

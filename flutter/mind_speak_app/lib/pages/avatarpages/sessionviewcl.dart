@@ -8,6 +8,8 @@ import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:lottie/lottie.dart';
 import 'package:mind_speak_app/controllers/detectioncontroller.dart';
+import 'package:mind_speak_app/providers/color_provider.dart';
+import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/service/avatarservice/game_image_service.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
@@ -600,9 +602,30 @@ class _SessionViewState extends State<SessionView> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Therapy Session")),
+Widget build(BuildContext context) {
+  final themeProvider = Provider.of<ThemeProvider>(context);
+  final colorProvider = Provider.of<ColorProvider>(context);
+  final primaryColor = colorProvider.primaryColor;
+  final isDark = themeProvider.isDarkMode;
+
+  return Theme(
+    data: themeProvider.currentTheme,
+    child: Scaffold(
+      appBar: AppBar(
+        title: const Text("Therapy Session"),
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [Colors.grey[900]!, Colors.black]
+                  : [primaryColor, primaryColor.withOpacity(0.9)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+      ),
       body: Stack(
         children: [
           Column(
@@ -618,30 +641,35 @@ class _SessionViewState extends State<SessionView> {
                   ),
                 ),
               ),
-
-              // Optional: Emotion status display
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Column(
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        Text("Facial: ${_facialEmotion ?? 'Unknown'}"),
-                        Text("Voice: ${_voiceEmotion ?? 'Not analyzed'}"),
+                        Text(
+                          "Facial: ${_facialEmotion ?? 'Unknown'}",
+                          style: TextStyle(color: isDark ? Colors.white70 : Colors.black),
+                        ),
+                        Text(
+                          "Voice: ${_voiceEmotion ?? 'Not analyzed'}",
+                          style: TextStyle(color: isDark ? Colors.white70 : Colors.black),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Text(
                       "Total Points: $_totalScore",
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 16),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
                     ),
                   ],
                 ),
               ),
-
               ElevatedButton(
                 onPressed: () async {
                   if (!_isListening) {
@@ -666,6 +694,10 @@ class _SessionViewState extends State<SessionView> {
                     setState(() => _isListening = false);
                   }
                 },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isDark ? Colors.grey[800] : primaryColor,
+                  foregroundColor: Colors.white,
+                ),
                 child: Text(_isListening ? "Recording..." : "Start Talking"),
               ),
               Row(
@@ -673,8 +705,12 @@ class _SessionViewState extends State<SessionView> {
                 children: [
                   ElevatedButton.icon(
                     onPressed: _showRandomMiniGame,
-                    icon: Icon(Icons.games),
-                    label: Text("Play Game 🎮"),
+                    icon: const Icon(Icons.games),
+                    label: const Text("Play Game 🎮"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDark ? Colors.grey[800] : primaryColor,
+                      foregroundColor: Colors.white,
+                    ),
                   ),
                   ElevatedButton.icon(
                     onPressed: _isSpeaking
@@ -686,27 +722,31 @@ class _SessionViewState extends State<SessionView> {
                         : null,
                     icon: const Icon(Icons.stop),
                     label: const Text("Stop TTS"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDark ? Colors.grey[800] : primaryColor,
+                      foregroundColor: Colors.white,
+                    ),
                   ),
                   ElevatedButton.icon(
                     onPressed: _endSession,
                     icon: const Icon(Icons.call_end),
                     label: const Text("End Call"),
-                    style:
-                        ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  )
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
                 ],
-              )
+              ),
             ],
           ),
-
-          // Hidden camera preview (for capturing frames)
           Positioned(
             bottom: 0,
             right: 0,
             child: Opacity(
-              opacity: 0.0, // Make invisible
+              opacity: 0.0,
               child: SizedBox(
-                width: 1, // Minimal size
+                width: 1,
                 height: 1,
                 child: _isCameraInitialized
                     ? CameraPreview(_cameraController)
@@ -716,6 +756,8 @@ class _SessionViewState extends State<SessionView> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 }

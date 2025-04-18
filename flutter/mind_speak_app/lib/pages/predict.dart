@@ -1,13 +1,16 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+import 'package:mind_speak_app/providers/theme_provider.dart';
+import 'package:mind_speak_app/providers/color_provider.dart';
 
 class ImageUploader {
   static Future<String?> uploadImage(File imageFile) async {
-    var url = 'http://172.20.10.3:5002/predict'; // Make sure to use the correct IP and port
+    var url = 'http://172.20.10.3:5002/predict'; // Update IP/port if needed
     var request = http.MultipartRequest('POST', Uri.parse(url));
     request.files.add(await http.MultipartFile.fromPath('file', imageFile.path));
 
@@ -63,62 +66,97 @@ class _PredictScreenState extends State<PredictScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Image Prediction',
-          style: GoogleFonts.rubik(
-            textStyle: const TextStyle(
-              fontSize: 20,
-              color: Colors.white,
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final colorProvider = Provider.of<ColorProvider>(context);
+    final primaryColor = colorProvider.primaryColor;
+
+    return Theme(
+      data: themeProvider.currentTheme,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Image Prediction',
+            style: GoogleFonts.rubik(
+              textStyle: const TextStyle(
+                fontSize: 20,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          elevation: 0,
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: themeProvider.isDarkMode
+                    ? [Colors.grey[900]!, Colors.black]
+                    : [primaryColor, primaryColor.withOpacity(0.9)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
           ),
         ),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            if (_imageFile != null)
-              Image.file(
-                _imageFile!,
-                height: MediaQuery.of(context).size.height * 0.5,
-              )
-            else
-              const Text('No image selected'),
-            const SizedBox(height: 20),
-            Row(
-  mainAxisAlignment: MainAxisAlignment.center,
-  children: [
-    Flexible(
-      child: ElevatedButton(
-        onPressed: () => pickImageAndUpload(context, ImageSource.gallery),
-        child: const Text('Select from Gallery'),
-      ),
-    ),
-    const SizedBox(width: 10), // Reduced spacing
-    Flexible(
-      child: ElevatedButton(
-        onPressed: () => pickImageAndUpload(context, ImageSource.camera),
-        child: const Text('Take a Picture'),
-      ),
-    ),
-  ],
-),
-
-            const SizedBox(height: 20),
-            if (_isLoading)
-              const CircularProgressIndicator()
-            else if (_prediction != null)
-              Text(
-                'Prediction: $_prediction',
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              if (_imageFile != null)
+                Image.file(
+                  _imageFile!,
+                  height: MediaQuery.of(context).size.height * 0.5,
+                )
+              else
+                Text(
+                  'No image selected',
+                  style: TextStyle(
+                    color: themeProvider.isDarkMode ? Colors.white70 : Colors.black,
+                  ),
                 ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: themeProvider.isDarkMode
+                            ? Colors.grey[800]
+                            : primaryColor,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => pickImageAndUpload(context, ImageSource.gallery),
+                      child: const Text('Select from Gallery'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: themeProvider.isDarkMode
+                            ? Colors.grey[800]
+                            : primaryColor,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => pickImageAndUpload(context, ImageSource.camera),
+                      child: const Text('Take a Picture'),
+                    ),
+                  ),
+                ],
               ),
-          ],
+              const SizedBox(height: 20),
+              if (_isLoading)
+                const CircularProgressIndicator()
+              else if (_prediction != null)
+                Text(
+                  'Prediction: $_prediction',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -126,5 +164,27 @@ class _PredictScreenState extends State<PredictScreen> {
 }
 
 void main() {
-  runApp(const MaterialApp(home: PredictScreen()));
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => ColorProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: themeProvider.currentTheme,
+      home: const PredictScreen(),
+    );
+  }
 }

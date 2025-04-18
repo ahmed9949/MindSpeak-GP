@@ -931,7 +931,7 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
       BoxShadow(
         color: Colors.blueAccent.withOpacity(0.5),
         blurRadius: 6,
-        offset: Offset(0, 3),
+        offset: const Offset(0, 3),
       ),
     ],
   ),

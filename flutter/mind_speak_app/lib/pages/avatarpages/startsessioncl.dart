@@ -169,6 +169,7 @@ Remember to:
     final themeProvider = Provider.of<ThemeProvider>(context);
     final colorProvider = Provider.of<ColorProvider>(context);
     final primaryColor = colorProvider.primaryColor;
+    final isDark = themeProvider.isDarkMode;
 
     return Theme(
       data: themeProvider.currentTheme,
@@ -179,12 +180,9 @@ Remember to:
           flexibleSpace: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: themeProvider.isDarkMode
+                colors: isDark
                     ? [Colors.grey[900]!, Colors.black]
-                    : [
-                        primaryColor,
-                        primaryColor.withOpacity(0.9),
-                      ],
+                    : [primaryColor, primaryColor.withOpacity(0.9)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -205,7 +203,8 @@ Remember to:
                     icon: const Icon(Icons.play_circle_outline),
                     label: const Text('Start Session'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryColor,
+                      backgroundColor:
+                          isDark ? Colors.grey[800] : primaryColor,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 32,

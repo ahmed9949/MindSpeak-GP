@@ -7,6 +7,7 @@ class SessionStatistics {
   final int wordsPerMessage;
   final int sessionNumber;
   final Map<String, dynamic>? detectionStats;
+  final Map<String, dynamic>? progress;
 
   SessionStatistics({
     required this.totalMessages,
@@ -17,6 +18,7 @@ class SessionStatistics {
     required this.wordsPerMessage,
     required this.sessionNumber,
     this.detectionStats,
+    this.progress,
   });
 
   Map<String, dynamic> toJson() {
@@ -29,6 +31,7 @@ class SessionStatistics {
       'wordsPerMessage': wordsPerMessage,
       'sessionNumber': sessionNumber,
       'detectionStats': detectionStats,
+      'progress': progress,
     };
   }
 

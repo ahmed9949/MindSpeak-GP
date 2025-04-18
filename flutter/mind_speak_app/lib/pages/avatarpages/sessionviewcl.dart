@@ -61,6 +61,10 @@ class _SessionViewState extends State<SessionView> {
 
   int _totalScore = 0;
 
+  int _correctAnswers = 0;
+  int _wrongAnswers = 0;
+  late DateTime _gameStartTime;
+
   @override
   void initState() {
     super.initState();
@@ -388,9 +392,17 @@ class _SessionViewState extends State<SessionView> {
         detectionData: summary,
       );
     }
-
+    print("👉 Ending session...");
     // End session and get stats
-    final stats = await sessionController.endSession({});
+    final stats = await sessionController.endSession(
+      {}, // detection stats
+      totalScore: _totalScore,
+      levelsCompleted: _currentLevel,
+      correctAnswers: _correctAnswers,
+      wrongAnswers: _wrongAnswers,
+      timeSpent: DateTime.now().difference(_gameStartTime).inSeconds,
+    );
+    print("✅ Session ended and stats saved!");
 
     // Generate recommendations
     final sessionData = await sessionController.getSessionById(_sessionId!);
@@ -432,7 +444,7 @@ class _SessionViewState extends State<SessionView> {
 
   Future<void> _showRandomMiniGame() async {
     final imageService = GameImageService();
-
+    _gameStartTime = DateTime.now(); // ⏱️ Track mini-game start time
     // 🧠 Create a new mini-game challenge if no cached one exists
     if (_cachedImages == null || _cachedImages!.isEmpty) {
       final categories = ['Animals', 'Fruits', 'Body_Parts'];
@@ -498,7 +510,7 @@ class _SessionViewState extends State<SessionView> {
                 images: _cachedImages!,
                 onCorrect: (points) async {
                   _totalScore += points;
-
+                  _correctAnswers++;
                   final isLastLevel = _currentLevel >= _maxLevel;
 
                   setState(() {
@@ -560,6 +572,7 @@ class _SessionViewState extends State<SessionView> {
                   }
                 },
                 onWrong: () {
+                  _wrongAnswers++;
                   Navigator.pop(bottomSheetContext);
                   Future.delayed(
                     const Duration(milliseconds: 600),

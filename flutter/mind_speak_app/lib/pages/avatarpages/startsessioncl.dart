@@ -1,10 +1,11 @@
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/Repositories/sessionrepoC.dart';
 import 'package:mind_speak_app/controllers/sessioncontrollerCl.dart';
 import 'package:mind_speak_app/pages/avatarpages/sessionviewcl.dart';
+import 'package:mind_speak_app/providers/color_provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
+import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/service/avatarservice/openai.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -90,64 +91,6 @@ Remember to:
 ''';
   }
 
-  // Future<void> _startSession() async {
-
-  //   setState(() {
-  //     _isLoading = true;
-  //     _errorMessage = null;
-  //   });
-
-  //   try {
-  //     final childId = Provider.of<SessionProvider>(context, listen: false).childId;
-  //     if (childId == null || childId.isEmpty) {
-  //       throw Exception('No child selected');
-  //     }
-
-  //     final childData = await _fetchChildData(childId);
-  //     if (childData == null) {
-  //       throw Exception('Failed to fetch child data');
-  //     }
-
-  //     final String therapistId = childData['therapistId'] ?? '';
-  //     await _sessionController.startSession(childId, therapistId);
-
-  //     final prompt = _generateInitialPrompt(childData);
-  //     final responseText = await _model.sendMessage(prompt);
-
-  //     if (responseText.isEmpty) {
-  //       throw Exception('Failed to generate initial response');
-  //     }
-
-  //     await _sessionController.addTherapistMessage(responseText);
-
-  //     if (mounted) {
-  //       Navigator.push(
-  //         context,
-  //         MaterialPageRoute(
-  //           builder: (context) => MultiProvider(
-  //             providers: [
-  //               ChangeNotifierProvider.value(value: _sessionController),
-  //               Provider.value(value: _analyzerController),
-  //             ],
-  //             child: SessionView(
-  //               initialPrompt: prompt,
-  //               initialResponse: responseText,
-  //               childData: childData,
-  //             ),
-  //           ),
-  //         ),
-  //       );
-  //     }
-  //   } catch (e) {
-  //     setState(() {
-  //       _errorMessage = 'Error starting session: $e';
-  //     });
-  //   } finally {
-  //     setState(() {
-  //       _isLoading = false;
-  //     });
-  //   }
-  // }
   Future<void> _startSession() async {
     setState(() {
       _isLoading = true;
@@ -177,10 +120,8 @@ Remember to:
       debugPrint(
           'Sending initial prompt to API: ${prompt.substring(0, min(100, prompt.length))}...');
 
-      // Clear any previous conversation history
       _model.clearConversation();
 
-      // Send initial prompt with child data for context
       final responseText =
           await _model.sendMessage(prompt, childData: childData);
 
@@ -200,7 +141,6 @@ Remember to:
               providers: [
                 ChangeNotifierProvider.value(value: _sessionController),
                 Provider.value(value: _analyzerController),
-                // Add the ChatGptModel provider to ensure it's available
                 Provider.value(value: _model),
               ],
               child: SessionView(
@@ -226,39 +166,66 @@ Remember to:
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Start Therapy Session'),
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (_isLoading)
-                const CircularProgressIndicator()
-              else
-                ElevatedButton.icon(
-                  onPressed: _startSession,
-                  icon: const Icon(Icons.play_circle_outline),
-                  label: const Text('Start Session'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 16,
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final colorProvider = Provider.of<ColorProvider>(context);
+    final primaryColor = colorProvider.primaryColor;
+
+    return Theme(
+      data: themeProvider.currentTheme,
+      child: Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          title: const Text('Start Therapy Session'),
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: themeProvider.isDarkMode
+                    ? [Colors.grey[900]!, Colors.black]
+                    : [
+                        primaryColor,
+                        primaryColor.withOpacity(0.9),
+                      ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (_isLoading)
+                  const CircularProgressIndicator()
+                else
+                  ElevatedButton.icon(
+                    onPressed: _startSession,
+                    icon: const Icon(Icons.play_circle_outline),
+                    label: const Text('Start Session'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
-                ),
-              if (_errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16),
-                  child: Text(
-                    _errorMessage!,
-                    style: const TextStyle(color: Colors.red),
+                if (_errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Text(
+                      _errorMessage!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

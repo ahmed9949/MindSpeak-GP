@@ -634,8 +634,8 @@ class _SessionViewState extends State<SessionView> {
                 children: [
                   ElevatedButton.icon(
                     onPressed: _showRandomMiniGame,
-                    icon: Icon(Icons.games),
-                    label: Text("Play Game 🎮"),
+                    icon: const Icon(Icons.games),
+                    label: const Text("Play Game 🎮"),
                   ),
                   ElevatedButton.icon(
                     onPressed: _isSpeaking

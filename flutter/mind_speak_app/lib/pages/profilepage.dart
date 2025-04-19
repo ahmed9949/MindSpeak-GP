@@ -257,11 +257,11 @@ class _ProfilePageState extends State<ProfilePage> {
               });
               Navigator.pop(context);
             },
-            child: const Text('Update'),
             style: ElevatedButton.styleFrom(
               backgroundColor: colorProvider.primaryColor,
               foregroundColor: Colors.white,
             ),
+            child: const Text('Update'),
           ),
         ],
       );

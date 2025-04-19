@@ -438,157 +438,289 @@ class _SessionViewState extends State<SessionView> {
   }
 
   int _currentLevel = 1;
-  final int _maxLevel = 3;
+  final int _maxLevel = 5;
   List<Map<String, dynamic>>? _cachedImages;
   String? _cachedCategory;
   String? _cachedType;
   final AudioPlayer _levelUpPlayer = AudioPlayer(); // Reuse this
 
-  Future<void> _showRandomMiniGame() async {
-    final imageService = GameImageService();
-    _gameStartTime = DateTime.now(); // ⏱️ Track mini-game start time
-    // 🧠 Create a new mini-game challenge if no cached one exists
-    if (_cachedImages == null || _cachedImages!.isEmpty) {
-      final categories = ['Animals', 'Fruits', 'Body_Parts'];
-      final selectedCategory = categories[Random().nextInt(categories.length)];
-      final types = await imageService.getTypesInCategory(selectedCategory);
 
-      if (types.length < _currentLevel + 1) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("❌ Not enough types for this level.")),
-          );
-        }
-        return;
-      }
+Future<void> _showRandomMiniGame() async {
+  final imageService = GameImageService();
+  _gameStartTime = DateTime.now();
 
-      final selectedType = types[Random().nextInt(types.length)];
-      final imageData = await imageService.getLabeledImages(
-        category: selectedCategory,
-        correctType: selectedType,
-        count: _currentLevel + 1,
-      );
+  // 👉 Level 5: Math using fingers
+  if (_currentLevel == 5) {
+    final rand = Random();
+    final num1 = rand.nextInt(6);
+    final num2 = rand.nextInt(6);
+    final operator = ['+', '-', '×'][rand.nextInt(3)];
 
-      if (imageData.length < _currentLevel + 1) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text("❌ Not enough images for this level.")),
-          );
-        }
-        return;
-      }
-
-      _cachedImages = imageData;
-      _cachedCategory = selectedCategory;
-      _cachedType = selectedType;
+    int answer;
+    switch (operator) {
+      case '+':
+        answer = num1 + num2;
+        break;
+      case '-':
+        answer = num1 - num2;
+        break;
+      case '×':
+        answer = num1 * num2;
+        break;
+      default:
+        answer = 0;
     }
 
-    final outerContext = context;
+    Set<int> options = {answer};
+    while (options.length < 3) {
+      options.add(answer + rand.nextInt(5) - 2);
+    }
+    final optionList = options.toList()..shuffle();
+
+    final url1 = await imageService.getRandomImage("Fingers", "$num1");
+    final url2 = await imageService.getRandomImage("Fingers", "$num2");
+
+    if (url1 == null || url2 == null) return;
+
+    await _ttsService.speak("ما ناتج $num1 $operator $num2؟");
 
     showModalBottomSheet(
-      context: outerContext,
+      context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (bottomSheetContext) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.6,
-        minChildSize: 0.4,
-        maxChildSize: 0.95,
-        builder: (_, scrollController) {
-          return Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      builder: (bottomSheetContext) {
+        final themeProvider = Provider.of<ThemeProvider>(bottomSheetContext);
+        final colorProvider = Provider.of<ColorProvider>(bottomSheetContext);
+        final primaryColor = colorProvider.primaryColor;
+        final isDark = themeProvider.isDarkMode;
+
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.65,
+          maxChildSize: 0.9,
+          builder: (_, scrollController) => Container(
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey[900] : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             ),
-            padding: const EdgeInsets.all(12),
-            child: SingleChildScrollView(
-              controller: scrollController,
-              child: MiniGameCard(
-                category: _cachedCategory!,
-                type: _cachedType!,
-                level: _currentLevel + 1,
-                ttsService: _ttsService,
-                images: _cachedImages!,
-                onCorrect: (points) async {
-                  _totalScore += points;
-                  _correctAnswers++;
-                  final isLastLevel = _currentLevel >= _maxLevel;
-
-                  setState(() {
-                    if (!isLastLevel) _currentLevel++;
-                    _cachedImages = null;
-                  });
-
-                  Navigator.pop(bottomSheetContext);
-                  await Future.delayed(const Duration(milliseconds: 200));
-
-                  final overlay = Overlay.of(outerContext);
-                  final overlayEntry = OverlayEntry(
-                    builder: (_) => Positioned.fill(
-                      child: Material(
-                        color: Colors.black.withOpacity(0.6),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Lottie.asset(
-                              isLastLevel
-                                  ? 'assets/celebration.json'
-                                  : 'assets/level up.json',
-                              height: 200,
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              isLastLevel ? "🎉 Well Done!" : "Level Up!",
-                              style: const TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Text(
+                  "$num1 $operator $num2 = ?",
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.network(url1, height: 100),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(operator, style: const TextStyle(fontSize: 28)),
+                    ),
+                    Image.network(url2, height: 100),
+                  ],
+                ),
+                const SizedBox(height: 30),
+                Wrap(
+                  spacing: 20,
+                  runSpacing: 20,
+                  children: optionList.map((opt) {
+                    return InkWell(
+                      onTap: () async {
+                        if (opt == answer) {
+                          await _ttsService.speak("برافو! الإجابة صحيحة");
+                          setState(() {
+                            _totalScore++;
+                            _correctAnswers++;
+                          });
+                          Navigator.pop(context);
+                        } else {
+                          await _ttsService.speak("لا، حاول مرة أخرى");
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.grey[800]
+                              : primaryColor.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: primaryColor.withOpacity(0.3),
+                              offset: const Offset(0, 3),
+                              blurRadius: 6,
                             ),
                           ],
                         ),
+                        child: Text(
+                          "$opt",
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
-                    ),
-                  );
-
-                  overlay.insert(overlayEntry);
-
-                  final player = AudioPlayer();
-                  await Future.wait([
-                    player.play(AssetSource(
-                      isLastLevel
-                          ? 'audio/celebrationAudio.mp3'
-                          : 'audio/completion-of-level.wav',
-                    )),
-                    Future.delayed(const Duration(milliseconds: 1500)),
-                  ]);
-
-                  overlayEntry.remove();
-
-                  if (!isLastLevel) {
-                    await Future.delayed(const Duration(milliseconds: 300));
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      _showRandomMiniGame();
-                    });
-                  }
-                },
-                onWrong: () {
-                  _wrongAnswers++;
-                  Navigator.pop(bottomSheetContext);
-                  Future.delayed(
-                    const Duration(milliseconds: 600),
-                    _showRandomMiniGame,
-                  );
-                },
-                onFinished: () {},
-              ),
+                    );
+                  }).toList(),
+                ),
+              ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
+
+    return;
   }
+
+  // 🔁 Original logic for levels 1–4
+  if (_cachedImages == null || _cachedImages!.isEmpty) {
+    final categories = ['Animals', 'Fruits', 'Body_Parts'];
+    final selectedCategory = categories[Random().nextInt(categories.length)];
+    final types = await imageService.getTypesInCategory(selectedCategory);
+
+    if (types.length < _currentLevel + 1) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("❌ Not enough types for this level.")),
+        );
+      }
+      return;
+    }
+
+    final selectedType = types[Random().nextInt(types.length)];
+    final imageData = await imageService.getLabeledImages(
+      category: selectedCategory,
+      correctType: selectedType,
+      count: _currentLevel + 1,
+    );
+
+    if (imageData.length < _currentLevel + 1) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("❌ Not enough images for this level.")),
+        );
+      }
+      return;
+    }
+
+    _cachedImages = imageData;
+    _cachedCategory = selectedCategory;
+    _cachedType = selectedType;
+  }
+
+  // ➕ Show MiniGameCard (levels 1–4)
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (bottomSheetContext) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.6,
+      maxChildSize: 0.95,
+      builder: (_, scrollController) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: SingleChildScrollView(
+          controller: scrollController,
+          child: MiniGameCard(
+            category: _cachedCategory!,
+            type: _cachedType!,
+            level: _currentLevel + 1,
+            ttsService: _ttsService,
+            images: _cachedImages!,
+            onCorrect: (points) async {
+              _totalScore += points;
+              _correctAnswers++;
+              final isLastLevel = _currentLevel >= _maxLevel;
+
+              setState(() {
+                if (!isLastLevel) _currentLevel++;
+                _cachedImages = null;
+              });
+
+              Navigator.pop(bottomSheetContext);
+              await Future.delayed(const Duration(milliseconds: 200));
+
+              final overlay = Overlay.of(context);
+              final overlayEntry = OverlayEntry(
+                builder: (_) => Positioned.fill(
+                  child: Material(
+                    color: Colors.black.withOpacity(0.6),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Lottie.asset(
+                          isLastLevel
+                              ? 'assets/celebration.json'
+                              : 'assets/level up.json',
+                          height: 200,
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          isLastLevel ? "🎉 Well Done!" : "Level Up!",
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+
+              overlay.insert(overlayEntry);
+              final player = AudioPlayer();
+              await Future.wait([
+                player.play(AssetSource(
+                  isLastLevel
+                      ? 'audio/celebrationAudio.mp3'
+                      : 'audio/completion-of-level.wav',
+                )),
+                Future.delayed(const Duration(milliseconds: 1500)),
+              ]);
+              overlayEntry.remove();
+
+              if (!isLastLevel) {
+                await Future.delayed(const Duration(milliseconds: 300));
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _showRandomMiniGame();
+                });
+              }
+            },
+            onWrong: () {
+              _wrongAnswers++;
+              Navigator.pop(bottomSheetContext);
+              Future.delayed(
+                const Duration(milliseconds: 600),
+                _showRandomMiniGame,
+              );
+            },
+            onFinished: () {},
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+
 
   @override
   void dispose() {

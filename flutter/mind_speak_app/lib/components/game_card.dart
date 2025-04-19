@@ -215,11 +215,11 @@ class _MiniGameCardState extends State<MiniGameCard> {
               ),
             ),
             if (showWinAnimation)
-              Positioned.fill(
+              const Positioned.fill(
                 child: IgnorePointer(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
+                    children: [
                       _LottieWidget(
                           assetPath: 'assets/more stars.json', height: 120),
                       SizedBox(height: 10),

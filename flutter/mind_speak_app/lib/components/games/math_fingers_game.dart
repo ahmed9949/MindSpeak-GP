@@ -1,19 +1,24 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:lottie/lottie.dart';
+
 import 'package:mind_speak_app/service/avatarservice/game_image_service.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/providers/color_provider.dart';
 import 'package:mind_speak_app/components/games/mini_game_base.dart';
-import 'package:audioplayers/audioplayers.dart';
 
 class MathFingersGame extends MiniGameBase {
   const MathFingersGame({
-    super.key,
+    Key? key,
     required super.ttsService,
     required super.onCorrect,
     required super.onWrong,
-  });
+    required this.level,
+  }) : super(key: key);
+
+  final int level;
 
   @override
   State<MathFingersGame> createState() => _MathFingersGameState();
@@ -34,12 +39,10 @@ class _MathFingersGameState extends State<MathFingersGame>
   bool isLoading = true;
   bool _didInit = false;
 
-  // For response feedback
   bool? isCorrect;
   int? selectedOption;
   late AnimationController _pulseController;
 
-  // Audio players
   late final AudioPlayer _correctSound;
   late final AudioPlayer _wrongSound;
 
@@ -49,7 +52,6 @@ class _MathFingersGameState extends State<MathFingersGame>
     _correctSound = AudioPlayer();
     _wrongSound = AudioPlayer();
 
-    // Preload sounds - these don't need context
     _correctSound.setSource(AssetSource('audio/correct-answer.wav'));
     _wrongSound.setSource(AssetSource('audio/wrong-answer.wav'));
 
@@ -58,18 +60,14 @@ class _MathFingersGameState extends State<MathFingersGame>
       duration: const Duration(milliseconds: 400),
     );
 
-    // Generate the problem but don't load images here
     _generateMathProblemNoImages();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-
-    // Only run once
     if (!_didInit) {
       _didInit = true;
-      // Now load images (this uses context)
       _loadImages();
     }
   }
@@ -78,33 +76,35 @@ class _MathFingersGameState extends State<MathFingersGame>
     final rand = Random();
     num1 = rand.nextInt(6);
     num2 = rand.nextInt(6);
-    operator = ['+', '-', '×'][rand.nextInt(3)];
 
-    switch (operator) {
-      case '+':
+    switch (widget.level) {
+      case 5:
+        operator = '+';
         answer = num1 + num2;
         break;
-      case '-':
+      case 6:
+        operator = '-';
         answer = num1 - num2;
         break;
-      case '×':
+      case 7:
+        operator = '×';
         answer = num1 * num2;
         break;
       default:
-        answer = 0;
+        operator = '+';
+        answer = num1 + num2;
     }
 
     Set<int> options = {answer};
     while (options.length < 3) {
-      // Generate answers close to the correct one but avoid negatives
       final newOption = answer + rand.nextInt(5) - 2;
       if (newOption >= 0) options.add(newOption);
     }
+
     optionList = options.toList()..shuffle();
   }
 
   Future<void> _loadImages() async {
-    // Load finger images (try to use cached versions if available)
     await Future.wait([
       _loadFingerImage(num1).then((value) => url1 = value),
       _loadFingerImage(num2).then((value) => url2 = value),
@@ -121,13 +121,11 @@ class _MathFingersGameState extends State<MathFingersGame>
     }
 
     if (mounted) {
-      // Precache images for better performance
       precacheImage(NetworkImage(url1!), context);
       precacheImage(NetworkImage(url2!), context);
 
       setState(() => isLoading = false);
 
-      // Speak after UI is ready
       WidgetsBinding.instance.addPostFrameCallback((_) {
         widget.ttsService.speak("ما ناتج $num1 $operator $num2؟");
       });
@@ -135,20 +133,16 @@ class _MathFingersGameState extends State<MathFingersGame>
   }
 
   Future<String?> _loadFingerImage(int number) async {
-    // Try to get image URL (with retry mechanism)
     for (int attempt = 0; attempt < 3; attempt++) {
       try {
         final url = await _imageService.getRandomImage("Fingers", "$number");
         if (url != null) return url;
-      } catch (e) {
-        // Wait a moment before retrying
+      } catch (_) {
         await Future.delayed(const Duration(milliseconds: 200));
       }
     }
     return null;
   }
-
-  // Update the _handleAnswer method in MathFingersGame to wait for speech before proceeding
 
   void _handleAnswer(int selectedAnswer) async {
     setState(() {
@@ -156,26 +150,52 @@ class _MathFingersGameState extends State<MathFingersGame>
       isCorrect = selectedAnswer == answer;
     });
 
-    // Start pulse animation
     _pulseController.forward().then((_) => _pulseController.reverse());
 
     if (selectedAnswer == answer) {
-      // 1. Play correct sound
       _correctSound.resume();
-
-      // 2. Speak congratulations
       await widget.ttsService.speak("برافو! الإجابة صحيحة");
+      await Future.delayed(const Duration(milliseconds: 500));
 
-      // 3. Wait for animation to complete
-      await Future.delayed(const Duration(milliseconds: 1000));
+      if (!mounted) return;
 
-      // 4. Then signal completion
-      widget.onCorrect(1);
+      final overlay = Overlay.of(context);
+      final overlayEntry = OverlayEntry(
+        builder: (_) => Positioned.fill(
+          child: Material(
+            color: Colors.black.withOpacity(0.6),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Lottie.asset('assets/level up.json', height: 200),
+                const SizedBox(height: 10),
+                const Text(
+                  "Level Up!",
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      overlay.insert(overlayEntry);
+      final player = AudioPlayer();
+      await Future.wait([
+        player.play(AssetSource('audio/completion-of-level.wav')),
+        Future.delayed(const Duration(milliseconds: 1500)),
+      ]);
+      overlayEntry.remove();
+
+      widget.onCorrect(1); // ⬆️ Tell parent to increment level
     } else {
       _wrongSound.resume();
       await widget.ttsService.speak("لا، حاول مرة أخرى");
 
-      // Reset selected option after a short delay
       await Future.delayed(const Duration(milliseconds: 500));
       if (mounted) {
         setState(() {
@@ -217,116 +237,77 @@ class _MathFingersGameState extends State<MathFingersGame>
     final isDark = themeProvider.isDarkMode;
 
     return SingleChildScrollView(
-      child: RepaintBoundary(
-        child: Column(
-          children: [
-            Text(
-              "$num1 $operator $num2 = ?",
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : Colors.black,
+      child: Column(
+        children: [
+          Text(
+            "$num1 $operator $num2 = ?",
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.network(url1!, height: 100),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(operator, style: const TextStyle(fontSize: 28)),
               ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.network(
-                  url1!,
-                  key: const ValueKey('finger_image_1'),
-                  height: 100,
-                  frameBuilder:
-                      (context, child, frame, wasSynchronouslyLoaded) {
-                    return AnimatedOpacity(
-                      opacity: frame != null ? 1.0 : 0.0,
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeOut,
-                      child: child,
-                    );
-                  },
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(operator, style: const TextStyle(fontSize: 28)),
-                ),
-                Image.network(
-                  url2!,
-                  key: const ValueKey('finger_image_2'),
-                  height: 100,
-                  frameBuilder:
-                      (context, child, frame, wasSynchronouslyLoaded) {
-                    return AnimatedOpacity(
-                      opacity: frame != null ? 1.0 : 0.0,
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeOut,
-                      child: child,
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
-            RepaintBoundary(
-              child: Wrap(
-                spacing: 20,
-                runSpacing: 20,
-                children: optionList.map((opt) {
-                  final isSelected = selectedOption == opt;
+              Image.network(url2!, height: 100),
+            ],
+          ),
+          const SizedBox(height: 30),
+          Wrap(
+            spacing: 20,
+            runSpacing: 20,
+            children: optionList.map((opt) {
+              final isSelected = selectedOption == opt;
 
-                  return AnimatedBuilder(
-                    animation: _pulseController,
-                    builder: (context, child) {
-                      double scale = 1.0;
-                      if (isSelected) {
-                        // Pulse animation when selected
-                        scale = 1.0 + (_pulseController.value * 0.1);
-                      }
-
-                      return Transform.scale(
-                        scale: scale,
-                        child: child,
-                      );
-                    },
-                    child: InkWell(
-                      key: ValueKey('option_$opt'),
-                      onTap: () => _handleAnswer(opt),
+              return AnimatedBuilder(
+                animation: _pulseController,
+                builder: (context, child) {
+                  final scale = isSelected ? 1.0 + (_pulseController.value * 0.1) : 1.0;
+                  return Transform.scale(scale: scale, child: child);
+                },
+                child: InkWell(
+                  onTap: () => _handleAnswer(opt),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? (isCorrect == true ? Colors.green : Colors.red)
+                          : (isDark
+                              ? Colors.grey[800]
+                              : primaryColor.withOpacity(0.9)),
                       borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: selectedOption == opt
-                              ? (isCorrect == true ? Colors.green : Colors.red)
-                              : (isDark
-                                  ? Colors.grey[800]
-                                  : primaryColor.withOpacity(0.9)),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: primaryColor.withOpacity(0.3),
-                              offset: const Offset(0, 3),
-                              blurRadius: 6,
-                            ),
-                          ],
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryColor.withOpacity(0.3),
+                          offset: const Offset(0, 3),
+                          blurRadius: 6,
                         ),
-                        child: Text(
-                          "$opt",
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                      ],
+                    ),
+                    child: Text(
+                      "$opt",
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ],
-        ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }

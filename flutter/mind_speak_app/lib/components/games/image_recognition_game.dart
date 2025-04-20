@@ -239,19 +239,19 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
               ),
             ),
             if (showWinAnimation)
-              RepaintBoundary(
+              const RepaintBoundary(
                 child: Positioned.fill(
                   child: IgnorePointer(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _LottieWidget(
-                            key: const ValueKey('stars_animation'),
+                            key: ValueKey('stars_animation'),
                             assetPath: 'assets/more stars.json',
                             height: 120),
-                        const SizedBox(height: 10),
+                        SizedBox(height: 10),
                         _LottieWidget(
-                            key: const ValueKey('confetti_animation'),
+                            key: ValueKey('confetti_animation'),
                             assetPath: 'assets/Confetti.json',
                             height: 160),
                       ],
@@ -271,10 +271,10 @@ class _LottieWidget extends StatelessWidget {
   final double height;
 
   const _LottieWidget({
-    Key? key,
+    super.key,
     required this.assetPath,
     required this.height,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

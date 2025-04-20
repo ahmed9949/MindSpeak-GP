@@ -2,15 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:flutter_sound/flutter_sound.dart';
-import 'package:lottie/lottie.dart';
+import 'package:mind_speak_app/components/games/game_manager.dart';
 import 'package:mind_speak_app/controllers/detectioncontroller.dart';
+import 'package:mind_speak_app/pages/homepage.dart';
 import 'package:mind_speak_app/providers/color_provider.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
-import 'package:mind_speak_app/service/avatarservice/game_image_service.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -19,7 +18,6 @@ import 'package:camera/camera.dart';
 import 'package:mind_speak_app/service/avatarservice/chatgptttsservice.dart';
 import 'package:mind_speak_app/service/avatarservice/openai.dart';
 import 'package:mind_speak_app/controllers/sessioncontrollerCl.dart';
-import 'package:mind_speak_app/components/game_card.dart';
 
 class SessionView extends StatefulWidget {
   final String initialPrompt;
@@ -42,7 +40,7 @@ class _SessionViewState extends State<SessionView> {
   final Flutter3DController controller = Flutter3DController();
   final stt.SpeechToText _speech = stt.SpeechToText();
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
-  final ChatGptTtsService _ttsService = ChatGptTtsService();
+  late GameManager _gameManager;
 
   late AiService _aiService;
   late DetectionController _detectionController;
@@ -61,16 +59,25 @@ class _SessionViewState extends State<SessionView> {
   String? _voiceEmotion;
   String? _facialEmotion;
 
+  final ChatGptTtsService _ttsService = ChatGptTtsService();
+  DateTime? _gameStartTime;
+  int _currentLevel = 1;
+  // final int _maxLevel = 5;
   int _totalScore = 0;
-
   int _correctAnswers = 0;
   int _wrongAnswers = 0;
-  late DateTime _gameStartTime;
 
   @override
   void initState() {
     super.initState();
     _initializeSession();
+    // Setup the game manager
+    _gameManager = GameManager(ttsService: _ttsService);
+
+    // Preload game assets for smoother performance
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _gameManager.preloadGameAssets(context);
+    });
   }
 
   Future<void> ensureCameraPermission() async {
@@ -377,202 +384,23 @@ class _SessionViewState extends State<SessionView> {
   }
 
   Future<void> _endSession() async {
-    final sessionController =
-        Provider.of<SessionController>(context, listen: false);
-    if (_isListening) await _speech.stop();
-    if (_isSpeaking) await _ttsService.stop();
-    final goodbye =
-        _childName != null ? "الى اللقاء $_childName" : "الى اللقاء";
-    await sessionController.addTherapistMessage(goodbye);
-    await _speak(goodbye);
-
-    // Fetch detection summary from Flask
-    final summary = await _aiService.endConversationAndFetchSummary();
-    if (summary != null) {
-      await _detectionController.addDetection(
-        sessionId: _sessionId!,
-        detectionData: summary,
-      );
-    }
-    print("👉 Ending session...");
-    // End session and get stats
-    final stats = await sessionController.endSession(
-      {}, // detection stats
-      totalScore: _totalScore,
-      levelsCompleted: _currentLevel,
-      correctAnswers: _correctAnswers,
-      wrongAnswers: _wrongAnswers,
-      timeSpent: DateTime.now().difference(_gameStartTime).inSeconds,
-    );
-    print("✅ Session ended and stats saved!");
-
-    // Generate recommendations
-    final sessionData = await sessionController.getSessionById(_sessionId!);
-    if (sessionData != null) {
-      final childId = sessionData.childId;
-      final allSessions = await sessionController.getSessionsForChild(childId);
-      final aggregateStats = widget.childData['aggregateStats'] ??
-          {
-            'totalSessions': 1,
-            'averageSessionDuration': 0,
-            'averageMessagesPerSession': 0
-          };
-
-      final recommendations =
-          await Provider.of<SessionAnalyzerController>(context, listen: false)
-              .generateRecommendations(
-        childData: widget.childData,
-        recentSessions: allSessions,
-        aggregateStats: aggregateStats,
-      );
-
-      await sessionController.generateRecommendations(
-        childId,
-        recommendations['parents'] ?? '',
-        recommendations['therapists'] ?? '',
-      );
-    }
-
-    // Navigate out after save
-    if (mounted) Navigator.pop(context);
-  }
-
-  int _currentLevel = 1;
-  final int _maxLevel = 5;
-  List<Map<String, dynamic>>? _cachedImages;
-  String? _cachedCategory;
-  String? _cachedType;
-  final AudioPlayer _levelUpPlayer = AudioPlayer(); // Reuse this
-
-
-Future<void> _showRandomMiniGame() async {
-  final imageService = GameImageService();
-  _gameStartTime = DateTime.now();
-
-  // 👉 Level 5: Math using fingers
-  if (_currentLevel == 5) {
-    final rand = Random();
-    final num1 = rand.nextInt(6);
-    final num2 = rand.nextInt(6);
-    final operator = ['+', '-', '×'][rand.nextInt(3)];
-
-    int answer;
-    switch (operator) {
-      case '+':
-        answer = num1 + num2;
-        break;
-      case '-':
-        answer = num1 - num2;
-        break;
-      case '×':
-        answer = num1 * num2;
-        break;
-      default:
-        answer = 0;
-    }
-
-    Set<int> options = {answer};
-    while (options.length < 3) {
-      options.add(answer + rand.nextInt(5) - 2);
-    }
-    final optionList = options.toList()..shuffle();
-
-    final url1 = await imageService.getRandomImage("Fingers", "$num1");
-    final url2 = await imageService.getRandomImage("Fingers", "$num2");
-
-    if (url1 == null || url2 == null) return;
-
-    await _ttsService.speak("ما ناتج $num1 $operator $num2؟");
-
-    showModalBottomSheet(
+    // Show loading indicator
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (bottomSheetContext) {
-        final themeProvider = Provider.of<ThemeProvider>(bottomSheetContext);
-        final colorProvider = Provider.of<ColorProvider>(bottomSheetContext);
-        final primaryColor = colorProvider.primaryColor;
-        final isDark = themeProvider.isDarkMode;
-
-        return DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.65,
-          maxChildSize: 0.9,
-          builder: (_, scrollController) => Container(
-            decoration: BoxDecoration(
-              color: isDark ? Colors.grey[900] : Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            padding: const EdgeInsets.all(16),
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Center(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
+                CircularProgressIndicator(color: Colors.white),
+                SizedBox(height: 16),
                 Text(
-                  "$num1 $operator $num2 = ?",
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Image.network(url1, height: 100),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(operator, style: const TextStyle(fontSize: 28)),
-                    ),
-                    Image.network(url2, height: 100),
-                  ],
-                ),
-                const SizedBox(height: 30),
-                Wrap(
-                  spacing: 20,
-                  runSpacing: 20,
-                  children: optionList.map((opt) {
-                    return InkWell(
-                      onTap: () async {
-                        if (opt == answer) {
-                          await _ttsService.speak("برافو! الإجابة صحيحة");
-                          setState(() {
-                            _totalScore++;
-                            _correctAnswers++;
-                          });
-                          Navigator.pop(context);
-                        } else {
-                          await _ttsService.speak("لا، حاول مرة أخرى");
-                        }
-                      },
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.grey[800]
-                              : primaryColor.withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: primaryColor.withOpacity(0.3),
-                              offset: const Offset(0, 3),
-                              blurRadius: 6,
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          "$opt",
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                  "Ending session...",
+                  style: TextStyle(color: Colors.white),
                 ),
               ],
             ),
@@ -581,146 +409,131 @@ Future<void> _showRandomMiniGame() async {
       },
     );
 
-    return;
-  }
+    try {
+      final sessionController =
+          Provider.of<SessionController>(context, listen: false);
+      if (_isListening) await _speech.stop();
+      if (_isSpeaking) await _ttsService.stop();
+      final goodbye =
+          _childName != null ? "الى اللقاء $_childName" : "الى اللقاء";
+      await sessionController.addTherapistMessage(goodbye);
+      await _speak(goodbye);
 
-  // 🔁 Original logic for levels 1–4
-  if (_cachedImages == null || _cachedImages!.isEmpty) {
-    final categories = ['Animals', 'Fruits', 'Body_Parts'];
-    final selectedCategory = categories[Random().nextInt(categories.length)];
-    final types = await imageService.getTypesInCategory(selectedCategory);
-
-    if (types.length < _currentLevel + 1) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("❌ Not enough types for this level.")),
+      // Fetch detection summary from Flask
+      final summary = await _aiService.endConversationAndFetchSummary();
+      if (summary != null) {
+        await _detectionController.addDetection(
+          sessionId: _sessionId!,
+          detectionData: summary,
         );
       }
-      return;
-    }
+      print("👉 Ending session...");
 
-    final selectedType = types[Random().nextInt(types.length)];
-    final imageData = await imageService.getLabeledImages(
-      category: selectedCategory,
-      correctType: selectedType,
-      count: _currentLevel + 1,
-    );
+      // Calculate the time spent if _gameStartTime is not null
+      final int timeSpent = _gameStartTime != null
+          ? DateTime.now().difference(_gameStartTime!).inSeconds
+          : 0;
 
-    if (imageData.length < _currentLevel + 1) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("❌ Not enough images for this level.")),
+      // End session and get stats
+      // ignore: unused_local_variable
+      final stats = await sessionController.endSession(
+        {}, // detection stats
+        totalScore: _totalScore,
+        levelsCompleted: _currentLevel,
+        correctAnswers: _correctAnswers,
+        wrongAnswers: _wrongAnswers,
+        timeSpent: timeSpent,
+      );
+      print("✅ Session ended and stats saved!");
+
+      // Generate recommendations
+      final sessionData = await sessionController.getSessionById(_sessionId!);
+      if (sessionData != null) {
+        final childId = sessionData.childId;
+        final allSessions =
+            await sessionController.getSessionsForChild(childId);
+        final aggregateStats = widget.childData['aggregateStats'] ??
+            {
+              'totalSessions': 1,
+              'averageSessionDuration': 0,
+              'averageMessagesPerSession': 0
+            };
+
+        final recommendations =
+            await Provider.of<SessionAnalyzerController>(context, listen: false)
+                .generateRecommendations(
+          childData: widget.childData,
+          recentSessions: allSessions,
+          aggregateStats: aggregateStats,
+        );
+
+        await sessionController.generateRecommendations(
+          childId,
+          recommendations['parents'] ?? '',
+          recommendations['therapists'] ?? '',
         );
       }
-      return;
-    }
 
-    _cachedImages = imageData;
-    _cachedCategory = selectedCategory;
-    _cachedType = selectedType;
+      // Close the loading dialog if it's still showing
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+
+      // Navigate to the home page instead of just popping
+      if (mounted) {
+        print("📱 Navigating to HomePage...");
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const HomePage()),
+          (route) => false,
+        );
+        print("✅ Navigation command executed");
+      }
+    } catch (e) {
+      print("❌ Error in _endSession: $e");
+
+      // Close the loading dialog if it's still showing
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+
+      // Still try to navigate home even if there was an error
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const HomePage()),
+          (route) => false,
+        );
+      }
+    }
   }
 
-  // ➕ Show MiniGameCard (levels 1–4)
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (bottomSheetContext) => DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.6,
-      maxChildSize: 0.95,
-      builder: (_, scrollController) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        padding: const EdgeInsets.all(12),
-        child: SingleChildScrollView(
-          controller: scrollController,
-          child: MiniGameCard(
-            category: _cachedCategory!,
-            type: _cachedType!,
-            level: _currentLevel + 1,
-            ttsService: _ttsService,
-            images: _cachedImages!,
-            onCorrect: (points) async {
-              _totalScore += points;
-              _correctAnswers++;
-              final isLastLevel = _currentLevel >= _maxLevel;
+  Future<void> _showRandomMiniGame() async {
+    _gameStartTime = DateTime.now();
 
-              setState(() {
-                if (!isLastLevel) _currentLevel++;
-                _cachedImages = null;
-              });
+    // Set up listeners to handle game results
+    _gameManager.onGameCompleted = (int score, bool isLastLevel) {
+      setState(() {
+        _totalScore += score;
+        _correctAnswers++;
+        if (!isLastLevel) {
+          _currentLevel++;
+        }
+      });
 
-              Navigator.pop(bottomSheetContext);
-              await Future.delayed(const Duration(milliseconds: 200));
+      // Show the level completion animation
+      _gameManager.showLevelCompletionAnimation(isLastLevel);
+    };
 
-              final overlay = Overlay.of(context);
-              final overlayEntry = OverlayEntry(
-                builder: (_) => Positioned.fill(
-                  child: Material(
-                    color: Colors.black.withOpacity(0.6),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Lottie.asset(
-                          isLastLevel
-                              ? 'assets/celebration.json'
-                              : 'assets/level up.json',
-                          height: 200,
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          isLastLevel ? "🎉 Well Done!" : "Level Up!",
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
+    _gameManager.onGameFailed = () {
+      setState(() {
+        _wrongAnswers++;
+      });
+    };
 
-              overlay.insert(overlayEntry);
-              final player = AudioPlayer();
-              await Future.wait([
-                player.play(AssetSource(
-                  isLastLevel
-                      ? 'audio/celebrationAudio.mp3'
-                      : 'audio/completion-of-level.wav',
-                )),
-                Future.delayed(const Duration(milliseconds: 1500)),
-              ]);
-              overlayEntry.remove();
-
-              if (!isLastLevel) {
-                await Future.delayed(const Duration(milliseconds: 300));
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _showRandomMiniGame();
-                });
-              }
-            },
-            onWrong: () {
-              _wrongAnswers++;
-              Navigator.pop(bottomSheetContext);
-              Future.delayed(
-                const Duration(milliseconds: 600),
-                _showRandomMiniGame,
-              );
-            },
-            onFinished: () {},
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-
+    // Start the game with the current level
+    if (mounted) {
+      _gameManager.startGame(context, _currentLevel);
+    }
+  }
 
   @override
   void dispose() {
@@ -730,166 +543,171 @@ Future<void> _showRandomMiniGame() async {
     _frameTimer?.cancel();
     _recorder.closeRecorder();
     _cameraController.dispose();
+    _gameManager.dispose();
     super.dispose();
   }
 
   @override
-Widget build(BuildContext context) {
-  final themeProvider = Provider.of<ThemeProvider>(context);
-  final colorProvider = Provider.of<ColorProvider>(context);
-  final primaryColor = colorProvider.primaryColor;
-  final isDark = themeProvider.isDarkMode;
+  Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final colorProvider = Provider.of<ColorProvider>(context);
+    final primaryColor = colorProvider.primaryColor;
+    final isDark = themeProvider.isDarkMode;
 
-  return Theme(
-    data: themeProvider.currentTheme,
-    child: Scaffold(
-      appBar: AppBar(
-        title: const Text("Therapy Session"),
-        elevation: 0,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: isDark
-                  ? [Colors.grey[900]!, Colors.black]
-                  : [primaryColor, primaryColor.withOpacity(0.9)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return Theme(
+      data: themeProvider.currentTheme,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("Therapy Session"),
+          elevation: 0,
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [Colors.grey[900]!, Colors.black]
+                    : [primaryColor, primaryColor.withOpacity(0.9)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
           ),
         ),
-      ),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              Expanded(
-                flex: 3,
-                child: RepaintBoundary(
-                  key: _avatarKey,
-                  child: Flutter3DViewer(
-                    src: 'assets/models/banotamixamonewtalk.glb',
-                    controller: controller,
-                    activeGestureInterceptor: true,
+        body: Stack(
+          children: [
+            Column(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: RepaintBoundary(
+                    key: _avatarKey,
+                    child: Flutter3DViewer(
+                      src: 'assets/models/banotamixamonewtalk.glb',
+                      controller: controller,
+                      activeGestureInterceptor: true,
+                    ),
                   ),
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Column(
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          Text(
+                            "Facial: ${_facialEmotion ?? 'Unknown'}",
+                            style: TextStyle(
+                                color: isDark ? Colors.white70 : Colors.black),
+                          ),
+                          Text(
+                            "Voice: ${_voiceEmotion ?? 'Not analyzed'}",
+                            style: TextStyle(
+                                color: isDark ? Colors.white70 : Colors.black),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        "Total Points: $_totalScore",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (!_isListening) {
+                      final available = await _speech.initialize();
+                      if (available) {
+                        setState(() => _isListening = true);
+                        _playAnimation("idle.001");
+                        await _speech.listen(
+                          onResult: (result) {
+                            if (result.finalResult) {
+                              _processUserInput(result.recognizedWords);
+                              setState(() => _isListening = false);
+                            }
+                          },
+                          listenMode: stt.ListenMode.dictation,
+                          partialResults: true,
+                          localeId: 'ar-EG',
+                        );
+                      }
+                    } else {
+                      await _speech.stop();
+                      setState(() => _isListening = false);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isDark ? Colors.grey[800] : primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text(_isListening ? "Recording..." : "Start Talking"),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        Text(
-                          "Facial: ${_facialEmotion ?? 'Unknown'}",
-                          style: TextStyle(color: isDark ? Colors.white70 : Colors.black),
-                        ),
-                        Text(
-                          "Voice: ${_voiceEmotion ?? 'Not analyzed'}",
-                          style: TextStyle(color: isDark ? Colors.white70 : Colors.black),
-                        ),
-                      ],
+                    ElevatedButton.icon(
+                      onPressed: _showRandomMiniGame,
+                      icon: const Icon(Icons.games),
+                      label: const Text("Play Game 🎮"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            isDark ? Colors.grey[800] : primaryColor,
+                        foregroundColor: Colors.white,
+                      ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      "Total Points: $_totalScore",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: isDark ? Colors.white : Colors.black,
+                    ElevatedButton.icon(
+                      onPressed: _isSpeaking
+                          ? () async {
+                              await _ttsService.stop();
+                              setState(() => _isSpeaking = false);
+                              _playAnimation("idle.001");
+                            }
+                          : null,
+                      icon: const Icon(Icons.stop),
+                      label: const Text("Stop TTS"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            isDark ? Colors.grey[800] : primaryColor,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: _endSession,
+                      icon: const Icon(Icons.call_end),
+                      label: const Text("End Call"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
                       ),
                     ),
                   ],
                 ),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  if (!_isListening) {
-                    final available = await _speech.initialize();
-                    if (available) {
-                      setState(() => _isListening = true);
-                      _playAnimation("idle.001");
-                      await _speech.listen(
-                        onResult: (result) {
-                          if (result.finalResult) {
-                            _processUserInput(result.recognizedWords);
-                            setState(() => _isListening = false);
-                          }
-                        },
-                        listenMode: stt.ListenMode.dictation,
-                        partialResults: true,
-                        localeId: 'ar-EG',
-                      );
-                    }
-                  } else {
-                    await _speech.stop();
-                    setState(() => _isListening = false);
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDark ? Colors.grey[800] : primaryColor,
-                  foregroundColor: Colors.white,
+              ],
+            ),
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Opacity(
+                opacity: 0.0,
+                child: SizedBox(
+                  width: 1,
+                  height: 1,
+                  child: _isCameraInitialized
+                      ? CameraPreview(_cameraController)
+                      : Container(),
                 ),
-                child: Text(_isListening ? "Recording..." : "Start Talking"),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: _showRandomMiniGame,
-                    icon: const Icon(Icons.games),
-                    label: const Text("Play Game 🎮"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isDark ? Colors.grey[800] : primaryColor,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: _isSpeaking
-                        ? () async {
-                            await _ttsService.stop();
-                            setState(() => _isSpeaking = false);
-                            _playAnimation("idle.001");
-                          }
-                        : null,
-                    icon: const Icon(Icons.stop),
-                    label: const Text("Stop TTS"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isDark ? Colors.grey[800] : primaryColor,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: _endSession,
-                    icon: const Icon(Icons.call_end),
-                    label: const Text("End Call"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Positioned(
-            bottom: 0,
-            right: 0,
-            child: Opacity(
-              opacity: 0.0,
-              child: SizedBox(
-                width: 1,
-                height: 1,
-                child: _isCameraInitialized
-                    ? CameraPreview(_cameraController)
-                    : Container(),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
-
+    );
+  }
 }

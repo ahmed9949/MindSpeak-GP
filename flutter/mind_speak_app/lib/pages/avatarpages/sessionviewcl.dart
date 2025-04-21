@@ -2,15 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:flutter_sound/flutter_sound.dart';
-import 'package:lottie/lottie.dart';
+import 'package:mind_speak_app/components/games/game_manager.dart';
 import 'package:mind_speak_app/controllers/detectioncontroller.dart';
+import 'package:mind_speak_app/pages/homepage.dart';
 import 'package:mind_speak_app/providers/color_provider.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
-import 'package:mind_speak_app/service/avatarservice/game_image_service.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -19,7 +18,6 @@ import 'package:camera/camera.dart';
 import 'package:mind_speak_app/service/avatarservice/chatgptttsservice.dart';
 import 'package:mind_speak_app/service/avatarservice/openai.dart';
 import 'package:mind_speak_app/controllers/sessioncontrollerCl.dart';
-import 'package:mind_speak_app/components/game_card.dart';
 
 class SessionView extends StatefulWidget {
   final String initialPrompt;
@@ -42,7 +40,7 @@ class _SessionViewState extends State<SessionView> {
   final Flutter3DController controller = Flutter3DController();
   final stt.SpeechToText _speech = stt.SpeechToText();
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
-  final ChatGptTtsService _ttsService = ChatGptTtsService();
+  late GameManager _gameManager;
 
   late AiService _aiService;
   late DetectionController _detectionController;
@@ -70,16 +68,25 @@ class _SessionViewState extends State<SessionView> {
   String? _voiceEmotion;
   String? _facialEmotion;
 
+  final ChatGptTtsService _ttsService = ChatGptTtsService();
+  DateTime? _gameStartTime;
+  int _currentLevel = 1;
+  // final int _maxLevel = 5;
   int _totalScore = 0;
-
   int _correctAnswers = 0;
   int _wrongAnswers = 0;
-  late DateTime _gameStartTime;
 
   @override
   void initState() {
     super.initState();
     _initializeSession();
+    // Setup the game manager
+    _gameManager = GameManager(ttsService: _ttsService);
+
+    // Preload game assets for smoother performance
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _gameManager.preloadGameAssets(context);
+    });
   }
 
   Future<void> ensureCameraPermission() async {
@@ -579,14 +586,40 @@ class _SessionViewState extends State<SessionView> {
   }
 
   Future<void> _endSession() async {
-    final sessionController =
-        Provider.of<SessionController>(context, listen: false);
-    if (_isListening) await _speech.stop();
-    if (_isSpeaking) await _ttsService.stop();
-    final goodbye =
-        _childName != null ? "الى اللقاء $_childName" : "الى اللقاء";
-    await sessionController.addTherapistMessage(goodbye);
-    await _speak(goodbye);
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: Colors.white),
+                SizedBox(height: 16),
+                Text(
+                  "Ending session...",
+                  style: TextStyle(color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      final sessionController =
+          Provider.of<SessionController>(context, listen: false);
+      if (_isListening) await _speech.stop();
+      if (_isSpeaking) await _ttsService.stop();
+      final goodbye =
+          _childName != null ? "الى اللقاء $_childName" : "الى اللقاء";
+      await sessionController.addTherapistMessage(goodbye);
+      await _speak(goodbye);
 
     // Fetch detection summary from Flask
     final summary = await _aiService.endConversationAndFetchSummary();
@@ -609,32 +642,33 @@ class _SessionViewState extends State<SessionView> {
     
     print("✅ Session ended and stats saved!");
 
-    // Generate recommendations
-    final sessionData = await sessionController.getSessionById(_sessionId!);
-    if (sessionData != null) {
-      final childId = sessionData.childId;
-      final allSessions = await sessionController.getSessionsForChild(childId);
-      final aggregateStats = widget.childData['aggregateStats'] ??
-          {
-            'totalSessions': 1,
-            'averageSessionDuration': 0,
-            'averageMessagesPerSession': 0
-          };
+      // Generate recommendations
+      final sessionData = await sessionController.getSessionById(_sessionId!);
+      if (sessionData != null) {
+        final childId = sessionData.childId;
+        final allSessions =
+            await sessionController.getSessionsForChild(childId);
+        final aggregateStats = widget.childData['aggregateStats'] ??
+            {
+              'totalSessions': 1,
+              'averageSessionDuration': 0,
+              'averageMessagesPerSession': 0
+            };
 
-      final recommendations =
-          await Provider.of<SessionAnalyzerController>(context, listen: false)
-              .generateRecommendations(
-        childData: widget.childData,
-        recentSessions: allSessions,
-        aggregateStats: aggregateStats,
-      );
+        final recommendations =
+            await Provider.of<SessionAnalyzerController>(context, listen: false)
+                .generateRecommendations(
+          childData: widget.childData,
+          recentSessions: allSessions,
+          aggregateStats: aggregateStats,
+        );
 
-      await sessionController.generateRecommendations(
-        childId,
-        recommendations['parents'] ?? '',
-        recommendations['therapists'] ?? '',
-      );
-    }
+        await sessionController.generateRecommendations(
+          childId,
+          recommendations['parents'] ?? '',
+          recommendations['therapists'] ?? '',
+        );
+      }
 
     // Navigate out after save
     if (mounted) Navigator.pop(context);
@@ -933,6 +967,7 @@ class _SessionViewState extends State<SessionView> {
     _frameTimer?.cancel();
     _recorder.closeRecorder();
     _cameraController.dispose();
+    _gameManager.dispose();
     super.dispose();
   }
 

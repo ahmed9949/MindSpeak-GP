@@ -17,7 +17,7 @@ class GameManager {
 
   // Game state
   int _currentLevel = 1;
-  final int _maxLevel = 5;
+  final int _maxLevel = 7;
   // ignore: unused_field
   DateTime? _gameStartTime;
 
@@ -141,64 +141,53 @@ class GameManager {
   }
 
   /// Show a random mini-game based on the current level
-  void _showRandomMiniGame() async {
-    // Determine which game to show based on current level
-    MiniGameBase game;
+ void _showRandomMiniGame() async {
+  MiniGameBase game;
 
-    if (_currentLevel == 5) {
-      // Level 5: Math using fingers
-      game = MathFingersGame(
-        key: UniqueKey(), // Add unique key to prevent duplicate key issues
-        ttsService: ttsService,
-        onCorrect: _handleCorrectAnswer,
-        onWrong: _handleWrongAnswer,
+  if (_currentLevel == 5 || _currentLevel == 6 || _currentLevel == 7) {
+    game = MathFingersGame(
+      key: UniqueKey(),
+      level: _currentLevel,
+      ttsService: ttsService,
+      onCorrect: _handleCorrectAnswer,
+      onWrong: _handleWrongAnswer,
+    );
+  } else {
+    if (_preloadedImageSets.containsKey(_currentLevel)) {
+      _cachedImages = _preloadedImageSets[_currentLevel];
+      final correctItem = _cachedImages!.firstWhere(
+        (img) => img['isCorrect'] == true,
+        orElse: () => {'type': 'Unknown'},
+      );
+      _cachedType = correctItem['type'] as String? ?? 'Unknown';
+      _cachedCategory = _categoryTypes.keys.firstWhere(
+        (cat) => _categoryTypes[cat]!.contains(_cachedType),
+        orElse: () => 'Animals',
       );
     } else {
-      // Levels 1-4: Image recognition
-      if (_preloadedImageSets.containsKey(_currentLevel)) {
-        // Use preloaded images
-        _cachedImages = _preloadedImageSets[_currentLevel];
-
-        // Find the correct item to get the type
-        final correctItem = _cachedImages!.firstWhere(
-          (img) => img['isCorrect'] == true,
-          orElse: () => {'type': 'Unknown'},
-        );
-
-        // Get the type, ensuring it's not null
-        _cachedType = correctItem['type'] as String? ?? 'Unknown';
-        print("DEBUG: Using cached type: $_cachedType");
-
-        // Get the category
-        _cachedCategory = _categoryTypes.keys.firstWhere(
-            (cat) => _categoryTypes[cat]!.contains(_cachedType),
-            orElse: () => 'Animals');
-      } else {
-        // Fallback to on-demand loading
-        if (_cachedImages == null || _cachedImages!.isEmpty) {
-          await _prepareImageRecognitionGame();
-          if (_cachedImages == null)
-            return; // Error occurred during preparation
-        }
+      if (_cachedImages == null || _cachedImages!.isEmpty) {
+        await _prepareImageRecognitionGame();
+        if (_cachedImages == null) return;
       }
-
-      game = ImageRecognitionGame(
-        key: UniqueKey(), // Add unique key to prevent duplicate key issues
-        category: _cachedCategory!,
-        type: _cachedType!,
-        level: _currentLevel,
-        ttsService: ttsService,
-        images: _cachedImages!,
-        onCorrect: _handleCorrectAnswer,
-        onWrong: _handleWrongAnswer,
-      );
     }
 
-    // Show the game
-    if (_context.mounted) {
-      _showGameModal(game);
-    }
+    game = ImageRecognitionGame(
+      key: UniqueKey(),
+      category: _cachedCategory!,
+      type: _cachedType!,
+      level: _currentLevel,
+      ttsService: ttsService,
+      images: _cachedImages!,
+      onCorrect: _handleCorrectAnswer,
+      onWrong: _handleWrongAnswer,
+    );
   }
+
+  if (_context.mounted) {
+    _showGameModal(game);
+  }
+}
+
 
   /// Prepare images for the image recognition game
   Future<void> _prepareImageRecognitionGame() async {

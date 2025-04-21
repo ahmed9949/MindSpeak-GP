@@ -310,7 +310,7 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
               ),
             ),
             if (showWinAnimation)
-              RepaintBoundary(
+              const RepaintBoundary(
                 child: Positioned.fill(
                   child: IgnorePointer(
                     child: Column(
@@ -344,10 +344,10 @@ class _LottieWidget extends StatelessWidget {
   final double height;
 
   const _LottieWidget({
-    Key? key,
+    super.key,
     required this.assetPath,
     required this.height,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

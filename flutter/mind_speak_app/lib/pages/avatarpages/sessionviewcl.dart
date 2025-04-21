@@ -71,6 +71,11 @@ class _SessionViewState extends State<SessionView> {
   void initState() {
     super.initState();
     _initializeSession();
+
+    // Initialize TTS with common phrases
+    _ttsService.initialize().then((_) {
+      print("TTS service ready with preloaded phrases");
+    });
     // Setup the game manager
     _gameManager = GameManager(ttsService: _ttsService);
 

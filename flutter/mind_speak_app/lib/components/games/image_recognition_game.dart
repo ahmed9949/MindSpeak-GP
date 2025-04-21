@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
@@ -40,6 +41,7 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
   int? wrongIndex;
   bool shake = false;
   bool _didInit = false;
+  double _animationScale = 1.0;
 
   @override
   void initState() {
@@ -71,6 +73,10 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
     if (!_didInit) {
       _didInit = true;
       _finishLoading();
+
+      // Clear unused memory after images are loaded
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
     }
   }
 
@@ -105,21 +111,41 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
     });
 
     if (index == correctIndex) {
-      setState(() => showWinAnimation = true);
+      // Use staggered animation sequence
+      _playStaggeredWinAnimation();
 
-      // 1. Play correct sound
-      _correctSound.resume();
+      // Stop previous sounds before playing new ones
+      if (_correctSound.state != PlayerState.stopped) {
+        await _correctSound.stop();
+      }
 
-      // 2. Speak congratulations message
+      // Play correct sound
+      await _correctSound.resume();
+
+      // Wait for sound to complete
+      await _waitForPlayer(_correctSound);
+
+      // Speak feedback
       await widget.ttsService.speak("برافو! أحسنت");
 
-      // 3. Wait for the animation to complete (1 second)
+      // Wait for animation
       await Future.delayed(const Duration(milliseconds: 1000));
 
-      // 4. Only then signal completion to the game manager
+      // Signal completion
       widget.onCorrect(1);
     } else {
-      _wrongSound.resume();
+      // Stop previous sounds
+      if (_wrongSound.state != PlayerState.stopped) {
+        await _wrongSound.stop();
+      }
+
+      // Play wrong sound
+      await _wrongSound.resume();
+
+      // Wait for sound to complete
+      await _waitForPlayer(_wrongSound);
+
+      // Speak feedback
       await widget.ttsService.speak("حاول تاني");
 
       setState(() {
@@ -129,6 +155,40 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
 
       widget.onWrong();
     }
+  }
+
+  void _playStaggeredWinAnimation() {
+    setState(() => showWinAnimation = true);
+
+    // Additional staggered effects
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (mounted) setState(() => _animationScale = 1.2);
+    });
+
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _animationScale = 1.0);
+    });
+  }
+
+  Future<void> _waitForPlayer(AudioPlayer player) async {
+    final completer = Completer<void>();
+
+    void onComplete(PlayerState state) {
+      if ((state == PlayerState.completed || state == PlayerState.stopped) &&
+          !completer.isCompleted) {
+        completer.complete();
+      }
+    }
+
+    final sub = player.onPlayerStateChanged.listen(onComplete);
+
+    // Fallback timeout in case onComplete never fires
+    Future.delayed(const Duration(seconds: 2), () {
+      if (!completer.isCompleted) completer.complete();
+    });
+
+    await completer.future;
+    await sub.cancel();
   }
 
   @override
@@ -184,48 +244,59 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
                               child: child,
                             );
                           },
-                          child: GestureDetector(
-                            key: ValueKey(
-                                'image_option_$index'), // Add keys to options
-                            onTap: () => handleSelection(index),
-                            child: Container(
-                              height: 150,
-                              width: 150,
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: hasSelected
-                                      ? (index == correctIndex
-                                          ? Colors.green
-                                          : Colors.red)
-                                      : Colors.transparent,
-                                  width: 3,
+                          child: AnimatedScale(
+                            scale: (hasSelected && index == correctIndex)
+                                ? _animationScale
+                                : 1.0,
+                            duration: const Duration(milliseconds: 150),
+                            child: GestureDetector(
+                              key: ValueKey('image_option_$index'),
+                              onTap: () => handleSelection(index),
+                              child: Container(
+                                height: 150,
+                                width: 150,
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: hasSelected
+                                        ? (index == correctIndex
+                                            ? Colors.green
+                                            : Colors.red)
+                                        : Colors.transparent,
+                                    width: 3,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(14),
-                                child: CachedNetworkImage(
-                                  imageUrl: imageUrls[index],
-                                  fit: BoxFit.cover,
-                                  memCacheWidth: 300,
-                                  memCacheHeight: 300,
-                                  fadeOutDuration:
-                                      const Duration(milliseconds: 50),
-                                  fadeInDuration:
-                                      const Duration(milliseconds: 50),
-                                  placeholder: (context, url) => Container(
-                                    color: Colors.grey[300],
-                                    child: const Center(
-                                      child: SizedBox(
-                                        width: 24,
-                                        height: 24,
-                                        child: CircularProgressIndicator(
-                                            strokeWidth: 2),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: CachedNetworkImage(
+                                    imageUrl: imageUrls[index],
+                                    fit: BoxFit.cover,
+                                    memCacheWidth: 300,
+                                    memCacheHeight: 300,
+                                    fadeOutDuration:
+                                        const Duration(milliseconds: 50),
+                                    fadeInDuration:
+                                        const Duration(milliseconds: 50),
+                                    placeholder: (context, url) => Container(
+                                      color: Colors.grey[300],
+                                      child: const Center(
+                                        child: SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2),
+                                        ),
+                                      ),
+                                    ),
+                                    errorWidget: (context, url, error) =>
+                                        Container(
+                                      color: Colors.grey[300],
+                                      child: const Center(
+                                        child: Icon(Icons.broken_image,
+                                            size: 30, color: Colors.grey),
                                       ),
                                     ),
                                   ),
-                                  errorWidget: (context, url, error) =>
-                                      const Icon(Icons.error),
                                 ),
                               ),
                             ),
@@ -246,14 +317,16 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _LottieWidget(
-                            key: const ValueKey('stars_animation'),
-                            assetPath: 'assets/more stars.json',
-                            height: 120),
+                          key: const ValueKey('stars_animation'),
+                          assetPath: 'assets/more stars.json',
+                          height: 120,
+                        ),
                         const SizedBox(height: 10),
                         _LottieWidget(
-                            key: const ValueKey('confetti_animation'),
-                            assetPath: 'assets/Confetti.json',
-                            height: 160),
+                          key: const ValueKey('confetti_animation'),
+                          assetPath: 'assets/Confetti.json',
+                          height: 160,
+                        ),
                       ],
                     ),
                   ),

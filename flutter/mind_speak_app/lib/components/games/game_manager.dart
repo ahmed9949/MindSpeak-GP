@@ -96,7 +96,6 @@ class GameManager {
 
     final types = _categoryTypes[selectedCategory] ??
         await _imageService.getTypesInCategory(selectedCategory);
-
     if (types.length < level + 1) return;
 
     final selectedType = types[Random().nextInt(types.length)];
@@ -107,7 +106,6 @@ class GameManager {
     );
 
     if (imageData.length >= level + 1) {
-      // Make sure the type is included in each item
       for (var item in imageData) {
         if (item['isCorrect'] == true) {
           item['type'] = selectedType;
@@ -116,11 +114,15 @@ class GameManager {
 
       _preloadedImageSets[level] = imageData;
 
-      // Preload images
+      // ✅ Precache image assets
       for (final img in imageData) {
         final url = img['url'] as String;
         precacheImage(NetworkImage(url), _context);
       }
+
+      // ✅ Precache TTS prompts for faster experience
+      await ttsService.prefetchDynamic(
+          ["فين الـ ${selectedType}؟", "برافو! أحسنت", "حاول تاني"]);
     }
   }
 
@@ -287,6 +289,7 @@ class GameManager {
     if (!isLastLevel) {
       _currentLevel++;
       _cachedImages = null;
+      _prepareNextLevel();
     }
 
     // 1. Close the game modal first
@@ -312,6 +315,21 @@ class GameManager {
         _preloadLevel(_currentLevel + 1);
       }
     }
+  }
+
+  Future<void> _prepareNextLevel() async {
+    if (_currentLevel >= _maxLevel) return;
+
+    // Preload next level assets in background
+    _preloadLevel(_currentLevel + 1);
+
+    // Pre-initialize UI elements
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (_context.mounted) {
+        // Pre-warm next level
+        precacheImage(AssetImage('assets/level up.json'), _context);
+      }
+    });
   }
 
   /// Handle wrong answer from a game
@@ -340,12 +358,18 @@ class GameManager {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // In the builder for overlayEntry:
                 Lottie.asset(
                   isLastLevel
                       ? 'assets/celebration.json'
                       : 'assets/level up.json',
                   height: 200,
                   repeat: true,
+                  frameRate:
+                      FrameRate(60), // Higher frame rate for smoother animation
+                  options: LottieOptions(
+                    enableMergePaths: true, // Better performance
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Text(

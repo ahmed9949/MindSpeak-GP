@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import 'package:mind_speak_app/service/avatarservice/game_image_service.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
@@ -42,6 +43,8 @@ class _MathFingersGameState extends State<MathFingersGame>
   // Audio players
   late final AudioPlayer _correctSound;
   late final AudioPlayer _wrongSound;
+
+  bool showWinAnimation = false;
 
   @override
   void initState() {
@@ -156,26 +159,30 @@ class _MathFingersGameState extends State<MathFingersGame>
       isCorrect = selectedAnswer == answer;
     });
 
-    // Start pulse animation
     _pulseController.forward().then((_) => _pulseController.reverse());
 
     if (selectedAnswer == answer) {
-      // 1. Play correct sound
-      _correctSound.resume();
+      setState(() => showWinAnimation = true);
 
-      // 2. Speak congratulations
+      // 1. Play correct sound
+      await _correctSound.stop();
+      await _correctSound.play(AssetSource('audio/correct-answer.wav'));
+
+      // 2. Speak congratulations after sound
       await widget.ttsService.speak("برافو! الإجابة صحيحة");
 
-      // 3. Wait for animation to complete
-      await Future.delayed(const Duration(milliseconds: 1000));
+      // 3. Wait a moment for animation to complete
+      await Future.delayed(const Duration(milliseconds: 1200));
 
-      // 4. Then signal completion
+      setState(() => showWinAnimation = false);
+
+      // 4. Trigger next level
       widget.onCorrect(1);
     } else {
-      _wrongSound.resume();
+      await _wrongSound.stop();
+      await _wrongSound.play(AssetSource('audio/wrong-answer.wav'));
       await widget.ttsService.speak("لا، حاول مرة أخرى");
 
-      // Reset selected option after a short delay
       await Future.delayed(const Duration(milliseconds: 500));
       if (mounted) {
         setState(() {
@@ -183,8 +190,6 @@ class _MathFingersGameState extends State<MathFingersGame>
           isCorrect = null;
         });
       }
-
-      widget.onWrong();
     }
   }
 
@@ -325,6 +330,24 @@ class _MathFingersGameState extends State<MathFingersGame>
                 }).toList(),
               ),
             ),
+            if (showWinAnimation)
+              Padding(
+                padding: const EdgeInsets.only(top: 20),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: 120,
+                      child:
+                          Lottie.asset('assets/more stars.json', repeat: false),
+                    ),
+                    SizedBox(
+                      height: 120,
+                      child:
+                          Lottie.asset('assets/Confetti.json', repeat: false),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),

@@ -26,6 +26,10 @@ class GameManager {
   final Map<int, List<Map<String, dynamic>>> _preloadedImageSets = {};
   final Map<String, List<String>> _categoryTypes = {};
 
+  // Preloaded Lottie compositions
+  late Future<LottieComposition> _levelUpComposition;
+  late Future<LottieComposition> _celebrationComposition;
+
   // Cache for image recognition games
   List<Map<String, dynamic>>? _cachedImages;
   String? _cachedCategory;
@@ -47,6 +51,10 @@ class GameManager {
   /// Preload game assets for smoother gameplay
   Future<void> preloadGameAssets(BuildContext context) async {
     _context = context;
+
+    // Preload Lottie compositions
+    _levelUpComposition = AssetLottie('assets/level up.json').load();
+    _celebrationComposition = AssetLottie('assets/celebration.json').load();
 
     // Preload audio assets
     _audioPlayers['correct'] = AudioPlayer();
@@ -141,53 +149,52 @@ class GameManager {
   }
 
   /// Show a random mini-game based on the current level
- void _showRandomMiniGame() async {
-  MiniGameBase game;
+  void _showRandomMiniGame() async {
+    MiniGameBase game;
 
-  if (_currentLevel == 5 || _currentLevel == 6 || _currentLevel == 7) {
-    game = MathFingersGame(
-      key: UniqueKey(),
-      level: _currentLevel,
-      ttsService: ttsService,
-      onCorrect: _handleCorrectAnswer,
-      onWrong: _handleWrongAnswer,
-    );
-  } else {
-    if (_preloadedImageSets.containsKey(_currentLevel)) {
-      _cachedImages = _preloadedImageSets[_currentLevel];
-      final correctItem = _cachedImages!.firstWhere(
-        (img) => img['isCorrect'] == true,
-        orElse: () => {'type': 'Unknown'},
-      );
-      _cachedType = correctItem['type'] as String? ?? 'Unknown';
-      _cachedCategory = _categoryTypes.keys.firstWhere(
-        (cat) => _categoryTypes[cat]!.contains(_cachedType),
-        orElse: () => 'Animals',
+    if (_currentLevel == 5 || _currentLevel == 6 || _currentLevel == 7) {
+      game = MathFingersGame(
+        key: UniqueKey(),
+        level: _currentLevel,
+        ttsService: ttsService,
+        onCorrect: _handleCorrectAnswer,
+        onWrong: _handleWrongAnswer,
       );
     } else {
-      if (_cachedImages == null || _cachedImages!.isEmpty) {
-        await _prepareImageRecognitionGame();
-        if (_cachedImages == null) return;
+      if (_preloadedImageSets.containsKey(_currentLevel)) {
+        _cachedImages = _preloadedImageSets[_currentLevel];
+        final correctItem = _cachedImages!.firstWhere(
+          (img) => img['isCorrect'] == true,
+          orElse: () => {'type': 'Unknown'},
+        );
+        _cachedType = correctItem['type'] as String? ?? 'Unknown';
+        _cachedCategory = _categoryTypes.keys.firstWhere(
+          (cat) => _categoryTypes[cat]!.contains(_cachedType),
+          orElse: () => 'Animals',
+        );
+      } else {
+        if (_cachedImages == null || _cachedImages!.isEmpty) {
+          await _prepareImageRecognitionGame();
+          if (_cachedImages == null) return;
+        }
       }
+
+      game = ImageRecognitionGame(
+        key: UniqueKey(),
+        category: _cachedCategory!,
+        type: _cachedType!,
+        level: _currentLevel,
+        ttsService: ttsService,
+        images: _cachedImages!,
+        onCorrect: _handleCorrectAnswer,
+        onWrong: _handleWrongAnswer,
+      );
     }
 
-    game = ImageRecognitionGame(
-      key: UniqueKey(),
-      category: _cachedCategory!,
-      type: _cachedType!,
-      level: _currentLevel,
-      ttsService: ttsService,
-      images: _cachedImages!,
-      onCorrect: _handleCorrectAnswer,
-      onWrong: _handleWrongAnswer,
-    );
+    if (_context.mounted) {
+      _showGameModal(game);
+    }
   }
-
-  if (_context.mounted) {
-    _showGameModal(game);
-  }
-}
-
 
   /// Prepare images for the image recognition game
   Future<void> _prepareImageRecognitionGame() async {
@@ -252,6 +259,7 @@ class GameManager {
       context: _context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      // Remove the custom animation controller since we don't have a ticker provider
       builder: (bottomSheetContext) => DraggableScrollableSheet(
         expand: false,
         initialChildSize: 0.6,
@@ -264,7 +272,6 @@ class GameManager {
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           padding: const EdgeInsets.all(12),
-          // Fix: Use game directly without wrapping in SingleChildScrollView
           child: game,
         ),
       ),
@@ -296,13 +303,10 @@ class GameManager {
       // The animation takes about 2.5 seconds, so add a little extra
       await Future.delayed(const Duration(milliseconds: 3000));
 
-      // Now show the next level
-      _showRandomMiniGame();
-
-      // Preload next level in background
-      if (_currentLevel < _maxLevel) {
-        _preloadLevel(_currentLevel + 1);
-      }
+      // Now show the next level using frame synchronization
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showRandomMiniGame();
+      });
     }
   }
 
@@ -330,10 +334,13 @@ class GameManager {
       onGameFailed!();
     }
 
-    Future.delayed(
-      const Duration(milliseconds: 600),
-      _showRandomMiniGame,
-    );
+    // Use frame sync for smoother transition
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(
+        const Duration(milliseconds: 600),
+        _showRandomMiniGame,
+      );
+    });
   }
 
   /// Show level completion animation (can be called from the parent)
@@ -347,26 +354,44 @@ class GameManager {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // In the builder for overlayEntry:
-                Lottie.asset(
-                  isLastLevel
-                      ? 'assets/celebration.json'
-                      : 'assets/level up.json',
-                  height: 200,
-                  repeat: true,
-                  frameRate:
-                      FrameRate(60), // Higher frame rate for smoother animation
-                  options: LottieOptions(
-                    enableMergePaths: true, // Better performance
-                  ),
+                // Use preloaded composition for smoother animation
+                FutureBuilder<LottieComposition>(
+                  future: isLastLevel
+                      ? _celebrationComposition
+                      : _levelUpComposition,
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const SizedBox(
+                        height: 200,
+                        child: Center(
+                            child:
+                                CircularProgressIndicator(color: Colors.white)),
+                      );
+                    }
+
+                    return Lottie(
+                      composition: snapshot.data!,
+                      height: 200,
+                      repeat: true,
+                      frameRate: FrameRate.max,
+                      options: LottieOptions(
+                        enableMergePaths: true,
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 10),
-                Text(
-                  isLastLevel ? "🎉 Well Done!" : "Level Up!",
-                  style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                AnimatedOpacity(
+                  opacity: 1.0,
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeIn,
+                  child: Text(
+                    isLastLevel ? "🎉 Well Done!" : "Level Up!",
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ],
@@ -381,6 +406,9 @@ class GameManager {
     try {
       // Create a fresh instance of AudioPlayer for more reliable playback
       final soundPlayer = AudioPlayer();
+
+      // Add a small delay before playing sound for smoother audio transition
+      await Future.delayed(const Duration(milliseconds: 100));
 
       // Play sound from asset directly rather than resuming
       await soundPlayer.play(AssetSource(
@@ -398,6 +426,14 @@ class GameManager {
       print("Error playing sound: $e");
       // Ensure we still have some delay even if sound fails
       await Future.delayed(const Duration(milliseconds: 2500));
+    }
+
+    // Fade out animation before removing
+    for (double opacity = 1.0; opacity > 0; opacity -= 0.1) {
+      if (!_context.mounted) break;
+
+      overlayEntry.markNeedsBuild();
+      await Future.delayed(const Duration(milliseconds: 20));
     }
 
     // Remove the overlay

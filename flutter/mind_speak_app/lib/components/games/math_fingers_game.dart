@@ -1,10 +1,9 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:lottie/lottie.dart';
-
 import 'package:mind_speak_app/service/avatarservice/game_image_service.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/providers/color_provider.dart';
@@ -26,7 +25,7 @@ class MathFingersGame extends MiniGameBase {
 }
 
 class _MathFingersGameState extends State<MathFingersGame>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final GameImageService _imageService = GameImageService();
 
   late int num1;
@@ -39,10 +38,16 @@ class _MathFingersGameState extends State<MathFingersGame>
   String? url2;
   bool isLoading = true;
   bool _didInit = false;
+  bool hasSelected = false;
 
   bool? isCorrect;
   int? selectedOption;
   late AnimationController _pulseController;
+  late AnimationController _celebrationController;
+
+  // Preloaded Lottie compositions
+  late final Future<LottieComposition> _starsComposition;
+  late final Future<LottieComposition> _confettiComposition;
 
   late final AudioPlayer _correctSound;
   late final AudioPlayer _wrongSound;
@@ -63,6 +68,15 @@ class _MathFingersGameState extends State<MathFingersGame>
       duration: const Duration(milliseconds: 400),
     );
 
+    _celebrationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    // Preload Lottie animations
+    _starsComposition = AssetLottie('assets/more stars.json').load();
+    _confettiComposition = AssetLottie('assets/Confetti.json').load();
+
     _generateMathProblemNoImages();
   }
 
@@ -72,6 +86,10 @@ class _MathFingersGameState extends State<MathFingersGame>
     if (!_didInit) {
       _didInit = true;
       _loadImages();
+
+      // Clear unused memory
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
     }
   }
 
@@ -147,8 +165,32 @@ class _MathFingersGameState extends State<MathFingersGame>
     return null;
   }
 
+  Future<void> _waitForPlayer(AudioPlayer player) async {
+    final completer = Completer<void>();
+
+    void onComplete(PlayerState state) {
+      if ((state == PlayerState.completed || state == PlayerState.stopped) &&
+          !completer.isCompleted) {
+        completer.complete();
+      }
+    }
+
+    final sub = player.onPlayerStateChanged.listen(onComplete);
+
+    // Fallback timeout in case onComplete never fires
+    Future.delayed(const Duration(seconds: 2), () {
+      if (!completer.isCompleted) completer.complete();
+    });
+
+    await completer.future;
+    await sub.cancel();
+  }
+
   void _handleAnswer(int selectedAnswer) async {
+    if (hasSelected) return;
+
     setState(() {
+      hasSelected = true;
       selectedOption = selectedAnswer;
       isCorrect = selectedAnswer == answer;
     });
@@ -156,25 +198,40 @@ class _MathFingersGameState extends State<MathFingersGame>
     _pulseController.forward().then((_) => _pulseController.reverse());
 
     if (selectedAnswer == answer) {
+      // Start celebration animation smoothly
       setState(() => showWinAnimation = true);
+      _celebrationController.forward();
 
-      // 1. Play correct sound
+      // Stop and play correct sound with delay for smoother transition
       await _correctSound.stop();
+      await Future.delayed(const Duration(milliseconds: 100));
       await _correctSound.play(AssetSource('audio/correct-answer.wav'));
 
-      // 2. Speak congratulations after sound
+      // Wait for sound to complete
+      await _waitForPlayer(_correctSound);
+
+      // Speak feedback
       await widget.ttsService.speak("برافو! الإجابة صحيحة");
 
-      // 3. Wait a moment for animation to complete
+      // Wait for animation to complete
       await Future.delayed(const Duration(milliseconds: 1200));
 
       setState(() => showWinAnimation = false);
 
-      // 4. Trigger next level
-      widget.onCorrect(1);
+      // Trigger next level using frame sync for smoother transition
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onCorrect(1);
+      });
     } else {
+      // Stop and play wrong sound with delay
       await _wrongSound.stop();
+      await Future.delayed(const Duration(milliseconds: 100));
       await _wrongSound.play(AssetSource('audio/wrong-answer.wav'));
+
+      // Wait for sound to complete
+      await _waitForPlayer(_wrongSound);
+
+      // Speak feedback
       await widget.ttsService.speak("لا، حاول مرة أخرى");
 
       await Future.delayed(const Duration(milliseconds: 500));
@@ -182,6 +239,7 @@ class _MathFingersGameState extends State<MathFingersGame>
         setState(() {
           selectedOption = null;
           isCorrect = null;
+          hasSelected = false;
         });
       }
     }
@@ -190,6 +248,7 @@ class _MathFingersGameState extends State<MathFingersGame>
   @override
   void dispose() {
     _pulseController.dispose();
+    _celebrationController.dispose();
     _correctSound.dispose();
     _wrongSound.dispose();
     super.dispose();
@@ -216,48 +275,73 @@ class _MathFingersGameState extends State<MathFingersGame>
     final isDark = themeProvider.isDarkMode;
 
     return SingleChildScrollView(
-      child: Column(
-        children: [
-          Text(
-            "$num1 $operator $num2 = ?",
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.network(url1!, height: 100),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(operator, style: const TextStyle(fontSize: 28)),
+      child: RepaintBoundary(
+        child: Column(
+          children: [
+            Text(
+              "$num1 $operator $num2 = ?",
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black,
               ),
-              Image.network(url2!, height: 100),
-            ],
-          ),
-          const SizedBox(height: 30),
-          Wrap(
-            spacing: 20,
-            runSpacing: 20,
-            children: optionList.map((opt) {
-              final isSelected = selectedOption == opt;
+            ),
+            const SizedBox(height: 16),
+            RepaintBoundary(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.network(
+                    url1!,
+                    key: const ValueKey('finger_image_1'),
+                    height: 100,
+                    frameBuilder:
+                        (context, child, frame, wasSynchronouslyLoaded) {
+                      return AnimatedOpacity(
+                        opacity: frame != null ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOut,
+                        child: child,
+                      );
+                    },
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(operator, style: const TextStyle(fontSize: 28)),
+                  ),
+                  Image.network(
+                    url2!,
+                    key: const ValueKey('finger_image_2'),
+                    height: 100,
+                    frameBuilder:
+                        (context, child, frame, wasSynchronouslyLoaded) {
+                      return AnimatedOpacity(
+                        opacity: frame != null ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOut,
+                        child: child,
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 30),
+            RepaintBoundary(
+              child: Wrap(
+                spacing: 20,
+                runSpacing: 20,
+                children: optionList.map((opt) {
+                  final isSelected = selectedOption == opt;
 
                   return AnimatedBuilder(
                     animation: _pulseController,
                     builder: (context, child) {
                       double scale = 1.0;
                       if (isSelected) {
-                        // Pulse animation when selected
                         scale = 1.0 + (_pulseController.value * 0.1);
                       }
-
-                      return Transform.scale(
-                        scale: scale,
-                        child: child,
-                      );
+                      return Transform.scale(scale: scale, child: child);
                     },
                     child: InkWell(
                       key: ValueKey('option_$opt'),
@@ -296,24 +380,74 @@ class _MathFingersGameState extends State<MathFingersGame>
                 }).toList(),
               ),
             ),
-            if (showWinAnimation)
-              Padding(
-                padding: const EdgeInsets.only(top: 20),
-                child: Column(
-                  children: [
-                    SizedBox(
-                      height: 120,
-                      child:
-                          Lottie.asset('assets/more stars.json', repeat: false),
+            AnimatedOpacity(
+              opacity: showWinAnimation ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 300),
+              child: showWinAnimation
+                  ? SmoothCelebration(
+                      stars: _starsComposition,
+                      confetti: _confettiComposition,
+                    )
+                  : const SizedBox(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class SmoothCelebration extends StatelessWidget {
+  final Future<LottieComposition> stars;
+  final Future<LottieComposition> confetti;
+
+  const SmoothCelebration({
+    super.key,
+    required this.stars,
+    required this.confetti,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 20),
+        child: Column(
+          children: [
+            SizedBox(
+              height: 120,
+              child: FutureBuilder(
+                future: stars,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const SizedBox();
+                  return Lottie(
+                    composition: snapshot.data!,
+                    repeat: false,
+                    frameRate: FrameRate.max,
+                    options: LottieOptions(
+                      enableMergePaths: true,
                     ),
-                    SizedBox(
-                      height: 120,
-                      child:
-                          Lottie.asset('assets/Confetti.json', repeat: false),
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
+            ),
+            SizedBox(
+              height: 120,
+              child: FutureBuilder(
+                future: confetti,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const SizedBox();
+                  return Lottie(
+                    composition: snapshot.data!,
+                    repeat: false,
+                    frameRate: FrameRate.max,
+                    options: LottieOptions(
+                      enableMergePaths: true,
+                    ),
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),

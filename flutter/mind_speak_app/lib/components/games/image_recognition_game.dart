@@ -33,6 +33,10 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
   late final AudioPlayer _wrongSound;
   late final AnimationController _shakeController;
 
+  // Preloaded Lottie compositions
+  late final Future<LottieComposition> _starsComposition;
+  late final Future<LottieComposition> _confettiComposition;
+
   List<String> imageUrls = [];
   int correctIndex = 0;
   bool isLoading = true;
@@ -56,6 +60,10 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
     // Preload sounds - these don't need context
     _correctSound.setSource(AssetSource('audio/correct-answer.wav'));
     _wrongSound.setSource(AssetSource('audio/wrong-answer.wav'));
+
+    // Preload Lottie animations
+    _starsComposition = AssetLottie('assets/more stars.json').load();
+    _confettiComposition = AssetLottie('assets/Confetti.json').load();
 
     // Initial load that doesn't use context
     imageUrls = widget.images.map((img) => img['url'] as String).toList();
@@ -117,6 +125,7 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
       // Stop previous sounds before playing new ones
       if (_correctSound.state != PlayerState.stopped) {
         await _correctSound.stop();
+        await Future.delayed(const Duration(milliseconds: 100));
       }
 
       // Play correct sound
@@ -137,6 +146,7 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
       // Stop previous sounds
       if (_wrongSound.state != PlayerState.stopped) {
         await _wrongSound.stop();
+        await Future.delayed(const Duration(milliseconds: 100));
       }
 
       // Play wrong sound
@@ -309,29 +319,56 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
                 ],
               ),
             ),
-            if (showWinAnimation)
-              const RepaintBoundary(
-                child: Positioned.fill(
-                  child: IgnorePointer(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _LottieWidget(
-                          key: const ValueKey('stars_animation'),
-                          assetPath: 'assets/more stars.json',
-                          height: 120,
+            AnimatedOpacity(
+              opacity: showWinAnimation ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 300),
+              child: showWinAnimation
+                  ? RepaintBoundary(
+                      child: Positioned.fill(
+                        child: IgnorePointer(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              FutureBuilder<LottieComposition>(
+                                future: _starsComposition,
+                                builder: (context, snapshot) {
+                                  if (!snapshot.hasData)
+                                    return const SizedBox();
+                                  return Lottie(
+                                    composition: snapshot.data!,
+                                    repeat: false,
+                                    height: 120,
+                                    frameRate: FrameRate.max,
+                                    options: LottieOptions(
+                                      enableMergePaths: true,
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 10),
+                              FutureBuilder<LottieComposition>(
+                                future: _confettiComposition,
+                                builder: (context, snapshot) {
+                                  if (!snapshot.hasData)
+                                    return const SizedBox();
+                                  return Lottie(
+                                    composition: snapshot.data!,
+                                    repeat: false,
+                                    height: 160,
+                                    frameRate: FrameRate.max,
+                                    options: LottieOptions(
+                                      enableMergePaths: true,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 10),
-                        _LottieWidget(
-                          key: const ValueKey('confetti_animation'),
-                          assetPath: 'assets/Confetti.json',
-                          height: 160,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+                      ),
+                    )
+                  : const SizedBox(),
+            ),
           ],
         ),
       ),
@@ -339,23 +376,55 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
   }
 }
 
-class _LottieWidget extends StatelessWidget {
-  final String assetPath;
-  final double height;
+class SmoothCelebration extends StatelessWidget {
+  final Future<LottieComposition> stars;
+  final Future<LottieComposition> confetti;
 
-  const _LottieWidget({
+  const SmoothCelebration({
     super.key,
-    required this.assetPath,
-    required this.height,
+    required this.stars,
+    required this.confetti,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Lottie.asset(
-      assetPath,
-      height: height,
-      fit: BoxFit.contain,
-      repeat: false,
+    return RepaintBoundary(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          FutureBuilder(
+            future: stars,
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const SizedBox();
+              return Lottie(
+                composition: snapshot.data!,
+                repeat: false,
+                height: 120,
+                frameRate: FrameRate.max,
+                options: LottieOptions(
+                  enableMergePaths: true,
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+          FutureBuilder(
+            future: confetti,
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const SizedBox();
+              return Lottie(
+                composition: snapshot.data!,
+                repeat: false,
+                height: 160,
+                frameRate: FrameRate.max,
+                options: LottieOptions(
+                  enableMergePaths: true,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 }

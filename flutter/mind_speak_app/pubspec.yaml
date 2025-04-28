@@ -83,9 +83,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
-
 flutter_icons:
-  android: true 
+  android: true
   ios: true
   image_path: "assets/MindSpeakLogo.png"
   # The "flutter_lints" package below contains a set of recommended lints to

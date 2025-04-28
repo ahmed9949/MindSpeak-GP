@@ -45,7 +45,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer2<ThemeProvider, ColorProvider>(
       builder: (context, themeProvider, colorProvider, _) {
- 
         final baseTheme =
             themeProvider.isDarkMode ? ThemeData.dark() : ThemeData.light();
 

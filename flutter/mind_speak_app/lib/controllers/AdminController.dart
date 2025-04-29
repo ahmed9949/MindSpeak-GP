@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/Repositories/AdminRepository.dart';
 import 'package:mind_speak_app/models/admin_state.dart';
+import 'package:mind_speak_app/service/notification_service.dart';
 
 class AdminController with ChangeNotifier {
   final IAdminRepository _repository;
@@ -58,16 +59,19 @@ class AdminController with ChangeNotifier {
 
       _updateTherapistsList(updatedTherapistData);
       _showMessage(context, 'Therapist approved successfully!', Colors.green);
+
+      // 🔔 Local Notification
+      await NotificationService.showNotification(
+        title: "Therapist Approved",
+        body: "A therapist account was approved successfully.",
+      );
     } else {
       _showMessage(context, 'Failed to approve therapist', Colors.red);
     }
   }
 
   Future<void> rejectTherapist(
-    BuildContext context,
-    String therapistId,
-    String email,
-  ) async {
+      BuildContext context, String therapistId, String email) async {
     final success = await _repository.rejectTherapist(therapistId);
 
     if (success) {
@@ -79,6 +83,12 @@ class AdminController with ChangeNotifier {
 
       _updateTherapistsList(updatedTherapistData);
       _showMessage(context, 'Therapist permanently deleted!', Colors.red);
+
+      // 🔔 Local Notification
+      await NotificationService.showNotification(
+        title: "Therapist Rejected",
+        body: "A therapist registration request was rejected.",
+      );
     } else {
       _showMessage(context, 'Failed to delete therapist', Colors.red);
     }

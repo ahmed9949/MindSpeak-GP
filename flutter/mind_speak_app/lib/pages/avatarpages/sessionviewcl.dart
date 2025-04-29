@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:mind_speak_app/components/games/game_manager.dart';
@@ -389,25 +390,47 @@ class _SessionViewState extends State<SessionView> {
   }
 
   Future<void> _endSession() async {
-    // Show loading indicator
+    // Show loading indicator with optimized display
+    final navigator = Navigator.of(context);
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return const Dialog(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(color: Colors.white),
-                SizedBox(height: 16),
-                Text(
-                  "Ending session...",
-                  style: TextStyle(color: Colors.white),
-                ),
-              ],
+        return RepaintBoundary(
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Use optimized progress indicator
+                  const CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3, // Smoother animation
+                  ),
+                  const SizedBox(height: 16),
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOut,
+                    builder: (context, value, child) {
+                      return Opacity(
+                        opacity: value,
+                        child: child,
+                      );
+                    },
+                    child: const Text(
+                      "Ending session...",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -415,95 +438,135 @@ class _SessionViewState extends State<SessionView> {
     );
 
     try {
+      // Use parallel async operations where possible
       final sessionController =
           Provider.of<SessionController>(context, listen: false);
-      if (_isListening) await _speech.stop();
-      if (_isSpeaking) await _ttsService.stop();
+
+      // Stop speech in parallel with other operations
+      final speechStopFuture = _isListening ? _speech.stop() : Future.value();
+      final ttsStopFuture = _isSpeaking ? _ttsService.stop() : Future.value();
+
+      // Create goodbye message
       final goodbye =
           _childName != null ? "الى اللقاء $_childName" : "الى اللقاء";
-      await sessionController.addTherapistMessage(goodbye);
+
+      // Run operations in parallel where possible
+      await Future.wait([
+        speechStopFuture,
+        ttsStopFuture,
+        sessionController.addTherapistMessage(goodbye),
+      ]);
+
+      // Speak goodbye
       await _speak(goodbye);
 
-      // Fetch detection summary from Flask
-      final summary = await _aiService.endConversationAndFetchSummary();
-      if (summary != null) {
+      // Get detection summary in parallel with other operations
+      final summaryFuture = _aiService.endConversationAndFetchSummary();
+
+      // Calculate session time
+      final int timeSpent = _gameStartTime != null
+          ? DateTime.now().difference(_gameStartTime!).inSeconds
+          : 0;
+
+      // Get summary result
+      final summary = await summaryFuture;
+      if (summary != null && mounted) {
         await _detectionController.addDetection(
           sessionId: _sessionId!,
           detectionData: summary,
         );
       }
-      print("👉 Ending session...");
 
-      // Calculate the time spent if _gameStartTime is not null
-      final int timeSpent = _gameStartTime != null
-          ? DateTime.now().difference(_gameStartTime!).inSeconds
-          : 0;
-
-      // End session and get stats
-      // ignore: unused_local_variable
-      final stats = await sessionController.endSession(
-        {}, // detection stats
-        totalScore: _totalScore,
-        levelsCompleted: _currentLevel,
-        correctAnswers: _correctAnswers,
-        wrongAnswers: _wrongAnswers,
-        timeSpent: timeSpent,
-      );
-      print("✅ Session ended and stats saved!");
-
-      // Generate recommendations
-      final sessionData = await sessionController.getSessionById(_sessionId!);
-      if (sessionData != null) {
-        final childId = sessionData.childId;
-        final allSessions =
-            await sessionController.getSessionsForChild(childId);
-        final aggregateStats = widget.childData['aggregateStats'] ??
-            {
-              'totalSessions': 1,
-              'averageSessionDuration': 0,
-              'averageMessagesPerSession': 0
-            };
-
-        final recommendations =
-            await Provider.of<SessionAnalyzerController>(context, listen: false)
-                .generateRecommendations(
-          childData: widget.childData,
-          recentSessions: allSessions,
-          aggregateStats: aggregateStats,
-        );
-
-        await sessionController.generateRecommendations(
-          childId,
-          recommendations['parents'] ?? '',
-          recommendations['therapists'] ?? '',
-        );
-      }
-
-      // Close the loading dialog if it's still showing
-      if (mounted && Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      }
-
-      // Navigate to the home page instead of just popping
+      // End session with optimized stats
       if (mounted) {
-        print("📱 Navigating to HomePage...");
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const HomePage()),
+        await sessionController.endSession(
+          {}, // detection stats
+          totalScore: _totalScore,
+          levelsCompleted: _currentLevel,
+          correctAnswers: _correctAnswers,
+          wrongAnswers: _wrongAnswers,
+          timeSpent: timeSpent,
+        );
+      }
+
+      // Generate recommendations in the background - don't wait for completion
+      SchedulerBinding.instance.addPostFrameCallback((_) async {
+        if (mounted) {
+          try {
+            final sessionData =
+                await sessionController.getSessionById(_sessionId!);
+            if (sessionData != null) {
+              final childId = sessionData.childId;
+              final allSessions =
+                  await sessionController.getSessionsForChild(childId);
+              final aggregateStats = widget.childData['aggregateStats'] ??
+                  {
+                    'totalSessions': 1,
+                    'averageSessionDuration': 0,
+                    'averageMessagesPerSession': 0
+                  };
+
+              final recommendations =
+                  await Provider.of<SessionAnalyzerController>(context,
+                          listen: false)
+                      .generateRecommendations(
+                childData: widget.childData,
+                recentSessions: allSessions,
+                aggregateStats: aggregateStats,
+              );
+
+              await sessionController.generateRecommendations(
+                childId,
+                recommendations['parents'] ?? '',
+                recommendations['therapists'] ?? '',
+              );
+            }
+          } catch (e) {
+            print("Error generating recommendations: $e");
+            // Continue without failing
+          }
+        }
+      });
+
+      // Close the loading dialog if still showing
+      if (mounted && navigator.canPop()) {
+        navigator.pop();
+      }
+
+      // Navigate to the home page with optimized transition
+      if (mounted) {
+        navigator.pushAndRemoveUntil(
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const HomePage(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+              const begin = 0.0;
+              const end = 1.0;
+              const curve = Curves.easeInOut;
+
+              var tween =
+                  Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+              var fadeAnimation = animation.drive(tween);
+
+              return FadeTransition(opacity: fadeAnimation, child: child);
+            },
+            transitionDuration: const Duration(milliseconds: 400),
+          ),
           (route) => false,
         );
-        print("✅ Navigation command executed");
       }
     } catch (e) {
       print("❌ Error in _endSession: $e");
 
-      // Close the loading dialog if it's still showing
-      if (mounted && Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
+      // Close the loading dialog if still showing
+      if (mounted && navigator.canPop()) {
+        navigator.pop();
       }
 
-      // Still try to navigate home even if there was an error
+      // Still try to navigate home even with error, but with simpler transition
       if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
+        navigator.pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const HomePage()),
           (route) => false,
         );
@@ -514,8 +577,9 @@ class _SessionViewState extends State<SessionView> {
   Future<void> _showRandomMiniGame() async {
     _gameStartTime = DateTime.now();
 
-    // Set up listeners to handle game results
+    // Set up listeners for game results with optimized callback handling
     _gameManager.onGameCompleted = (int score, bool isLastLevel) {
+      // Use setState with minimal updates
       setState(() {
         _totalScore += score;
         _correctAnswers++;
@@ -524,8 +588,10 @@ class _SessionViewState extends State<SessionView> {
         }
       });
 
-      // Show the level completion animation
-      _gameManager.showLevelCompletionAnimation(isLastLevel);
+      // Show level completion animation with frame sync
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        _gameManager.showLevelCompletionAnimation(isLastLevel);
+      });
     };
 
     _gameManager.onGameFailed = () {
@@ -534,12 +600,14 @@ class _SessionViewState extends State<SessionView> {
       });
     };
 
+    // Ensure any pending game is completed first
+    await Future.delayed(Duration.zero);
+
     // Start the game with the current level
     if (mounted) {
       _gameManager.startGame(context, _currentLevel);
     }
   }
-
   @override
   void dispose() {
     controller.onModelLoaded.removeListener(_onModelLoaded);

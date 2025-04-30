@@ -10,6 +10,7 @@ import 'package:mind_speak_app/service/avatarservice/conversationsetup.dart';
 import 'package:provider/provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/color_provider.dart';
+import 'package:mind_speak_app/service/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,6 +44,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    NotificationService.initialize(context);
     return Consumer2<ThemeProvider, ColorProvider>(
       builder: (context, themeProvider, colorProvider, _) {
         final baseTheme =

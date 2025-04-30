@@ -10,8 +10,9 @@ import 'package:mind_speak_app/models/User.dart';
 import 'package:mind_speak_app/pages/adminDashboard.dart';
 import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/login.dart';
-import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:mind_speak_app/service/notification_service.dart'; // <-- Import NotificationService
 
 class SignUpController {
   final BuildContext context;
@@ -54,14 +55,12 @@ class SignUpController {
     this.therapistImage,
   });
 
-  // Method to pick an image from the gallery or camera
   Future<File?> pickImage(ImageSource source) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: source);
     return pickedFile != null ? File(pickedFile.path) : null;
   }
 
-  // Main registration method
   Future<void> registration() async {
     if (!formKey.currentState!.validate()) return;
 
@@ -75,31 +74,25 @@ class SignUpController {
       } else if (role == 'therapist') {
         phoneNumber = int.parse(therapistPhoneNumberController.text.trim());
       } else {
-        // Default for admin or other roles
         phoneNumber = 0;
       }
 
-      // Get the plain password for Firebase Auth
       String plainPassword = passwordController.text.trim();
 
-      // Create user model with plain password for Firebase Auth
       final user = UserModel(
-        userId: '', // Will be set after Firebase user creation
+        userId: '',
         email: emailController.text.trim(),
         username: usernameController.text.trim(),
         role: role,
-        password: plainPassword, // Plain password for Firebase Auth
+        password: plainPassword,
         phoneNumber: phoneNumber,
       );
 
-      // Create Firebase user with plain password
       UserCredential userCredential =
           await _repository.createFirebaseUser(user);
 
-// 👇 Send email verification immediately after creation
       await userCredential.user!.sendEmailVerification();
 
-      // 🔐 Prevent login until verification is complete
       _showInfoSnackBar(
           "Verification email sent. Please check your Gmail and verify before logging in.");
       Navigator.pushReplacement(
@@ -109,48 +102,40 @@ class SignUpController {
 
       String userId = userCredential.user!.uid;
 
-      // Create updated user with hashed password for database storage
       final updatedUser = UserModel(
-        userId: userId, // Store Firebase UID
+        userId: userId,
         email: user.email,
         username: user.username,
         role: user.role,
-        password: _repository.hashPassword(plainPassword), // Hash for Firestore
+        password: _repository.hashPassword(plainPassword),
         phoneNumber: user.phoneNumber,
       );
 
-      // Save user details with hashed password
       await _repository.saveUserDetails(updatedUser);
 
-      // Handle role-specific data
       if (role == 'parent') {
-        // Save parent details with proper parentId
         final parent = ParentModel(
-          parentId: userId, // Use Firebase UID
+          parentId: userId,
           phoneNumber: int.parse(parentPhoneNumberController.text.trim()),
         );
-
         await _repository.saveParentDetails(parent);
 
-        // Save child details with image and proper parentId reference
         String childImageUrl = childImage != null
             ? await _repository.uploadImage(childImage!, 'child_images')
             : '';
 
         final child = ChildModel(
-          childId: _repository.generateChildId(), // Generate unique child ID
+          childId: _repository.generateChildId(),
           name: childNameController.text.trim(),
           age: int.parse(childAgeController.text.trim()),
           childInterest: childInterestController.text.trim(),
           childPhoto: childImageUrl,
-          therapistId: '', // Initially unassigned
+          therapistId: '',
           assigned: false,
-          userId: userId, // Link child to parent using parent's userId
+          userId: userId,
         );
-
         await _repository.saveParentAndChildDetails(child);
       } else if (role == 'therapist') {
-        // Save therapist details with proper therapistId
         String nationalProofUrl = nationalProofImage != null
             ? await _repository.uploadImage(
                 nationalProofImage!, 'national_proofs')
@@ -160,17 +145,22 @@ class SignUpController {
             : '';
 
         final therapist = TherapistModel(
-          therapistId: userId, // Use Firebase UID
+          therapistId: userId,
           bio: bioController.text.trim(),
           nationalId: nationalIdController.text.trim(),
           nationalProof: nationalProofUrl,
           therapistImage: therapistImageUrl,
           status: false,
-          userId: userId, // Link therapist to user using user's userId
-          // Initially unapproved
+          userId: userId,
         );
-
         await _repository.saveTherapistDetails(therapist);
+
+        // 🔔 Send Local Notification to Admin
+        await NotificationService.showNotification(
+          title: "New Therapist Registration",
+          body:
+              "${usernameController.text.trim()} has registered and awaits approval.",
+        );
       }
 
       _navigateBasedOnRole(userId);
@@ -181,23 +171,19 @@ class SignUpController {
     }
   }
 
-  // Validate image uploads based on role
   bool _validateImageUploads() {
     if (role == 'parent' && childImage == null) {
       _showErrorSnackBar("Please upload your child's image.");
       return false;
     }
-
     if (role == 'therapist' &&
         (nationalProofImage == null || therapistImage == null)) {
       _showErrorSnackBar("Please upload national proof and therapist image.");
       return false;
     }
-
     return true;
   }
 
-  // Check for duplicate entries (phone numbers, national ID, etc.)
   Future<bool> _checkDuplicateEntries() async {
     if (role == 'parent') {
       int parentPhoneNumber =
@@ -207,7 +193,6 @@ class SignUpController {
         return false;
       }
     }
-
     if (role == 'therapist') {
       int therapistPhoneNumber =
           int.parse(therapistPhoneNumberController.text.trim());
@@ -216,19 +201,16 @@ class SignUpController {
             "Phone number is already in use by another therapist.");
         return false;
       }
-
       String nationalId = nationalIdController.text.trim();
       if (await _repository.isNationalIdTaken(nationalId)) {
         _showErrorSnackBar("National ID is already in use.");
         return false;
       }
     }
-
     return true;
   }
 
-  // Navigate to the appropriate screen based on the user's role
-  void _navigateBasedOnRole(String userId) async {
+  void _navigateBasedOnRole(String userId) {
     _showSuccessSnackBar("Registered Successfully");
 
     switch (role) {
@@ -243,8 +225,6 @@ class SignUpController {
       case 'therapist':
         Navigator.push(
             context, MaterialPageRoute(builder: (context) => const LogIn()));
-        _showInfoSnackBar(
-            "Your account is pending approval. Please wait until the admin approves your request.");
         break;
       case 'admin':
         Navigator.push(
@@ -255,7 +235,6 @@ class SignUpController {
     }
   }
 
-  // Handle Firebase authentication errors
   void _handleFirebaseAuthError(FirebaseAuthException e) {
     switch (e.code) {
       case 'weak-password':
@@ -269,7 +248,6 @@ class SignUpController {
     }
   }
 
-  // Show an error snackbar
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message),
@@ -277,7 +255,6 @@ class SignUpController {
     ));
   }
 
-  // Show a success snackbar
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message, style: const TextStyle(fontSize: 20.0)),
@@ -285,7 +262,6 @@ class SignUpController {
     ));
   }
 
-  // Show an info snackbar
   void _showInfoSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message),

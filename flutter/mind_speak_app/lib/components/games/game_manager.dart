@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:lottie/lottie.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:mind_speak_app/components/games/ImageNamingGame.dart';
 import 'package:provider/provider.dart';
 import 'package:mind_speak_app/service/avatarservice/game_image_service.dart';
 import 'package:mind_speak_app/service/avatarservice/chatgptttsservice.dart';
@@ -78,6 +79,8 @@ class GameManager {
       AssetLottie('assets/Confetti.json')
           .load()
           .then((comp) => _confettiComposition = Future.value(comp)),
+      AssetLottie('assets/listening_animation.json')
+          .load(), // Preload listening animation
     ]);
 
     // Preload audio assets in parallel
@@ -85,6 +88,7 @@ class GameManager {
     _audioPlayers['wrong'] = AudioPlayer();
     _audioPlayers['levelUp'] = AudioPlayer();
     _audioPlayers['celebration'] = AudioPlayer();
+    _audioPlayers['listening'] = AudioPlayer(); // Add listening sound player
 
     await Future.wait([
       _audioPlayers['correct']!
@@ -94,6 +98,8 @@ class GameManager {
           .setSource(AssetSource('audio/completion-of-level.wav')),
       _audioPlayers['celebration']!
           .setSource(AssetSource('audio/celebrationAudio.mp3')),
+      _audioPlayers['listening']!
+          .setSource(AssetSource('audio/listening_start.wav')),
     ]);
 
     // Preload animation assets with higher priority
@@ -102,6 +108,7 @@ class GameManager {
       _precacheAssetWithPriority('assets/celebration.json', context),
       _precacheAssetWithPriority('assets/more stars.json', context),
       _precacheAssetWithPriority('assets/Confetti.json', context),
+      _precacheAssetWithPriority('assets/listening_animation.json', context),
     ]);
 
     // Preload categories and common image types
@@ -135,7 +142,13 @@ class GameManager {
 
   /// Preload categories and their types
   Future<void> _preloadGameCategories() async {
-    final categories = ['Animals', 'Fruits', 'Body_Parts', 'Fingers'];
+    final categories = [
+      'Animals',
+      'Fruits',
+      'Body_Parts',
+      'Fingers',
+      'Vehicles',
+    ];
 
     List<Future<void>> futures = [];
     for (final category in categories) {
@@ -266,9 +279,19 @@ class GameManager {
     final currentLevel = _currentLevelNotifier.value;
 
     try {
+      // Expanded game selection logic - now include ImageNamingGame
       if (currentLevel == 5 || currentLevel == 6 || currentLevel == 7) {
         // Math game levels
         game = MathFingersGame(
+          key: UniqueKey(),
+          level: currentLevel,
+          ttsService: ttsService,
+          onCorrect: _handleCorrectAnswer,
+          onWrong: _handleWrongAnswer,
+        );
+      } else if (currentLevel == 4 || currentLevel == 8) {
+        // Image naming levels - for levels 4 and 8
+        game = ImageNamingGame(
           key: UniqueKey(),
           level: currentLevel,
           ttsService: ttsService,
@@ -579,7 +602,7 @@ class GameManager {
                         composition: snapshot.data!,
                         height: 200,
                         repeat: true,
-                        frameRate: FrameRate(60), // Higher frame rate
+                        frameRate: FrameRate(120), // Higher frame rate
                         options: LottieOptions(
                           enableMergePaths: true,
                         ),

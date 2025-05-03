@@ -39,27 +39,41 @@ class StaticTranslationHelper {
   static final Map<String, String> _fruits = {
     'apple': 'تفاحة',
     'banana': 'موز',
-    'orange': 'برتقالة',
+    'orange': 'برتقان',
     'grape': 'عنب',
     'strawberry': 'فراولة',
     'watermelon': 'بطيخ',
     'pineapple': 'أناناس',
     'peach': 'خوخ',
-    'mango': 'مانجو',
+    'mango': 'مانجا',
     'lemon': 'ليمون',
+    'avocado': 'افوكادو',
+    'coconut': 'جوز هند',
+    'olive': 'زتون',
+    'kiwi': 'كيوى',
+    'pomegranate': 'رمان',
   };
 
   static final Map<String, String> _bodyParts = {
-    'head': 'رأس',
+    'elbow': 'كوع',
     'eye': 'عين',
     'nose': 'أنف',
-    'mouth': 'فم',
     'ear': 'أذن',
     'hand': 'يد',
     'foot': 'قدم',
-    'leg': 'ساق',
-    'arm': 'ذراع',
-    'finger': 'إصبع',
+    'neck': 'رقبة',
+    'knee': 'رقبة',
+  };
+
+  static final Map<String, String> _vegetables = {
+    'beetroot': 'كوع',
+    'bell pepper': 'عين',
+    'cabbage': 'أنف',
+    'carrot': 'أذن',
+    'cauliflower': 'يد',
+    'foot': 'قدم',
+    'neck': 'رقبة',
+    'knee': 'رقبة',
   };
 
   // static final Map<String, String> _vehicles = {
@@ -116,6 +130,8 @@ class StaticTranslationHelper {
     _categoryMaps['Animals'] = _animals;
     _categoryMaps['Fruits'] = _fruits;
     _categoryMaps['Body_Parts'] = _bodyParts;
+    _categoryMaps['vegetables'] = _vegetables;
+
     // _categoryMaps['Vehicles'] = _vehicles;
     // _categoryMaps['Household_Items'] = _householdItems;
 

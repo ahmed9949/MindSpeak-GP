@@ -42,6 +42,7 @@ class _SessionViewState extends State<SessionView> {
   final stt.SpeechToText _speech = stt.SpeechToText();
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   late GameManager _gameManager;
+  Timer? _statsUpdateTimer;
 
   late AiService _aiService;
   late DetectionController _detectionController;
@@ -67,23 +68,54 @@ class _SessionViewState extends State<SessionView> {
   int _totalScore = 0;
   int _correctAnswers = 0;
   int _wrongAnswers = 0;
+  bool _isGameInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeSession();
+    print("DEBUG: SessionView initState started");
 
     // Initialize TTS with common phrases
     _ttsService.initialize().then((_) {
-      print("TTS service ready with preloaded phrases");
+      print("DEBUG: TTS service ready with preloaded phrases");
     });
-    // Setup the game manager
+
+    // IMPORTANT: Create GameManager first before initializing games
     _gameManager = GameManager(ttsService: _ttsService);
+    print("DEBUG: GameManager instance created");
+
+    // Initialize session after creating GameManager
+    _initializeSession();
+
+    // Initialize game AFTER GameManager is created
+    _initializeGame();
+
+    // Start periodic stats update
+    _startStatsUpdateTimer();
 
     // Preload game assets for smoother performance
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _gameManager.preloadGameAssets(context);
+      print("DEBUG: Game assets preloading started");
     });
+  }
+
+  void _startStatsUpdateTimer() {
+    _statsUpdateTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && _gameManager.isGameInProgress) {
+        _syncGameStats();
+      }
+    });
+  }
+
+  void _syncGameStats() {
+    setState(() {
+      _totalScore = _gameManager.totalScore;
+      _correctAnswers = _gameManager.correctAnswers;
+      _wrongAnswers = _gameManager.wrongAnswers;
+      _currentLevel = _gameManager.currentLevel;
+    });
+    print("DEBUG: Synced stats - Score: $_totalScore, Level: $_currentLevel");
   }
 
   Future<void> ensureCameraPermission() async {
@@ -574,46 +606,91 @@ class _SessionViewState extends State<SessionView> {
     }
   }
 
-  Future<void> _showRandomMiniGame() async {
-    _gameStartTime = DateTime.now();
+  // Improved game initialization with clear null check
+  Future<void> _initializeGame() async {
+    print("DEBUG: Initializing game connections");
 
-    // Set up listeners for game results with optimized callback handling
-    _gameManager.onGameCompleted = (int score, bool isLastLevel) {
-      // Use setState with minimal updates
+    if (!mounted) {
+      print("DEBUG: Widget not mounted during game initialization");
+      return;
+    }
+
+    // Reset state to prevent double-counting
+    setState(() {
+      _totalScore = 0;
+      _correctAnswers = 0;
+      _wrongAnswers = 0;
+      _currentLevel = 1;
+    });
+
+    await _gameManager.preloadGameAssets(context);
+
+    // Clear out any previously registered callbacks first
+    _gameManager.onGameCompleted = null;
+    _gameManager.onGameFailed = null;
+    _gameManager.onGameStatsUpdated = null;
+
+    // Then register new callbacks
+    _gameManager.onGameCompleted = (score, isLastLevel) {
+      print(
+          "DEBUG: onGameCompleted called with score=$score, isLastLevel=$isLastLevel");
+
+      // DON'T increment score here - use the GameManager's score directly
       setState(() {
-        _totalScore += score;
-        _correctAnswers++;
-        if (!isLastLevel) {
-          _currentLevel++;
-        }
+        _totalScore = _gameManager.totalScore;
+        _correctAnswers = _gameManager.correctAnswers;
+        _wrongAnswers = _gameManager.wrongAnswers;
+        if (!isLastLevel) _currentLevel = _gameManager.currentLevel;
       });
 
-      // Show level completion animation with frame sync
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        _gameManager.showLevelCompletionAnimation(isLastLevel);
-      });
+      print(
+          "DEBUG: After completion: _totalScore=$_totalScore, level=$_currentLevel");
     };
 
     _gameManager.onGameFailed = () {
+      print("DEBUG: onGameFailed called");
       setState(() {
-        _wrongAnswers++;
+        _wrongAnswers = _gameManager.wrongAnswers;
       });
+      print("DEBUG: After game failed: wrongAnswers=$_wrongAnswers");
     };
 
-    // Ensure any pending game is completed first
-    await Future.delayed(Duration.zero);
+    _gameManager.onGameStatsUpdated = (score, correct, wrong) {
+      print(
+          "DEBUG: onGameStatsUpdated called with score=$score, correct=$correct, wrong=$wrong");
+      setState(() {
+        _totalScore = score;
+        _correctAnswers = correct;
+        _wrongAnswers = wrong;
+      });
+      print("DEBUG: After stats update: _totalScore=$_totalScore");
+    };
 
-    // Start the game with the current level
-    if (mounted) {
-      _gameManager.startGame(context, _currentLevel);
-    }
+    _isGameInitialized = true;
+    print("DEBUG: Game initialization complete");
   }
+
+  void _resetGame() {
+    setState(() {
+      _totalScore = 0;
+      _correctAnswers = 0;
+      _wrongAnswers = 0;
+      _currentLevel = 1;
+    });
+
+    // Reset the GameManager state
+    _gameManager.resetGame();
+    print("DEBUG: Game state reset");
+  }
+
   @override
   void dispose() {
+    print("DEBUG: SessionView dispose called");
     controller.onModelLoaded.removeListener(_onModelLoaded);
     _speech.stop();
     _ttsService.stop();
     _frameTimer?.cancel();
+    _statsUpdateTimer?.cancel();
     _recorder.closeRecorder();
     _cameraController.dispose();
     _gameManager.dispose();
@@ -726,7 +803,14 @@ class _SessionViewState extends State<SessionView> {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     ElevatedButton.icon(
-                      onPressed: _showRandomMiniGame,
+                      onPressed: () {
+                        // Reset game state before starting a new game
+                        _resetGame();
+
+                        // Start a fresh game from level 1
+                        print("DEBUG: Starting game from level 1");
+                        _gameManager.startGame(context, 1);
+                      },
                       icon: const Icon(Icons.games),
                       label: const Text("Play Game 🎮"),
                       style: ElevatedButton.styleFrom(
@@ -761,6 +845,15 @@ class _SessionViewState extends State<SessionView> {
                       ),
                     ),
                   ],
+                ),
+                // Debug reset button for testing
+                ElevatedButton(
+                  onPressed: _resetGame,
+                  child: const Text("Reset Score"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey,
+                    foregroundColor: Colors.white,
+                  ),
                 ),
               ],
             ),

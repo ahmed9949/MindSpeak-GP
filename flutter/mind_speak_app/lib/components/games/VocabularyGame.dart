@@ -4,35 +4,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:lottie/lottie.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mind_speak_app/components/games/mini_game_base.dart';
+import 'package:mind_speak_app/service/avatarservice/static_translation_helper.dart';
 
-class ImageRecognitionGame extends MiniGameBase {
+class VocabularyGame extends MiniGameBase {
   final String category;
-  final String type;
   final int level;
-  final List<Map<String, dynamic>> images;
+  final int numberOfOptions;
 
-  const ImageRecognitionGame({
+  const VocabularyGame({
     super.key,
     required this.category,
-    required this.type,
     required this.level,
     required super.ttsService,
     required super.onCorrect,
     required super.onWrong,
-    required this.images,
+    this.numberOfOptions = 4,
   });
 
   @override
-  State<ImageRecognitionGame> createState() => _ImageRecognitionGameState();
+  State<VocabularyGame> createState() => _VocabularyGameState();
 }
 
-class _ImageRecognitionGameState extends State<ImageRecognitionGame>
+class _VocabularyGameState extends State<VocabularyGame>
     with SingleTickerProviderStateMixin {
   late final AudioPlayer _correctSound;
   late final AudioPlayer _wrongSound;
   late final AnimationController _shakeController;
+  late final StaticTranslationHelper _translationHelper;
   late final ValueNotifier<double> _animationScaleNotifier;
 
   // Cached Lottie compositions
@@ -46,8 +45,11 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
   final ValueNotifier<int?> _wrongIndexNotifier = ValueNotifier(null);
   final ValueNotifier<bool> _shakeNotifier = ValueNotifier(false);
 
-  List<String> imageUrls = [];
-  int correctIndex = 0;
+  // Game state
+  late String _targetWord;
+  late String _targetTranslation;
+  late List<String> _options;
+  int _correctIndex = 0;
   bool _didInit = false;
   Completer<void>? _animationCompleter;
 
@@ -61,6 +63,8 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
       duration: const Duration(milliseconds: 300),
     );
     _animationScaleNotifier = ValueNotifier(1.0);
+    _translationHelper = StaticTranslationHelper.instance;
+    _translationHelper.init();
 
     // Optimize audio loading - set sources without awaiting
     _loadAudioResources();
@@ -69,9 +73,8 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
     _starsComposition = AssetLottie('assets/more stars.json').load();
     _confettiComposition = AssetLottie('assets/Confetti.json').load();
 
-    // Initial load that doesn't use context
-    imageUrls = widget.images.map((img) => img['url'] as String).toList();
-    correctIndex = widget.images.indexWhere((img) => img['isCorrect'] == true);
+    // Initial setup that doesn't require context
+    _prepareGameData();
   }
 
   Future<void> _loadAudioResources() async {
@@ -90,28 +93,89 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
     if (!_didInit) {
       _didInit = true;
       _finishLoading();
-
-      // Clear unused memory after images are loaded
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        PaintingBinding.instance.imageCache.clear();
-        PaintingBinding.instance.imageCache.clearLiveImages();
-      });
     }
   }
 
-  void _finishLoading() {
-    // Pre-cache all images efficiently using computed memory settings
-    for (final url in imageUrls) {
-      precacheImage(NetworkImage(url), context);
+  void _prepareGameData() {
+    // Get translations for category
+    final categoryMap =
+        _translationHelper.getCategoryTranslations(widget.category);
+
+    if (categoryMap.isEmpty) {
+      // Fallback to Animals category if provided category has no data
+      final availableCategories = _translationHelper.getCategories();
+      final fallbackCategory = availableCategories.isNotEmpty
+          ? availableCategories.first
+          : 'Animals';
+      final fallbackMap =
+          _translationHelper.getCategoryTranslations(fallbackCategory);
+
+      if (fallbackMap.isEmpty) {
+        // Critical error - no translations available
+        _targetWord = 'Error';
+        _targetTranslation = 'خطأ';
+        _options = ['خطأ'];
+        _correctIndex = 0;
+        return;
+      }
+
+      _generateGameOptionsFromMap(fallbackMap);
+    } else {
+      _generateGameOptionsFromMap(categoryMap);
+    }
+  }
+
+  void _generateGameOptionsFromMap(Map<String, String> categoryMap) {
+    // Get a list of all available words
+    final availableWords = categoryMap.keys.toList();
+
+    // Randomly select the target word
+    final randomIndex = Random().nextInt(availableWords.length);
+    _targetWord = availableWords[randomIndex];
+    _targetTranslation = categoryMap[_targetWord]!;
+
+    // Generate options with varying difficulty based on level
+    _generateOptions(availableWords, categoryMap, widget.level);
+  }
+
+  void _generateOptions(
+      List<String> availableWords, Map<String, String> categoryMap, int level) {
+    // Determine number of options based on level
+    final numOptions =
+        min(availableWords.length, max(2, widget.numberOfOptions));
+
+    // Start with correct answer
+    final List<String> translationOptions = [_targetTranslation];
+
+    // Add other random translations, ensuring no duplicates
+    final availableTranslations = categoryMap.values.toList()
+      ..remove(_targetTranslation);
+
+    // Shuffle for randomness
+    availableTranslations.shuffle();
+
+    // Add random translations until we reach desired number of options
+    for (var i = 0;
+        i < numOptions - 1 && i < availableTranslations.length;
+        i++) {
+      translationOptions.add(availableTranslations[i]);
     }
 
+    // Shuffle options
+    translationOptions.shuffle();
+
+    // Find the index of the correct answer
+    _correctIndex = translationOptions.indexOf(_targetTranslation);
+    _options = translationOptions;
+  }
+
+  void _finishLoading() {
     // Set loading to false
     _isLoadingNotifier.value = false;
 
     // Speak instruction after UI is fully rendered
     SchedulerBinding.instance.addPostFrameCallback((_) {
-      final typeToAnnounce = widget.type.toLowerCase();
-      widget.ttsService.speak("فين الـ $typeToAnnounce؟");
+      widget.ttsService.speak("ما هي الترجمة العربية لكلمة $_targetWord؟");
     });
   }
 
@@ -123,7 +187,7 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
     // Create a completer to track when all animations are finished
     _animationCompleter = Completer<void>();
 
-    if (index != correctIndex) {
+    if (index != _correctIndex) {
       _wrongIndexNotifier.value = index;
       _shakeNotifier.value = true;
       _shakeController.forward().then((_) => _shakeController.reset());
@@ -253,15 +317,25 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                "Where is the ${widget.type.toLowerCase()}?",
+                "What is the Arabic translation of \"$_targetWord\"?",
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 20),
-              _buildImageGrid(),
+              const SizedBox(height: 8),
+              Text(
+                "ما هي الترجمة العربية لكلمة $_targetWord؟",
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'Arial',
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 30),
+              _buildOptionsGrid(),
               const SizedBox(height: 100),
             ],
           ),
@@ -271,7 +345,7 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
     );
   }
 
-  Widget _buildImageGrid() {
+  Widget _buildOptionsGrid() {
     return RepaintBoundary(
       child: ValueListenableBuilder<bool>(
         valueListenable: _hasSelectedNotifier,
@@ -284,9 +358,9 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
                 builder: (context, shake, _) {
                   return Wrap(
                     alignment: WrapAlignment.center,
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: List.generate(imageUrls.length, (index) {
+                    spacing: 15,
+                    runSpacing: 15,
+                    children: List.generate(_options.length, (index) {
                       return AnimatedBuilder(
                         animation: _shakeController,
                         builder: (context, child) {
@@ -305,12 +379,12 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
                           valueListenable: _animationScaleNotifier,
                           builder: (context, scale, _) {
                             return AnimatedScale(
-                              scale: (hasSelected && index == correctIndex)
+                              scale: (hasSelected && index == _correctIndex)
                                   ? scale
                                   : 1.0,
                               duration: const Duration(milliseconds: 150),
                               curve: Curves.easeOutQuad,
-                              child: _buildImageCard(index, hasSelected),
+                              child: _buildOptionCard(index, hasSelected),
                             );
                           },
                         ),
@@ -326,58 +400,53 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
     );
   }
 
-  Widget _buildImageCard(int index, bool hasSelected) {
+  Widget _buildOptionCard(int index, bool hasSelected) {
+    final bool isCorrect = index == _correctIndex;
+    final String option = _options[index];
+
     return GestureDetector(
-      key: ValueKey('image_option_$index'),
+      key: ValueKey('option_$index'),
       onTap: () => handleSelection(index),
       child: Container(
-        height: 150,
         width: 150,
+        height: 90,
         decoration: BoxDecoration(
+          color: hasSelected
+              ? (isCorrect
+                  ? Colors.green.withOpacity(0.2)
+                  : Colors.red.withOpacity(0.2))
+              : Colors.blue.withOpacity(0.1),
           border: Border.all(
             color: hasSelected
-                ? (index == correctIndex ? Colors.green : Colors.red)
-                : Colors.transparent,
-            width: 3,
+                ? (isCorrect ? Colors.green : Colors.red)
+                : Colors.blue,
+            width: 2,
           ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: hasSelected && index == correctIndex
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: hasSelected && isCorrect
               ? [
                   BoxShadow(
-                    color: Colors.green.withOpacity(0.5),
+                    color: Colors.green.withOpacity(0.3),
                     blurRadius: 8,
                     spreadRadius: 2,
                   )
                 ]
               : null,
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: Hero(
-            tag: 'image_$index',
-            child: CachedNetworkImage(
-              imageUrl: imageUrls[index],
-              fit: BoxFit.cover,
-              memCacheWidth: 300,
-              memCacheHeight: 300,
-              fadeOutDuration: const Duration(milliseconds: 50),
-              fadeInDuration: const Duration(milliseconds: 50),
-              placeholder: (context, url) => Container(
-                color: Colors.grey[300],
-                child: const Center(
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                ),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(
+              option,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: hasSelected
+                    ? (isCorrect ? Colors.green.shade800 : Colors.red.shade800)
+                    : Colors.black87,
+                fontFamily: 'Arial',
               ),
-              errorWidget: (context, url, error) => Container(
-                color: Colors.grey[300],
-                child: const Center(
-                  child: Icon(Icons.broken_image, size: 30, color: Colors.grey),
-                ),
-              ),
+              textAlign: TextAlign.center,
             ),
           ),
         ),

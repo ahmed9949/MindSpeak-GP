@@ -537,7 +537,7 @@ class SmoothCelebration extends StatelessWidget {
                     composition: snapshot.data!,
                     repeat: false,
                     frameRate:
-                        FrameRate(60), // Higher frame rate for smoothness
+                        FrameRate(120), // Higher frame rate for smoothness
                     options: LottieOptions(
                       enableMergePaths: true,
                     ),
@@ -555,7 +555,7 @@ class SmoothCelebration extends StatelessWidget {
                     composition: snapshot.data!,
                     repeat: false,
                     frameRate:
-                        FrameRate(60), // Higher frame rate for smoothness
+                        FrameRate(120), // Higher frame rate for smoothness
                     options: LottieOptions(
                       enableMergePaths: true,
                     ),

@@ -173,7 +173,7 @@ void main() {
       when(mockQueryDoc.data()).thenReturn({
         'name': testChildName,
         'age': testChildAge,
-        'childInterest': testChildInterest, 
+        'childInterest': testChildInterest,
       });
       when(mockQueryDoc.id).thenReturn('childDocId');
 
@@ -256,6 +256,137 @@ void main() {
       expect(result.therapistImage, 'therapist.jpg');
       expect(result.status, true);
       print('✅ fetchTherapistInfo success');
+    });
+  });
+
+  group('authenticateUser - invalid cases', () {
+    test('throws Exception when wrong password provided', () async {
+      when(mockAuth.signInWithEmailAndPassword(
+              email: testEmail, password: testPassword))
+          .thenThrow(auth.FirebaseAuthException(code: 'wrong-password'));
+
+      try {
+        await repository.authenticateUser(testEmail, testPassword);
+      } catch (e) {
+        print('❌ authenticateUser failed: $e');
+        expect(e, isA<Exception>());
+        expect(e.toString(),
+            contains('Incorrect email or password. Please try again.'));
+        print('✅ authenticateUser invalid password test passed');
+      }
+    });
+
+    test('throws Exception when user email not verified', () async {
+      final mockUserCredential = MockUserCredential();
+      final mockUser = MockUser();
+
+      when(mockAuth.signInWithEmailAndPassword(
+              email: testEmail, password: testPassword))
+          .thenAnswer((_) async => mockUserCredential);
+      when(mockUserCredential.user).thenReturn(mockUser);
+      when(mockUser.emailVerified).thenReturn(false);
+
+      try {
+        await repository.authenticateUser(testEmail, testPassword);
+      } catch (e) {
+        print('❌ authenticateUser email not verified: $e');
+        expect(e, isA<Exception>());
+        expect(e.toString(), contains('verify your email'));
+        print('✅ authenticateUser email verification test passed');
+      }
+    });
+
+    test('throws Exception when user document does not exist', () async {
+      final mockUserCredential = MockUserCredential();
+      final mockUser = MockUser();
+      final mockDocSnapshot = MockDocumentSnapshot<Map<String, dynamic>>();
+      final mockCollection = MockCollectionReference<Map<String, dynamic>>();
+      final mockDocRef = MockDocumentReference<Map<String, dynamic>>();
+
+      when(mockAuth.signInWithEmailAndPassword(
+              email: testEmail, password: testPassword))
+          .thenAnswer((_) async => mockUserCredential);
+      when(mockUserCredential.user).thenReturn(mockUser);
+      when(mockUser.uid).thenReturn('user123');
+      when(mockUser.emailVerified).thenReturn(true);
+
+      when(mockFirestore.collection('users')).thenReturn(mockCollection);
+      when(mockCollection.doc('user123')).thenReturn(mockDocRef);
+      when(mockDocRef.get()).thenAnswer((_) async => mockDocSnapshot);
+      when(mockDocSnapshot.exists).thenReturn(false);
+
+      try {
+        await repository.authenticateUser(testEmail, testPassword);
+      } catch (e) {
+        print('❌ authenticateUser user doc missing: $e');
+        expect(e, isA<Exception>());
+        expect(e.toString(), contains('rejected by the admin'));
+        print('✅ authenticateUser missing doc test passed');
+      }
+    });
+  });
+
+  group('fetchChildData - invalid case', () {
+    test('throws Exception when no child found', () async {
+      final mockCollection = MockCollectionReference<Map<String, dynamic>>();
+      final mockQuerySnapshot = MockQuerySnapshot<Map<String, dynamic>>();
+
+      when(mockFirestore.collection('child')).thenReturn(mockCollection);
+      when(mockCollection.where('userId', isEqualTo: 'user123'))
+          .thenReturn(mockCollection);
+      when(mockCollection.get()).thenAnswer((_) async => mockQuerySnapshot);
+      when(mockQuerySnapshot.docs).thenReturn([]);
+
+      try {
+        await repository.fetchChildData('user123');
+      } catch (e) {
+        print('❌ fetchChildData no child found: $e');
+        expect(e, isA<Exception>());
+        expect(e.toString(), contains('No child associated'));
+        print('✅ fetchChildData no child found test passed');
+      }
+    });
+  });
+
+  group('fetchCarsFormStatus - invalid case', () {
+    test('returns null when no Cars form found', () async {
+      final mockCollection = MockCollectionReference<Map<String, dynamic>>();
+      final mockQuerySnapshot = MockQuerySnapshot<Map<String, dynamic>>();
+
+      when(mockFirestore.collection('Cars')).thenReturn(mockCollection);
+      when(mockCollection.where('childId', isEqualTo: 'child123'))
+          .thenReturn(mockCollection);
+      when(mockCollection.get()).thenAnswer((_) async => mockQuerySnapshot);
+      when(mockQuerySnapshot.docs).thenReturn([]);
+
+      final result = await repository.fetchCarsFormStatus('child123');
+
+      print('🎯 fetchCarsFormStatus no form found result: $result');
+      expect(result, isNull);
+      print('✅ fetchCarsFormStatus no form found test passed');
+    });
+  });
+
+  group('fetchTherapistInfo - invalid case', () {
+    test('throws Exception when no therapist found', () async {
+      final mockCollection = MockCollectionReference<Map<String, dynamic>>();
+      final mockQuerySnapshot = MockQuerySnapshot<Map<String, dynamic>>();
+
+      when(mockFirestore.collection('therapist')).thenReturn(mockCollection);
+      when(mockCollection.where('userId', isEqualTo: 'user123'))
+          .thenReturn(mockCollection);
+      when(mockCollection.limit(1)).thenReturn(mockCollection);
+      when(mockCollection.get()).thenAnswer((_) async => mockQuerySnapshot);
+      when(mockQuerySnapshot.docs).thenReturn([]);
+
+      try {
+        await repository.fetchTherapistInfo('user123');
+      } catch (e) {
+        print('❌ fetchTherapistInfo no therapist found: $e');
+        expect(e, isA<Exception>());
+        expect(e.toString(), contains('Therapist information not found'));
+        print('✅ fetchTherapistInfo no therapist found test passed');
+      }
     });
   });
 }

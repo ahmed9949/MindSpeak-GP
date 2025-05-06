@@ -12,13 +12,11 @@ import 'package:mind_speak_app/pages/carsfrom.dart';
 import 'package:mind_speak_app/pages/login.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:mind_speak_app/service/notification_service.dart'; // <-- Import NotificationService
+import 'package:mind_speak_app/service/notification_service.dart';
 
 class SignUpController {
   final BuildContext context;
   final GlobalKey<FormState> formKey;
-  final SignupRepository _repository = SignupRepository();
-
   final TextEditingController usernameController;
   final TextEditingController emailController;
   final TextEditingController passwordController;
@@ -35,6 +33,7 @@ class SignUpController {
   File? nationalProofImage;
   File? therapistImage;
   bool isLoading = false;
+  SignupRepository _repository;
 
   SignUpController({
     required this.context,
@@ -53,7 +52,8 @@ class SignUpController {
     this.childImage,
     this.nationalProofImage,
     this.therapistImage,
-  });
+    SignupRepository? repository, // ✅ new optional parameter
+  }) : _repository = repository ?? SignupRepository();
 
   Future<File?> pickImage(ImageSource source) async {
     final picker = ImagePicker();
@@ -171,6 +171,11 @@ class SignUpController {
     }
   }
 
+  // Make this method accessible for testing
+  bool validateImageUploads() {
+    return _validateImageUploads();
+  }
+
   bool _validateImageUploads() {
     if (role == 'parent' && childImage == null) {
       _showErrorSnackBar("Please upload your child's image.");
@@ -182,6 +187,11 @@ class SignUpController {
       return false;
     }
     return true;
+  }
+
+  // Make this method accessible for testing
+  Future<bool> checkDuplicateEntries() {
+    return _checkDuplicateEntries();
   }
 
   Future<bool> _checkDuplicateEntries() async {

@@ -8,8 +8,10 @@ abstract class ITherapistRepository {
 }
 
 class ViewTherapistRepository implements ITherapistRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore;
 
+  ViewTherapistRepository({FirebaseFirestore? firestore})
+      : _firestore = firestore ?? FirebaseFirestore.instance;
   @override
   Future<List<Map<String, dynamic>>> fetchApprovedTherapists() async {
     try {

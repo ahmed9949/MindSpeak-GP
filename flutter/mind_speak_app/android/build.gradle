@@ -12,6 +12,11 @@ buildscript {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version" // ✅ Add this
         classpath "com.google.gms:google-services:4.4.2"
     }
+
+     ext {
+        // Update this line or add it if it doesn't exist
+        desugar_jdk_libs_version = "2.1.4" // or a newer version
+    }
 }
 
 allprojects {

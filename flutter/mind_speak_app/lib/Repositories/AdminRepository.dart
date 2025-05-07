@@ -14,9 +14,14 @@ abstract class IAdminRepository {
 }
 
 class AdminRepository implements IAdminRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore;
+  final FirebaseAuth _auth;
 
+  AdminRepository({
+    FirebaseFirestore? firestore,
+    FirebaseAuth? auth,
+  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+        _auth = auth ?? FirebaseAuth.instance;
   @override
   Future<int> getUsersCount() async {
     try {
@@ -49,7 +54,8 @@ class AdminRepository implements IAdminRepository {
 
       if (therapistSnapshot.docs.isEmpty) return [];
 
-      List<String> userIds = therapistSnapshot.docs.map((doc) => doc.id).toList();
+      List<String> userIds =
+          therapistSnapshot.docs.map((doc) => doc.id).toList();
 
       QuerySnapshot userSnapshot = await _firestore
           .collection('users')
@@ -58,14 +64,15 @@ class AdminRepository implements IAdminRepository {
 
       Map<String, UserModel> userMap = {
         for (var doc in userSnapshot.docs)
-          doc.id: UserModel.fromFirestore(doc.data() as Map<String, dynamic>, doc.id)
+          doc.id: UserModel.fromFirestore(
+              doc.data() as Map<String, dynamic>, doc.id)
       };
 
       return therapistSnapshot.docs.map((doc) {
         String id = doc.id;
         UserModel? user = userMap[id];
-        TherapistModel therapist =
-            TherapistModel.fromFirestore(doc.data() as Map<String, dynamic>, id);
+        TherapistModel therapist = TherapistModel.fromFirestore(
+            doc.data() as Map<String, dynamic>, id);
 
         return {
           'therapist': therapist,
@@ -147,8 +154,7 @@ class AdminRepository implements IAdminRepository {
           debugPrint('Error deleting from Firebase Auth: $e');
         }
       } else {
-        debugPrint(
-            'Therapist not currently signed in. Auth deletion skipped.');
+        debugPrint('Therapist not currently signed in. Auth deletion skipped.');
       }
 
       return true;

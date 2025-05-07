@@ -1,7 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:mind_speak_app/Repositories/sessionrepoC.dart';
 import 'package:mind_speak_app/controllers/sessioncontrollerCl.dart';
+import 'package:mind_speak_app/models/avatar.dart';
 import 'package:mind_speak_app/pages/avatarpages/sessionviewcl.dart';
 import 'package:mind_speak_app/providers/color_provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
@@ -19,17 +21,46 @@ class StartSessionPage extends StatefulWidget {
 }
 
 class _StartSessionPageState extends State<StartSessionPage> {
+  final Flutter3DController _testController = Flutter3DController();
+  bool _isTestingAnimations = false;
+  String? _currentTestAnimation;
+  List<String> _detectedAnimations = [];
+
   bool _isLoading = false;
   String? _errorMessage;
   late ChatGptModel _model;
   late SessionRepository _sessionRepository;
   late SessionController _sessionController;
   late SessionAnalyzerController _analyzerController;
-
+  AvatarModel? _selectedAvatar;
+  late PageController _pageController;
+  final List<AvatarModel> avatars = [
+    AvatarModel(
+      name: 'nadara',
+      imagePath: 'assets/avatars/avatarimage/nadara.png',
+      modelPath: 'assets/avatars/3dmodels/banotabenadara.glb',
+    ),
+    AvatarModel(
+      name: 'batman',
+      imagePath: 'assets/avatars/avatarimage/batman.png',
+      modelPath: 'assets/avatars/3dmodels/batman.glb',
+      greetingAnimation: 'Armature.001|mixamo.com|Layer0',
+    ),
+  ];
   @override
   void initState() {
     super.initState();
     _initializeServices();
+
+    if (avatars.isNotEmpty) {
+      _selectedAvatar = avatars[0];
+    }
+
+    // Initialize the page controller
+    _pageController = PageController(
+      viewportFraction: 0.6,
+      initialPage: 0,
+    );
   }
 
   void _initializeServices() {
@@ -38,6 +69,12 @@ class _StartSessionPageState extends State<StartSessionPage> {
     _sessionRepository = FirebaseSessionRepository();
     _sessionController = SessionController(_sessionRepository);
     _analyzerController = SessionAnalyzerController(_model);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<Map<String, dynamic>?> _fetchChildData(String childId) async {
@@ -71,16 +108,17 @@ Talk with the child in Egyptian Arabic.
 Child Information:
 - Name: $name
 - Age: $age
-- Main Interest: $interest
+- child Interests: $interest
 
 Task:
 You are a therapist helping this child improve their communication skills.
-1. Start by engaging with their interest in $interest
+1. Start by engaging with their interest in $interest choose on interest to talk about to not make the child confusd if a the one interest contain many details choose one detail
 2. Gradually expand the conversation beyond this interest
 3. Keep responses short and clear
 4. Use positive reinforcement
 5. Be patient and encouraging
-6. Speak in Arabic
+6. Speak in egyptian slang
+7. make sure to end your response with a quesiton to tigger the child to talk 
 
 Please provide the initial therapeutic approach and first question you'll ask the child, focusing on their interest in $interest.
 Remember to:
@@ -92,6 +130,13 @@ Remember to:
   }
 
   Future<void> _startSession() async {
+    if (_selectedAvatar == null) {
+      setState(() {
+        _errorMessage = 'Please select an avatar first';
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -147,6 +192,7 @@ Remember to:
                 initialPrompt: prompt,
                 initialResponse: responseText,
                 childData: childData,
+                avatarModel: _selectedAvatar!, // Pass the selected avatar model
               ),
             ),
           ),
@@ -162,6 +208,171 @@ Remember to:
         _isLoading = false;
       });
     }
+  }
+
+  void _selectAndStartSession(AvatarModel avatar) async {
+    setState(() {
+      _selectedAvatar = avatar;
+    });
+
+    // Start the session immediately
+    await _startSession();
+  }
+
+  Widget _buildAvatarSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: Text(
+            "Select Your Avatar",
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 220,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: avatars.length,
+            onPageChanged: (index) {
+              setState(() {
+                _selectedAvatar = avatars[index];
+              });
+            },
+            itemBuilder: (context, index) {
+              final avatar = avatars[index];
+              final isSelected = _selectedAvatar == avatar;
+
+              return GestureDetector(
+                onTap: () {
+                  // When tapping on an avatar, just select it (don't start session)
+                  setState(() {
+                    _selectedAvatar = avatar;
+                    _pageController.animateToPage(
+                      index,
+                      duration: Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: isSelected ? 0 : 30,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: Colors.blue.withOpacity(0.6),
+                              spreadRadius: 4,
+                              blurRadius: 8,
+                            )
+                          ]
+                        : [],
+                  ),
+                  child: Stack(
+                    children: [
+                      // Avatar image
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Image.asset(
+                          avatar.imagePath,
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+
+                      // Avatar name with gradient background
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(8.0),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.only(
+                              bottomLeft: Radius.circular(20),
+                              bottomRight: Radius.circular(20),
+                            ),
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [
+                                Colors.black.withOpacity(0.8),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                avatar.name,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              if (isSelected)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: ElevatedButton(
+                                    onPressed: () =>
+                                        _selectAndStartSession(avatar),
+                                    child: Text("Start with this Avatar"),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue,
+                                      foregroundColor: Colors.white,
+                                      textStyle: TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // Selection indicator
+                      if (isSelected)
+                        Positioned(
+                          top: 10,
+                          right: 10,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.check,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -195,17 +406,19 @@ Remember to:
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                _buildAvatarSelector(),
+                const SizedBox(height: 24),
                 if (_isLoading)
                   const CircularProgressIndicator()
                 else
                   ElevatedButton.icon(
-                    onPressed: _startSession,
+                    onPressed: _selectedAvatar != null ? _startSession : null,
                     icon: const Icon(Icons.play_circle_outline),
                     label: const Text('Start Session'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          isDark ? Colors.grey[800] : primaryColor,
+                      backgroundColor: isDark ? Colors.grey[800] : primaryColor,
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 32,
                         vertical: 16,

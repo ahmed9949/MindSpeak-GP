@@ -16,6 +16,7 @@ import 'admin_repository_test.mocks.dart';
   QuerySnapshot,
   QueryDocumentSnapshot,
   WriteBatch,
+  Query,
   User,
 ])
 void main() {
@@ -165,20 +166,150 @@ void main() {
       print('✅ rejectTherapist passed: Therapist $therapistId deleted');
     });
 
-    test('getUsersCount returns correct count', () async {
+    test('getUsersCount returns correct dynamic count', () async {
+      final usersCollection = MockCollectionReference<Map<String, dynamic>>();
+      final snapshot = MockQuerySnapshot<Map<String, dynamic>>();
+      final userDoc1 = MockQueryDocumentSnapshot<Map<String, dynamic>>();
+      final userDoc2 = MockQueryDocumentSnapshot<Map<String, dynamic>>();
+
+      final docs = [userDoc1, userDoc2];
+
+      when(mockFirestore.collection('users')).thenReturn(usersCollection);
+      when(usersCollection.get()).thenAnswer((_) async => snapshot);
+      when(snapshot.docs).thenReturn(docs);
+      when(snapshot.size).thenReturn(docs.length);
+
+      final count = await adminRepository.getUsersCount();
+      expect(count, docs.length);
+      print('✅ getUsersCount passed: Count = $count');
+    });
+
+    test('getTherapistsCount returns correct dynamic count', () async {
+      final therapistsCollection =
+          MockCollectionReference<Map<String, dynamic>>();
+      final snapshot = MockQuerySnapshot<Map<String, dynamic>>();
+      final therapistDoc1 = MockQueryDocumentSnapshot<Map<String, dynamic>>();
+
+      final docs = [therapistDoc1];
+
+      when(mockFirestore.collection('therapist'))
+          .thenReturn(therapistsCollection);
+      when(therapistsCollection.get()).thenAnswer((_) async => snapshot);
+      when(snapshot.docs).thenReturn(docs);
+      when(snapshot.size).thenReturn(docs.length);
+
+      final count = await adminRepository.getTherapistsCount();
+      expect(count, docs.length);
+      print('✅ getTherapistsCount passed: Count = $count');
+    });
+  });
+
+  group('AdminRepository failure cases', () {
+    const nonExistentTherapistId = 'nonExistentTherapist';
+
+    test(
+        'getPendingTherapistRequests returns empty list when no pending therapists',
+        () async {
+      final therapistCollection =
+          MockCollectionReference<Map<String, dynamic>>();
+      final therapistQuery = MockQuery<Map<String, dynamic>>();
+      final therapistSnapshot = MockQuerySnapshot<Map<String, dynamic>>();
+
+      when(mockFirestore.collection('therapist'))
+          .thenReturn(therapistCollection);
+      when(therapistCollection.where('status', isEqualTo: false))
+          .thenReturn(therapistQuery);
+      when(therapistQuery.get()).thenAnswer((_) async => therapistSnapshot);
+      when(therapistSnapshot.docs).thenReturn([]); // simulate no results
+
+      final result = await adminRepository.getPendingTherapistRequests();
+
+      expect(result.isEmpty, true);
+      print(
+          '✅ getPendingTherapistRequests failure case passed: No pending therapists');
+    });
+
+    test('approveTherapist returns false if therapist document does not exist',
+        () async {
+      final therapistCollection =
+          MockCollectionReference<Map<String, dynamic>>();
+      final userCollection = MockCollectionReference<Map<String, dynamic>>();
+      final therapistDocRef = MockDocumentReference<Map<String, dynamic>>();
+      final userDocRef = MockDocumentReference<Map<String, dynamic>>();
+      final therapistSnapshot = MockDocumentSnapshot<Map<String, dynamic>>();
+      final userSnapshot = MockDocumentSnapshot<Map<String, dynamic>>();
+
+      when(mockFirestore.collection('therapist'))
+          .thenReturn(therapistCollection);
+      when(mockFirestore.collection('users')).thenReturn(userCollection);
+      when(therapistCollection.doc(nonExistentTherapistId))
+          .thenReturn(therapistDocRef);
+      when(userCollection.doc(nonExistentTherapistId)).thenReturn(userDocRef);
+
+      // simulate non-existent documents
+      when(therapistDocRef.get()).thenAnswer((_) async => therapistSnapshot);
+      when(userDocRef.get()).thenAnswer((_) async => userSnapshot);
+      when(therapistSnapshot.exists).thenReturn(false);
+      when(userSnapshot.exists).thenReturn(false);
+
+      final result =
+          await adminRepository.approveTherapist(nonExistentTherapistId);
+
+      expect(result, false);
+      print('✅ approveTherapist failure case passed: Therapist not found');
+    });
+
+    test('rejectTherapist returns false if Firestore delete fails', () async {
+      final therapistCollection =
+          MockCollectionReference<Map<String, dynamic>>();
+      final userCollection = MockCollectionReference<Map<String, dynamic>>();
+      final therapistDocRef = MockDocumentReference<Map<String, dynamic>>();
+      final userDocRef = MockDocumentReference<Map<String, dynamic>>();
+      final batch = MockWriteBatch();
+      final mockUser = MockUser();
+
+      when(mockFirestore.collection('therapist'))
+          .thenReturn(therapistCollection);
+      when(mockFirestore.collection('users')).thenReturn(userCollection);
+      when(therapistCollection.doc(nonExistentTherapistId))
+          .thenReturn(therapistDocRef);
+      when(userCollection.doc(nonExistentTherapistId)).thenReturn(userDocRef);
+
+      when(mockFirestore.batch()).thenReturn(batch);
+      // simulate delete failure
+      when(batch.delete(therapistDocRef)).thenThrow(Exception('Delete failed'));
+      when(batch.delete(userDocRef)).thenThrow(Exception('Delete failed'));
+      when(batch.commit()).thenThrow(Exception('Commit failed'));
+
+      when(mockAuth.currentUser).thenReturn(mockUser);
+      when(mockUser.uid).thenReturn(nonExistentTherapistId);
+      when(mockUser.delete()).thenAnswer((_) async {});
+
+      try {
+        final result =
+            await adminRepository.rejectTherapist(nonExistentTherapistId);
+        expect(result, false);
+      } catch (e) {
+        print('✅ rejectTherapist failure case passed: Caught exception - $e');
+      }
+    });
+
+    test('getUsersCount returns 0 when no users found', () async {
       final usersCollection = MockCollectionReference<Map<String, dynamic>>();
       final snapshot = MockQuerySnapshot<Map<String, dynamic>>();
 
       when(mockFirestore.collection('users')).thenReturn(usersCollection);
       when(usersCollection.get()).thenAnswer((_) async => snapshot);
-      when(snapshot.size).thenReturn(2);
+      when(snapshot.docs).thenReturn([]);
+      when(snapshot.size).thenReturn(0);
 
       final count = await adminRepository.getUsersCount();
-      expect(count, 2);
-      print('✅ getUsersCount passed: Count = $count');
+
+      expect(count, 0);
+      print('✅ getUsersCount failure case passed: Count = 0');
     });
 
-    test('getTherapistsCount returns correct count', () async {
+    test('getTherapistsCount returns 0 when no therapists found', () async {
       final therapistsCollection =
           MockCollectionReference<Map<String, dynamic>>();
       final snapshot = MockQuerySnapshot<Map<String, dynamic>>();
@@ -186,11 +317,27 @@ void main() {
       when(mockFirestore.collection('therapist'))
           .thenReturn(therapistsCollection);
       when(therapistsCollection.get()).thenAnswer((_) async => snapshot);
-      when(snapshot.size).thenReturn(2);
+      when(snapshot.docs).thenReturn([]);
+      when(snapshot.size).thenReturn(0);
 
       final count = await adminRepository.getTherapistsCount();
-      expect(count, 2);
-      print('✅ getTherapistsCount passed: Count = $count');
+
+      expect(count, 0);
+      print('✅ getTherapistsCount failure case passed: Count = 0');
+    });
+
+    test('getUsersCount handles Firestore exception', () async {
+      final usersCollection = MockCollectionReference<Map<String, dynamic>>();
+
+      when(mockFirestore.collection('users')).thenReturn(usersCollection);
+      when(usersCollection.get()).thenThrow(Exception('Firestore error'));
+
+      try {
+        await adminRepository.getUsersCount();
+        fail('Expected exception not thrown');
+      } catch (e) {
+        print('✅ getUsersCount failure case passed: Caught exception - $e');
+      }
     });
   });
 }

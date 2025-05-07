@@ -165,31 +165,40 @@ void main() {
       print('✅ rejectTherapist passed: Therapist $therapistId deleted');
     });
 
-    test('getUsersCount returns correct count', () async {
+    test('getUsersCount returns correct dynamic count', () async {
       final usersCollection = MockCollectionReference<Map<String, dynamic>>();
       final snapshot = MockQuerySnapshot<Map<String, dynamic>>();
+      final userDoc1 = MockQueryDocumentSnapshot<Map<String, dynamic>>();
+      final userDoc2 = MockQueryDocumentSnapshot<Map<String, dynamic>>();
+
+      final docs = [userDoc1, userDoc2];
 
       when(mockFirestore.collection('users')).thenReturn(usersCollection);
       when(usersCollection.get()).thenAnswer((_) async => snapshot);
-      when(snapshot.size).thenReturn(2);
+      when(snapshot.docs).thenReturn(docs);
+      when(snapshot.size).thenReturn(docs.length);
 
       final count = await adminRepository.getUsersCount();
-      expect(count, 2);
+      expect(count, docs.length);
       print('✅ getUsersCount passed: Count = $count');
     });
 
-    test('getTherapistsCount returns correct count', () async {
+    test('getTherapistsCount returns correct dynamic count', () async {
       final therapistsCollection =
           MockCollectionReference<Map<String, dynamic>>();
       final snapshot = MockQuerySnapshot<Map<String, dynamic>>();
+      final therapistDoc1 = MockQueryDocumentSnapshot<Map<String, dynamic>>();
+
+      final docs = [therapistDoc1];
 
       when(mockFirestore.collection('therapist'))
           .thenReturn(therapistsCollection);
       when(therapistsCollection.get()).thenAnswer((_) async => snapshot);
-      when(snapshot.size).thenReturn(2);
+      when(snapshot.docs).thenReturn(docs);
+      when(snapshot.size).thenReturn(docs.length);
 
       final count = await adminRepository.getTherapistsCount();
-      expect(count, 2);
+      expect(count, docs.length);
       print('✅ getTherapistsCount passed: Count = $count');
     });
   });

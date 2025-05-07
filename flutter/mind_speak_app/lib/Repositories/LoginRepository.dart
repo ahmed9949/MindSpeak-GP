@@ -17,9 +17,17 @@ abstract class ILoginRepository {
 }
 
 class LoginRepository implements ILoginRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final FirebaseFirestore _firestore;
+  final FirebaseAuth _auth;
+  final GoogleSignIn _googleSignIn;
+
+  LoginRepository({
+    FirebaseFirestore? firestore,
+    FirebaseAuth? auth,
+    GoogleSignIn? googleSignIn,
+  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+        _auth = auth ?? FirebaseAuth.instance,
+        _googleSignIn = googleSignIn ?? GoogleSignIn();
 
   String hashPassword(String password) {
     final bytes = utf8.encode(password);
@@ -30,7 +38,6 @@ class LoginRepository implements ILoginRepository {
   @override
   Future<UserModel> authenticateUser(String email, String password) async {
     try {
-      // Use Firebase Auth for authentication
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
@@ -41,16 +48,14 @@ class LoginRepository implements ILoginRepository {
       }
       String userId = userCredential.user!.uid;
 
-      // After successful authentication, fetch the user details
-      DocumentSnapshot userDoc =
+      DocumentSnapshot<Map<String, dynamic>> userDoc =
           await _firestore.collection('users').doc(userId).get();
 
       if (!userDoc.exists) {
         throw Exception("This account was rejected by the admin before.");
       }
 
-      return UserModel.fromFirestore(
-          userDoc.data() as Map<String, dynamic>, userDoc.id);
+      return UserModel.fromFirestore(userDoc.data()!, userDoc.id);
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         case 'user-not-found':
@@ -73,7 +78,7 @@ class LoginRepository implements ILoginRepository {
 
       if (user == null) throw Exception("Google sign in failed");
 
-      DocumentSnapshot userDoc =
+      DocumentSnapshot<Map<String, dynamic>> userDoc =
           await _firestore.collection('users').doc(user.uid).get();
 
       if (!userDoc.exists) {
@@ -81,8 +86,7 @@ class LoginRepository implements ILoginRepository {
         userDoc = await _firestore.collection('users').doc(user.uid).get();
       }
 
-      return UserModel.fromFirestore(
-          userDoc.data() as Map<String, dynamic>, userDoc.id);
+      return UserModel.fromFirestore(userDoc.data()!, userDoc.id);
     } catch (e) {
       rethrow;
     }
@@ -93,7 +97,9 @@ class LoginRepository implements ILoginRepository {
     GoogleSignInAuthentication? googleAuth = await googleUser?.authentication;
 
     AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth?.accessToken, idToken: googleAuth?.idToken);
+      accessToken: googleAuth?.accessToken,
+      idToken: googleAuth?.idToken,
+    );
 
     return await _auth.signInWithCredential(credential);
   }
@@ -106,14 +112,14 @@ class LoginRepository implements ILoginRepository {
       'username': user.displayName,
       'role': 'user',
       'phoneNumber': 0,
-      'password': '', // Empty since we're using Google Auth
+      'password': '',
     });
   }
 
   @override
   Future<ChildModel> fetchChildData(String userId) async {
     try {
-      QuerySnapshot childSnapshot = await _firestore
+      QuerySnapshot<Map<String, dynamic>> childSnapshot = await _firestore
           .collection('child')
           .where('userId', isEqualTo: userId)
           .get();
@@ -123,8 +129,7 @@ class LoginRepository implements ILoginRepository {
       }
 
       return ChildModel.fromFirestore(
-          childSnapshot.docs.first.data() as Map<String, dynamic>,
-          childSnapshot.docs.first.id);
+          childSnapshot.docs.first.data(), childSnapshot.docs.first.id);
     } catch (e) {
       rethrow;
     }
@@ -133,7 +138,7 @@ class LoginRepository implements ILoginRepository {
   @override
   Future<CarsFormModel?> fetchCarsFormStatus(String childId) async {
     try {
-      QuerySnapshot carsSnapshot = await _firestore
+      QuerySnapshot<Map<String, dynamic>> carsSnapshot = await _firestore
           .collection('Cars')
           .where('childId', isEqualTo: childId)
           .get();
@@ -141,8 +146,7 @@ class LoginRepository implements ILoginRepository {
       if (carsSnapshot.docs.isEmpty) return null;
 
       return CarsFormModel.fromFirestore(
-          carsSnapshot.docs.first.data() as Map<String, dynamic>,
-          carsSnapshot.docs.first.id);
+          carsSnapshot.docs.first.data(), carsSnapshot.docs.first.id);
     } catch (e) {
       rethrow;
     }
@@ -151,29 +155,20 @@ class LoginRepository implements ILoginRepository {
   @override
   Future<TherapistModel> fetchTherapistInfo(String userId) async {
     try {
-      print("🔍 Searching therapist by userId: $userId");
-
-      QuerySnapshot snapshot = await _firestore
+      QuerySnapshot<Map<String, dynamic>> snapshot = await _firestore
           .collection('therapist')
           .where('userId', isEqualTo: userId)
           .limit(1)
           .get();
 
-      print("📦 Found docs: ${snapshot.docs.length}");
-
       if (snapshot.docs.isEmpty) {
-        print("❌ No therapist document found with userId = $userId");
         throw Exception("Therapist information not found.");
       }
 
       final doc = snapshot.docs.first;
-      print("✅ Therapist document ID: ${doc.id}");
-      print("📄 Therapist data: ${doc.data()}");
 
-      return TherapistModel.fromFirestore(
-          doc.data() as Map<String, dynamic>, doc.id);
+      return TherapistModel.fromFirestore(doc.data(), doc.id);
     } catch (e) {
-      print("🔥 Exception in fetchTherapistInfo: $e");
       rethrow;
     }
   }

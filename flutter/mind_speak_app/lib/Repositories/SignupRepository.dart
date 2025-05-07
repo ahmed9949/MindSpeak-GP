@@ -29,10 +29,23 @@ abstract class ISignUpRepository {
 }
 
 class SignupRepository implements ISignUpRepository {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+  FirebaseAuth _auth;
+  FirebaseFirestore _firestore;
+  FirebaseStorage _storage;
   final Uuid _uuid = const Uuid();
+
+  SignupRepository({
+    FirebaseAuth? auth,
+    FirebaseFirestore? firestore,
+    FirebaseStorage? storage,
+  })  : _auth = auth ?? FirebaseAuth.instance,
+        _firestore = firestore ?? FirebaseFirestore.instance,
+        _storage = storage ?? FirebaseStorage.instance;
+
+  // For testing purposes
+  set auth(FirebaseAuth value) => _auth = value;
+  set firestore(FirebaseFirestore value) => _firestore = value;
+  set storage(FirebaseStorage value) => _storage = value;
 
   @override
   String generateChildId() {

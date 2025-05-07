@@ -75,6 +75,8 @@ class _SessionViewState extends State<SessionView> {
   int _correctAnswers = 0;
   int _wrongAnswers = 0;
   bool _isGameInitialized = false;
+  Timer? _silenceTimer;
+  bool _isSilenceTimerActive = false;
 
   @override
   void initState() {
@@ -99,10 +101,62 @@ class _SessionViewState extends State<SessionView> {
     // Start periodic stats update
     _startStatsUpdateTimer();
 
+    // Set up completion handler once during initialization
+    _ttsService.setCompletionHandler(() {
+      if (mounted) {
+        print(
+            "TTS completed, returning to idle animation and starting listening");
+        setState(() => _isSpeaking = false);
+        _playAnimation(widget.avatarModel.idleAnimation);
+
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted && !_isListening && !_isThinking) {
+            _startListening();
+          }
+        });
+      }
+    });
+
     // Preload game assets for smoother performance
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _gameManager.preloadGameAssets(context);
       print("DEBUG: Game assets preloading started");
+    });
+  }
+
+  void _startSilenceTimer() {
+    _silenceTimer?.cancel();
+    _isSilenceTimerActive = true;
+
+    _silenceTimer = Timer(const Duration(seconds: 15), () {
+      if (_isListening && _isSilenceTimerActive && mounted) {
+        _handleSilence();
+      }
+    });
+    print("DEBUG: Silence timer started (15 seconds)");
+  }
+
+  void _cancelSilenceTimer() {
+    _silenceTimer?.cancel();
+    _isSilenceTimerActive = false;
+    print("DEBUG: Silence timer cancelled");
+  }
+
+  void _handleSilence() {
+    if (!mounted) return;
+
+    print("DEBUG: Silence detected for 15 seconds");
+
+    // First stop the listening
+    _speech.stop();
+    setState(() => _isListening = false);
+
+    // Prompt to play a game
+    _speak("طيب تعالي نلعب لعبه").then((_) {
+      // After speaking, start the game
+      _resetGame();
+      _gameManager.startGame(context, 1);
+      print("DEBUG: Started game after silence");
     });
   }
 
@@ -208,15 +262,11 @@ class _SessionViewState extends State<SessionView> {
             }
           });
 
-          _ttsService.setCompletionHandler(() {
-            if (mounted) {
-              print("Welcome message complete, returning to idle");
-              setState(() => _isSpeaking = false);
-              _playAnimation(widget.avatarModel.idleAnimation);
-            }
-          });
+          // Note: We don't override the completion handler here anymore
+          // since it's set once in initState to auto-start listening
 
           _speak(widget.initialResponse);
+          // Listening will auto-start after welcome via the completion handler
         });
       }
     }
@@ -404,6 +454,10 @@ class _SessionViewState extends State<SessionView> {
 
   Future<void> _processUserInput(String text) async {
     if (text.isEmpty) return;
+
+    // Cancel silence timer during processing
+    _cancelSilenceTimer();
+
     final sessionController =
         Provider.of<SessionController>(context, listen: false);
     await sessionController.addChildMessage(text);
@@ -423,6 +477,8 @@ class _SessionViewState extends State<SessionView> {
       // Set thinking to false before starting to speak
       setState(() => _isThinking = false);
       await _speak(aiResponse);
+
+      // Note: Listening will auto-start after speaking via the completion handler
     } catch (e) {
       const errorMsg = "عذراً، حدث خطأ أثناء المعالجة.";
       await sessionController.addTherapistMessage(errorMsg);
@@ -432,38 +488,48 @@ class _SessionViewState extends State<SessionView> {
   }
 
   Future<void> _speak(String text) async {
-    // Stop any current speech
-    if (_isSpeaking) {
-      await _ttsService.stop();
-      setState(() => _isSpeaking = false);
-    }
+    try {
+      // Stop any current speech
+      if (_isSpeaking) {
+        await _ttsService.stop();
+        setState(() => _isSpeaking = false);
+      }
 
-    if (mounted) {
-      try {
-        setState(() => _isSpeaking = true);
+      if (mounted) {
+        try {
+          setState(() => _isSpeaking = true);
 
-        // Set handlers to coordinate animations
-        _ttsService.setAudioReadyHandler(() {
-          if (mounted) {
-            // Start the talking animation immediately when the handler is called
-            print("Audio ready handler triggered, starting talking animation");
-            _playAnimation(widget.avatarModel.talkingAnimation);
+          // Set handlers to coordinate animations
+          _ttsService.setAudioReadyHandler(() {
+            if (mounted) {
+              // Start the talking animation immediately when the handler is called
+              print(
+                  "Audio ready handler triggered, starting talking animation");
+              _playAnimation(widget.avatarModel.talkingAnimation);
+            }
+          });
+
+          // Note: Completion handler is now set once in initState
+
+          print(
+              "Starting TTS for: \"${text.substring(0, min(30, text.length))}...\"");
+          await _ttsService.speak(text);
+        } catch (e) {
+          print("❌ Error in TTS service: $e");
+          setState(() => _isSpeaking = false);
+          _playAnimation(widget.avatarModel.idleAnimation);
+
+          // Even on error, try to start listening
+          if (mounted && !_isListening && !_isThinking) {
+            Future.delayed(const Duration(milliseconds: 500), () {
+              _startListening();
+            });
           }
-        });
-
-        _ttsService.setCompletionHandler(() {
-          if (mounted) {
-            print("TTS completed, returning to idle animation");
-            setState(() => _isSpeaking = false);
-            _playAnimation(widget.avatarModel.idleAnimation);
-          }
-        });
-
-        print(
-            "Starting TTS for: \"${text.substring(0, min(30, text.length))}...\"");
-        await _ttsService.speak(text);
-      } catch (e) {
-        print("❌ Error in TTS service: $e");
+        }
+      }
+    } catch (e) {
+      print("❌ Error in _speak: $e");
+      if (mounted) {
         setState(() => _isSpeaking = false);
         _playAnimation(widget.avatarModel.idleAnimation);
       }
@@ -678,23 +744,42 @@ class _SessionViewState extends State<SessionView> {
       if (available) {
         setState(() => _isListening = true);
         _playAnimation(widget.avatarModel.idleAnimation);
+
+        // Start the silence timer as soon as we start listening
+        _startSilenceTimer();
+        print("DEBUG: Started listening with silence detection");
+
         await _speech.listen(
           onResult: (result) {
+            // Reset silence timer on any partial result (even non-final)
+            if (result.recognizedWords.isNotEmpty) {
+              _startSilenceTimer();
+              print("DEBUG: Speech detected, restarting silence timer");
+            }
+
             if (result.finalResult) {
+              _cancelSilenceTimer();
               // Play thinking animation while processing the speech input
               _playAnimation(widget.avatarModel.thinkingAnimation);
               _processUserInput(result.recognizedWords);
               setState(() => _isListening = false);
+              // Listening will restart after processing completes via the TTS completion handler
             }
           },
           listenMode: stt.ListenMode.dictation,
-          partialResults: true,
+          partialResults: true, // Important to get intermediate results
           localeId: 'ar-EG',
         );
+      } else {
+        print("DEBUG: Speech recognition not available");
       }
     } else {
+      // If we're already listening and the button is pressed,
+      // stop listening and cancel silence timer
       await _speech.stop();
+      _cancelSilenceTimer();
       setState(() => _isListening = false);
+      print("DEBUG: Manually stopped listening");
     }
   }
 
@@ -793,6 +878,7 @@ class _SessionViewState extends State<SessionView> {
   @override
   void dispose() {
     print("DEBUG: SessionView dispose called");
+    _silenceTimer?.cancel();
     controller.onModelLoaded.removeListener(_onModelLoaded);
     _speech.stop();
     _ttsService.stop();
@@ -802,6 +888,53 @@ class _SessionViewState extends State<SessionView> {
     _cameraController.dispose();
     _gameManager.dispose();
     super.dispose();
+  }
+
+  Widget _buildVoiceControlUI() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Status indicator text
+          Text(
+            _isListening
+                ? "أنا أستمع إليك..."
+                : (_isSpeaking
+                    ? "أنا أتحدث..."
+                    : (_isThinking ? "أنا أفكر..." : "...")),
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white70
+                  : Colors.black54,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Converted to stop/interrupt button
+          ElevatedButton.icon(
+            onPressed: () {
+              if (_isListening) {
+                _speech.stop();
+                _cancelSilenceTimer();
+                setState(() => _isListening = false);
+              } else if (_isSpeaking) {
+                _ttsService.stop();
+                setState(() => _isSpeaking = false);
+              }
+              // Return to idle state
+              _playAnimation(widget.avatarModel.idleAnimation);
+            },
+            icon: const Icon(Icons.stop_circle),
+            label: const Text("إيقاف المحادثة"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -849,6 +982,8 @@ class _SessionViewState extends State<SessionView> {
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Column(
                     children: [
+                   
+                      const SizedBox(height: 6),
                       Text(
                         "Total Points: $_totalScore",
                         style: TextStyle(
@@ -860,49 +995,12 @@ class _SessionViewState extends State<SessionView> {
                     ],
                   ),
                 ),
-                ElevatedButton(
-                  onPressed: _startListening,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isDark ? Colors.grey[800] : primaryColor,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: Text(_isListening ? "Recording..." : "Start Talking"),
-                ),
-                ElevatedButton.icon(
-                  onPressed: _isSpeaking
-                      ? () async {
-                          await _ttsService.stop();
-                          setState(() => _isSpeaking = false);
-                          _playAnimation(widget.avatarModel.idleAnimation);
-                        }
-                      : null,
-                  icon: const Icon(Icons.stop),
-                  label: const Text("Stop TTS"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isDark ? Colors.grey[800] : primaryColor,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
+                // Replace this button with our new UI
+                _buildVoiceControlUI(), // <-- HERE: This is the new UI
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        // Reset game state before starting a new game
-                        _resetGame();
-
-                        // Start a fresh game from level 1
-                        print("DEBUG: Starting game from level 1");
-                        _gameManager.startGame(context, 1);
-                      },
-                      icon: const Icon(Icons.games),
-                      label: const Text("Play Game 🎮"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            isDark ? Colors.grey[800] : primaryColor,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
+                    // ... your existing buttons ...
                     ElevatedButton.icon(
                       onPressed: _endSession,
                       icon: const Icon(Icons.call_end),

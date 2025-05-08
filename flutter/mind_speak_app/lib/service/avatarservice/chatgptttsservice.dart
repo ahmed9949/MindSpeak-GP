@@ -207,6 +207,7 @@ class ChatGptTtsService {
   bool _isPreparingAudio = false;
 
   // Expanded list of common phrases that will be pre-cached
+// In ChatGptTtsService class:
   final List<String> _commonPhrases = [
     "برافو! أحسنت",
     "حاول تاني",
@@ -221,7 +222,8 @@ class ChatGptTtsService {
     "برافو! الإجابة صحيحة",
     "لا، حاول مرة أخرى",
     "فكر جيدا",
-    "هذا صحيح"
+    "هذا صحيح",
+    "طيب تعالي نلعب لعبه" // Add this phrase to ensure it's cached
   ];
 
   ChatGptTtsService(

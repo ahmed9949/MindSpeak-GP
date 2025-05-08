@@ -19,7 +19,8 @@ class GameManager {
   final ChatGptTtsService ttsService;
   final GameImageService _imageService = GameImageService();
 
-  // Game state with value notifiers for reactivity
+  // G
+  //ame state with value notifiers for reactivity
   final ValueNotifier<int> _currentLevelNotifier = ValueNotifier(1);
   final int _maxLevel = 7;
   DateTime? _gameStartTime;
@@ -404,14 +405,16 @@ class GameManager {
     _showRandomMiniGame();
   }
 
-  /// This method gets called to start the next mini-game
+// This is a change you'd need to make in the GameManager class, not in the current file
   void showNextMiniGame() {
-    if (!_isGameInProgress) {
-      print("DEBUG: Showing next mini-game");
-      _showRandomMiniGame();
-    } else {
+    // Don't show a new mini-game if one is already in progress
+    if (_isGameInProgress) {
       print("DEBUG: Game already in progress, not showing next mini-game");
+      return;
     }
+
+    print("DEBUG: Showing next mini-game");
+    _showRandomMiniGame();
   }
 
   /// Show a random mini-game based on the current level with new game rotation logic

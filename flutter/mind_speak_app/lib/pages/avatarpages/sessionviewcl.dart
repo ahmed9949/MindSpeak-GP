@@ -47,6 +47,7 @@ class _SessionViewState extends State<SessionView> {
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   late GameManager _gameManager;
   Timer? _statsUpdateTimer;
+  bool _isStartingGame = false;
 
   late AiService _aiService;
   late DetectionController _detectionController;
@@ -65,6 +66,7 @@ class _SessionViewState extends State<SessionView> {
   String? _childName;
   String? _voiceEmotion;
   String? _facialEmotion;
+  Function? _completionHandler;
 
   // final FlutterTtsService _ttsService = FlutterTtsService();
 
@@ -101,21 +103,53 @@ class _SessionViewState extends State<SessionView> {
     // Start periodic stats update
     _startStatsUpdateTimer();
 
-    // Set up completion handler once during initialization
-    _ttsService.setCompletionHandler(() {
-      if (mounted) {
-        print(
-            "TTS completed, returning to idle animation and starting listening");
-        setState(() => _isSpeaking = false);
-        _playAnimation(widget.avatarModel.idleAnimation);
+    // In initState, add:
+    FlutterError.onError = (FlutterErrorDetails details) {
+      print("CRITICAL ERROR: ${details.exception}");
+      print("Stack trace: ${details.stack}");
 
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted && !_isListening && !_isThinking) {
-            _startListening();
-          }
+      // Try to recover by resetting the UI state
+      if (mounted) {
+        setState(() {
+          _isListening = false;
+          _isSpeaking = false;
+          _isThinking = false;
+          _playAnimation(widget.avatarModel.idleAnimation);
         });
       }
-    });
+
+      // Report the error normally
+      FlutterError.presentError(details);
+    };
+
+    // Store a reference to the completion handler
+    _completionHandler = () {
+      if (mounted) {
+        try {
+          print(
+              "TTS completed, returning to idle animation and starting listening");
+          setState(() => _isSpeaking = false);
+          _playAnimation(widget.avatarModel.idleAnimation);
+
+          // Only start listening if not in a game
+          if (!_gameManager.isGameInProgress) {
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted &&
+                  !_isListening &&
+                  !_isThinking &&
+                  !_gameManager.isGameInProgress) {
+                _startListening();
+              }
+            });
+          }
+        } catch (e) {
+          print("DEBUG: Error in TTS completion handler: $e");
+        }
+      }
+    };
+
+    // Set it in the TTS service
+    _ttsService.setCompletionHandler(_completionHandler!);
 
     // Preload game assets for smoother performance
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -142,22 +176,102 @@ class _SessionViewState extends State<SessionView> {
     print("DEBUG: Silence timer cancelled");
   }
 
-  void _handleSilence() {
-    if (!mounted) return;
+  Future<void> _handleSilence() async {
+    if (!mounted || _isStartingGame || _gameManager.isGameInProgress) return;
+    setState(() => _isStartingGame = true);
 
     print("DEBUG: Silence detected for 15 seconds");
 
     // First stop the listening
-    _speech.stop();
+    await _speech.stop();
     setState(() => _isListening = false);
 
-    // Prompt to play a game
-    _speak("طيب تعالي نلعب لعبه").then((_) {
-      // After speaking, start the game
-      _resetGame();
-      _gameManager.startGame(context, 1);
-      print("DEBUG: Started game after silence");
-    });
+    try {
+      // Make sure any existing game is properly closed
+      if (_gameManager.isGameInProgress) {
+        print("DEBUG: Closing existing game before starting a new one");
+        try {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+          // Add delay to ensure UI updates
+          await Future.delayed(const Duration(milliseconds: 500));
+        } catch (e) {
+          print("DEBUG: Error closing existing game: $e");
+        }
+      }
+
+      // Reset game state completely
+      await _resetGame();
+
+      // Ensure the game intro phrase is pre-cached before speaking
+      print("DEBUG: Pre-caching game introduction phrase");
+      await _ttsService.prefetchDynamic(["طيب تعالي نلعب لعبه"]);
+
+      // Use a separate completer to ensure TTS fully completes
+      final ttsCompleter = Completer<void>();
+
+      // Use a manual approach for this specific TTS
+      setState(() => _isSpeaking = true);
+      _playAnimation(widget.avatarModel.talkingAnimation);
+
+      print("DEBUG: Speaking game introduction");
+      try {
+        // Create a TTS completion handler specifically for game intro
+        _ttsService.setCompletionHandler(() {
+          print("DEBUG: Game intro TTS completed");
+          if (mounted) {
+            setState(() => _isSpeaking = false);
+            _playAnimation(widget.avatarModel.idleAnimation);
+            if (!ttsCompleter.isCompleted) {
+              ttsCompleter.complete();
+            }
+          }
+        });
+
+        // Speak and wait for completion
+        await _ttsService.speak("طيب تعالي نلعب لعبه");
+
+        // Wait for completion handler to be called
+        await ttsCompleter.future;
+
+        // Ensure animation returns to idle
+        setState(() => _isSpeaking = false);
+        _playAnimation(widget.avatarModel.idleAnimation);
+
+        // Restore original completion handler
+        _ttsService.setCompletionHandler(_completionHandler!);
+      } catch (e) {
+        print("DEBUG: Error during game intro TTS: $e");
+        // Ensure we reset state even on error
+        setState(() => _isSpeaking = false);
+        _playAnimation(widget.avatarModel.idleAnimation);
+        _ttsService.setCompletionHandler(_completionHandler!);
+      }
+
+      // Longer safety delay
+      await Future.delayed(const Duration(milliseconds: 1500));
+
+      // Now it's safe to start the game - with additional precautions
+      if (mounted && !_gameManager.isGameInProgress) {
+        print("DEBUG: Starting game after confirmed TTS completion");
+
+        // Set game start time
+        _gameStartTime = DateTime.now();
+
+        try {
+          _gameManager.startGame(context, 1);
+        } catch (e) {
+          print("DEBUG: Error starting game: $e");
+          setState(() => _isStartingGame = false);
+        }
+      } else {
+        setState(() => _isStartingGame = false);
+      }
+    } catch (e) {
+      print("DEBUG: Error in _handleSilence: $e");
+      // Reset state if anything goes wrong
+      setState(() => _isStartingGame = false);
+      _ttsService.setCompletionHandler(_completionHandler!);
+    }
   }
 
   void _startStatsUpdateTimer() {
@@ -784,95 +898,152 @@ class _SessionViewState extends State<SessionView> {
   }
 
   Future<void> _initializeGame() async {
-    print("DEBUG: Initializing game connections");
+    try {
+      print("DEBUG: Initializing game connections");
 
-    if (!mounted) {
-      print("DEBUG: Widget not mounted during game initialization");
-      return;
-    }
+      if (!mounted) {
+        print("DEBUG: Widget not mounted during game initialization");
+        return;
+      }
 
-    // Reset state to prevent double-counting
-    setState(() {
-      _totalScore = 0;
-      _correctAnswers = 0;
-      _wrongAnswers = 0;
-      _currentLevel = 1;
-    });
+      // Reset state to prevent double-counting
+      setState(() {
+        _totalScore = 0;
+        _correctAnswers = 0;
+        _wrongAnswers = 0;
+        _currentLevel = 1;
+      });
 
-    await _gameManager.preloadGameAssets(context);
+      // Preload assets with error handling
+      try {
+        await _gameManager.preloadGameAssets(context);
+        print("DEBUG: Game assets preloaded successfully");
+      } catch (e) {
+        print("DEBUG: Error preloading game assets: $e");
+        // Continue even if preloading fails
+      }
 
-    // Clear out any previously registered callbacks first
-    _gameManager.onGameCompleted = null;
-    _gameManager.onGameFailed = null;
-    _gameManager.onGameStatsUpdated = null;
+      // Clear out any previously registered callbacks first
+      _gameManager.onGameCompleted = null;
+      _gameManager.onGameFailed = null;
+      _gameManager.onGameStatsUpdated = null;
 
-    // Then register new callbacks
-    _gameManager.onGameCompleted = (score, isLastLevel) {
-      print(
-          "DEBUG: onGameCompleted called with score=$score, isLastLevel=$isLastLevel");
+      // Then register new callbacks with error handling
+      _gameManager.onGameCompleted = (score, isLastLevel) {
+        try {
+          print(
+              "DEBUG: onGameCompleted called with score=$score, isLastLevel=$isLastLevel");
 
-      // Play clapping animation when a game is completed successfully
-      _playAnimation(widget.avatarModel.clappingAnimation);
+          // Play clapping animation when a game is completed successfully
+          _playAnimation(widget.avatarModel.clappingAnimation);
 
-      // After clapping, show celebration message
-      _ttsService.speak("برافو! أحسنت");
+          // After clapping, show celebration message with error handling
+          _ttsService.speak("برافو! أحسنت").catchError((e) {
+            print("DEBUG: Error speaking celebration: $e");
+          });
 
-      // Return to idle animation after a delay
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted && !_isSpeaking && !_isListening && !_isThinking) {
-          _playAnimation(widget.avatarModel.idleAnimation);
+          // Return to idle animation after a delay
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted && !_isSpeaking && !_isListening && !_isThinking) {
+              _playAnimation(widget.avatarModel.idleAnimation);
+            }
+          });
+
+          // Update the state safely
+          if (mounted) {
+            setState(() {
+              _totalScore = _gameManager.totalScore;
+              _correctAnswers = _gameManager.correctAnswers;
+              _wrongAnswers = _gameManager.wrongAnswers;
+              if (!isLastLevel) _currentLevel = _gameManager.currentLevel;
+            });
+          }
+
+          print(
+              "DEBUG: After completion: _totalScore=$_totalScore, level=$_currentLevel");
+        } catch (e, stack) {
+          print("DEBUG: Error in onGameCompleted: $e");
+          print("DEBUG: Stack trace: $stack");
         }
-      });
+      };
 
-      // DON'T increment score here - use the GameManager's score directly
-      setState(() {
-        _totalScore = _gameManager.totalScore;
-        _correctAnswers = _gameManager.correctAnswers;
-        _wrongAnswers = _gameManager.wrongAnswers;
-        if (!isLastLevel) _currentLevel = _gameManager.currentLevel;
-      });
+      // Similar error handling for other callbacks
+      _gameManager.onGameFailed = () {
+        try {
+          print("DEBUG: onGameFailed called");
+          setState(() {
+            _wrongAnswers = _gameManager.wrongAnswers;
+          });
+          print("DEBUG: After game failed: wrongAnswers=$_wrongAnswers");
+        } catch (e) {
+          print("DEBUG: Error in onGameFailed: $e");
+        }
+      };
 
-      print(
-          "DEBUG: After completion: _totalScore=$_totalScore, level=$_currentLevel");
-    };
+      _gameManager.onGameStatsUpdated = (score, correct, wrong) {
+        try {
+          print(
+              "DEBUG: onGameStatsUpdated called with score=$score, correct=$correct, wrong=$wrong");
+          setState(() {
+            _totalScore = score;
+            _correctAnswers = correct;
+            _wrongAnswers = wrong;
+          });
+          print("DEBUG: After stats update: _totalScore=$_totalScore");
+        } catch (e) {
+          print("DEBUG: Error in onGameStatsUpdated: $e");
+        }
+      };
 
-    _gameManager.onGameFailed = () {
-      print("DEBUG: onGameFailed called");
+      // Pre-cache common game-related TTS phrases
+      try {
+        await _ttsService.prefetchDynamic([
+          "طيب تعالي نلعب لعبه",
+          "برافو! أحسنت",
+          "حاول تاني",
+          "برافو! الإجابة صحيحة"
+        ]);
+        print("DEBUG: Game phrases pre-cached");
+      } catch (e) {
+        print("DEBUG: Error pre-caching game phrases: $e");
+      }
 
-      // For wrong answers, don't change the animation
-      // Just update the stats
-      setState(() {
-        _wrongAnswers = _gameManager.wrongAnswers;
-      });
-      print("DEBUG: After game failed: wrongAnswers=$_wrongAnswers");
-    };
-
-    _gameManager.onGameStatsUpdated = (score, correct, wrong) {
-      print(
-          "DEBUG: onGameStatsUpdated called with score=$score, correct=$correct, wrong=$wrong");
-      setState(() {
-        _totalScore = score;
-        _correctAnswers = correct;
-        _wrongAnswers = wrong;
-      });
-      print("DEBUG: After stats update: _totalScore=$_totalScore");
-    };
-
-    _isGameInitialized = true;
-    print("DEBUG: Game initialization complete");
+      _isGameInitialized = true;
+      print("DEBUG: Game initialization complete");
+    } catch (e) {
+      print("DEBUG: Critical error in game initialization: $e");
+      _isGameInitialized = false;
+    }
   }
 
-  void _resetGame() {
-    setState(() {
-      _totalScore = 0;
-      _correctAnswers = 0;
-      _wrongAnswers = 0;
-      _currentLevel = 1;
-    });
+  Future<void> _resetGame() async {
+    try {
+      // First, explicitly cancel any running timers
+      _silenceTimer?.cancel();
+      _isSilenceTimerActive = false;
 
-    // Reset the GameManager state
-    _gameManager.resetGame();
-    print("DEBUG: Game state reset");
+      // Next, reset the game manager state
+      _gameManager.resetGame();
+
+      // Then wait to ensure the game manager has time to clean up
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Then reset our local game state
+      setState(() {
+        _totalScore = 0;
+        _correctAnswers = 0;
+        _wrongAnswers = 0;
+        _currentLevel = 1;
+        _gameStartTime = DateTime.now();
+      });
+
+      print("DEBUG: Game state completely reset");
+      return Future.value(); // Explicit return
+    } catch (e) {
+      print("DEBUG: Error in resetGame: $e");
+      // Ensure we return a completed future even with errors
+      return Future.value();
+    }
   }
 
   @override
@@ -982,7 +1153,6 @@ class _SessionViewState extends State<SessionView> {
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Column(
                     children: [
-                   
                       const SizedBox(height: 6),
                       Text(
                         "Total Points: $_totalScore",

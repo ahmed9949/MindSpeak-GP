@@ -27,7 +27,8 @@ class SessionView extends StatefulWidget {
   final String initialResponse;
   final Map<String, dynamic> childData;
   final AvatarModel avatarModel;
-  final bool avatarPreloaded; // New parameter to track if avatar was preloaded
+  final bool avatarPreloaded;
+  final bool isFullyPreloaded; // New flag to indicate everything is ready
 
   const SessionView({
     super.key,
@@ -35,9 +36,9 @@ class SessionView extends StatefulWidget {
     required this.initialResponse,
     required this.childData,
     required this.avatarModel,
-    this.avatarPreloaded = false, // Default to false for backward compatibility
+    this.avatarPreloaded = false,
+    this.isFullyPreloaded = false,
   });
-
   @override
   State<SessionView> createState() => _SessionViewState();
 }
@@ -56,6 +57,8 @@ class _SessionViewState extends State<SessionView> {
   late DetectionController _detectionController;
   late ChatGptModel _chatModel;
   late String? _sessionId;
+  bool _debugButtonPressed = false;
+  String _lastButtonDebugMessage = "";
 
   // Camera variables
   late CameraController _cameraController;
@@ -72,7 +75,8 @@ class _SessionViewState extends State<SessionView> {
   Function? _completionHandler;
 
   // final FlutterTtsService _ttsService = FlutterTtsService();
-
+  bool _isMicDisabledDuringGame = false;
+  bool _showWaitingScreen = true;
   final ChatGptTtsService _ttsService = ChatGptTtsService();
   DateTime? _gameStartTime;
   int _currentLevel = 1;
@@ -88,6 +92,11 @@ class _SessionViewState extends State<SessionView> {
     super.initState();
     print("📱 SessionView initState started");
 
+    // Check if we should skip waiting screen
+    if (widget.isFullyPreloaded) {
+      setState(() => _showWaitingScreen = false);
+    }
+
     // Add a flag to track welcome message
     _welcomeMessagePlaying = true;
 
@@ -99,6 +108,10 @@ class _SessionViewState extends State<SessionView> {
     // Create GameManager first before initializing games
     _gameManager = GameManager(ttsService: _ttsService);
     print("📱 GameManager instance created");
+
+    // Add callbacks for game events
+    _gameManager.addGameStartedCallback(_onGameStarted);
+    _gameManager.addGameEndedCallback(_onGameEnded);
 
     // Initialize session after creating GameManager
     _initializeSession();
@@ -122,10 +135,14 @@ class _SessionViewState extends State<SessionView> {
           });
           _playAnimation(widget.avatarModel.idleAnimation);
 
-          // Only start listening if not in a game
-          if (!_gameManager.isGameInProgress) {
+          // Only start listening if not in a game and mic isn't disabled
+          if (!_gameManager.isGameInProgress && !_isMicDisabledDuringGame) {
             Future.delayed(const Duration(milliseconds: 500), () {
-              if (mounted && !_isListening && !_isThinking && !_isSpeaking) {
+              if (mounted &&
+                  !_isListening &&
+                  !_isThinking &&
+                  !_isSpeaking &&
+                  !_isMicDisabledDuringGame) {
                 print("🎤 Starting listening from completion handler");
                 _startListening();
               }
@@ -162,6 +179,9 @@ class _SessionViewState extends State<SessionView> {
     });
     _playAnimation(widget.avatarModel.talkingAnimation);
 
+    // Don't need to manually set welcome mode here - it should be managed by _onModelLoaded
+    // and other parts of the code when needed
+
     // Attempt to use TTS with a backup timer
     bool ttsFinished = false;
 
@@ -178,9 +198,14 @@ class _SessionViewState extends State<SessionView> {
         });
         _playAnimation(widget.avatarModel.idleAnimation);
 
-        // Start listening again
+        // Start listening again if not in welcome message or game mode
         Future.delayed(Duration(milliseconds: 800), () {
-          if (mounted && !_isListening && !_isThinking && !_isSpeaking) {
+          if (mounted &&
+              !_isListening &&
+              !_isThinking &&
+              !_isSpeaking &&
+              !_welcomeMessagePlaying &&
+              !_isMicDisabledDuringGame) {
             _startListening();
           }
         });
@@ -192,6 +217,7 @@ class _SessionViewState extends State<SessionView> {
       print("🎤 TTS attempt: '$text'");
       await _ttsService.speak(text);
       ttsFinished = true;
+      print("✅ TTS speak completed successfully");
     } catch (e) {
       print("❌ Error in simplified speak: $e");
       ttsFinished = true;
@@ -203,16 +229,20 @@ class _SessionViewState extends State<SessionView> {
       });
       _playAnimation(widget.avatarModel.idleAnimation);
 
-      // Start listening again
+      // Start listening again if appropriate
       Future.delayed(Duration(milliseconds: 800), () {
-        if (mounted && !_isListening && !_isThinking && !_isSpeaking) {
+        if (mounted &&
+            !_isListening &&
+            !_isThinking &&
+            !_isSpeaking &&
+            !_welcomeMessagePlaying &&
+            !_isMicDisabledDuringGame) {
           _startListening();
         }
       });
     }
   }
-
-// Add this method to check TTS API key
+  // Add this method to check TTS API key
   // Future<void> _checkTtsApiKey() async {
   //   try {
   //     bool apiKeyValid = await _ttsService.validateApiKey();
@@ -240,6 +270,36 @@ class _SessionViewState extends State<SessionView> {
   //     print("❌ Error checking TTS API key: $e");
   //   }
   // }
+
+  void _onGameStarted() {
+    print("🎮 Game started - disabling microphone");
+    // Stop any ongoing listening
+    if (_isListening) {
+      _speech.stop();
+      _cancelSilenceTimer();
+      setState(() => _isListening = false);
+    }
+
+    // Set a flag to prevent listening during games
+    setState(() => _isMicDisabledDuringGame = true);
+  }
+
+  void _onGameEnded() {
+    print("🎮 Game ended - re-enabling microphone");
+    // Re-enable microphone
+    setState(() => _isMicDisabledDuringGame = false);
+
+    // Wait a moment before resuming listening
+    Future.delayed(Duration(milliseconds: 1500), () {
+      if (mounted &&
+          !_isListening &&
+          !_isThinking &&
+          !_isSpeaking &&
+          !_isMicDisabledDuringGame) {
+        _startListening();
+      }
+    });
+  }
 
   bool _isWaitingForAvatar = false;
 
@@ -342,6 +402,10 @@ class _SessionViewState extends State<SessionView> {
         // Set game start time
         _gameStartTime = DateTime.now();
 
+        // Set game mode to true before starting game
+        _ttsService.setGameMode(true);
+        print("DEBUG: Game mode set to true before starting game");
+
         try {
           _gameManager.startGame(context, 1);
         } catch (e) {
@@ -440,20 +504,39 @@ class _SessionViewState extends State<SessionView> {
 
 // Fix for nullable function error in the _onModelLoaded method
 // 5. Also modify the _onModelLoaded method to use the simplified speak for welcome
+
+  // Update _onModelLoaded to handle loading screen and welcome message
+  // Replace your _onModelLoaded method with this improved version
   void _onModelLoaded() {
     if (controller.onModelLoaded.value && mounted) {
       print("✅ 3D Model loaded successfully");
+
+      // Hide the waiting screen if it's still showing
+      if (_showWaitingScreen) {
+        setState(() => _showWaitingScreen = false);
+      }
 
       // Start with greeting animation
       _playAnimation(widget.avatarModel.greetingAnimation);
       print("▶️ Playing greeting animation");
 
       // For the welcome message, add a delay to let the greeting animation play fully
-      Future.delayed(const Duration(milliseconds: 2000), () {
+      Future.delayed(const Duration(milliseconds: 1500), () {
         if (!mounted) return;
 
         // Set welcome message playing flag
-        _welcomeMessagePlaying = true;
+        setState(() => _welcomeMessagePlaying = true);
+
+        // Set welcome mode in TTS service to prevent waiting phrases
+        try {
+          _ttsService.setWelcomeMessageMode(true);
+          print("✅ Welcome message mode set in TTS service");
+        } catch (e) {
+          // Fallback to setting game mode if welcome mode is not available
+          print(
+              "⚠️ setWelcomeMessageMode not available, using game mode instead");
+          _ttsService.setGameMode(true);
+        }
 
         // Ensure we're not listening during welcome
         if (_isListening) {
@@ -461,20 +544,36 @@ class _SessionViewState extends State<SessionView> {
           setState(() => _isListening = false);
         }
 
-        print("🎤 Preparing to speak welcome message");
-
-        // No custom completion handler needed with simplified approach
+        print("🎤 Speaking welcome message with greeting animation");
 
         // Trim and validate welcome message
         final welcomeText = widget.initialResponse.trim().isNotEmpty
             ? widget.initialResponse
             : "مرحبا! كيف حالك اليوم؟";
 
-        // Speak welcome message with simplified approach
+        // Speak welcome message
         _simplifiedSpeak(welcomeText).then((_) {
           // Ensure welcome flag is cleared
           setState(() {
             _welcomeMessagePlaying = false;
+          });
+
+          // Reset welcome mode in TTS service
+          try {
+            _ttsService.setWelcomeMessageMode(false);
+            print("✅ Welcome message mode cleared in TTS service");
+          } catch (e) {
+            // Fallback to resetting game mode if welcome mode is not available
+            print(
+                "⚠️ setWelcomeMessageMode not available, resetting game mode instead");
+            _ttsService.setGameMode(false);
+          }
+
+          // Start listening after welcome message is complete
+          Future.delayed(Duration(milliseconds: 800), () {
+            if (mounted && !_isListening && !_isThinking && !_isSpeaking) {
+              _startListening();
+            }
           });
         });
       });
@@ -1016,10 +1115,76 @@ class _SessionViewState extends State<SessionView> {
         );
       }
 
-      // End session with optimized stats
+      // Create proper detection stats with all session data
+      // This is the key fix to ensure aggregate stats are updated
+      Map<String, dynamic> detectionStats = {
+        'sessionDuration': timeSpent > 0 ? timeSpent : 0,
+      };
+
+      // Calculate message counts safely
+      int childMessageCount = 0;
+      int drMessageCount = 0;
+
+      // Safely calculate message counts from conversation
+      if (sessionController.state.conversation.isNotEmpty) {
+        for (final msg in sessionController.state.conversation) {
+          if (msg.containsKey('child')) {
+            childMessageCount++;
+          } else if (msg.containsKey('dr')) {
+            drMessageCount++;
+          }
+        }
+      }
+
+      detectionStats['childMessages'] = childMessageCount;
+      detectionStats['drMessages'] = drMessageCount;
+
+      // Safely calculate total messages
+      int totalMessages = childMessageCount + drMessageCount;
+      detectionStats['totalMessages'] = totalMessages;
+
+      // Calculate words per message (with safety check)
+      int totalWords = 0;
+      for (var msg in sessionController.state.conversation) {
+        if (msg.containsKey('child') && msg['child'] != null) {
+          totalWords += msg['child'].toString().split(' ').length;
+        } else if (msg.containsKey('dr') && msg['dr'] != null) {
+          totalWords += msg['dr'].toString().split(' ').length;
+        }
+      }
+
+      detectionStats['wordsPerMessage'] =
+          totalMessages > 0 ? (totalWords / totalMessages).round() : 0;
+
+      // Game-related statistics
+      detectionStats['gameStats'] = {
+        'score': _totalScore,
+        'levelsCompleted': _currentLevel,
+        'correctAnswers': _correctAnswers,
+        'wrongAnswers': _wrongAnswers,
+        'timeSpent': timeSpent,
+      };
+
+      // Add focus/attention data from the summary if available
+      if (summary != null) {
+        detectionStats['focusData'] = summary;
+
+        // If the summary contains focused percentage, include it directly
+        if (summary.containsKey('focused_percentage')) {
+          // Use null-safe conversion to num
+          final focusedPercentageValue = summary['focused_percentage'];
+          if (focusedPercentageValue is num) {
+            detectionStats['focusedPercentage'] = focusedPercentageValue;
+          }
+        }
+      }
+
+      print("Ending session with detection stats: $detectionStats");
+
+      // End session with complete stats
       if (mounted) {
         await sessionController.endSession(
-          {}, // detection stats
+          detectionStats, // Pass the proper detection stats instead of empty map
           totalScore: _totalScore,
           levelsCompleted: _currentLevel,
           correctAnswers: _correctAnswers,
@@ -1038,17 +1203,30 @@ class _SessionViewState extends State<SessionView> {
               final childId = sessionData.childId;
               final allSessions =
                   await sessionController.getSessionsForChild(childId);
-              final aggregateStats = widget.childData['aggregateStats'] ??
-                  {
-                    'totalSessions': 1,
-                    'averageSessionDuration': 0,
-                    'averageMessagesPerSession': 0
-                  };
+
+              // Safely get aggregateStats with null checks
+              final Map<String, dynamic> defaultStats = {
+                'totalSessions': 1,
+                'averageSessionDuration': 0,
+                'averageMessagesPerSession': 0
+              };
+
+              Map<String, dynamic> aggregateStats;
+              if (widget.childData.containsKey('aggregateStats') &&
+                  widget.childData['aggregateStats'] != null) {
+                aggregateStats = Map<String, dynamic>.from(
+                    widget.childData['aggregateStats']);
+              } else {
+                aggregateStats = defaultStats;
+              }
+
+              // Get session analyzer controller safely
+              final sessionAnalyzer = Provider.of<SessionAnalyzerController>(
+                  context,
+                  listen: false);
 
               final recommendations =
-                  await Provider.of<SessionAnalyzerController>(context,
-                          listen: false)
-                      .generateRecommendations(
+                  await sessionAnalyzer.generateRecommendations(
                 childData: widget.childData,
                 recentSessions: allSessions,
                 aggregateStats: aggregateStats,
@@ -1113,8 +1291,14 @@ class _SessionViewState extends State<SessionView> {
     }
   }
 
-// Updated _startListening method to respect welcome flag
   Future<void> _startListening() async {
+    // Don't start listening if microphone is disabled during game
+    if (_isMicDisabledDuringGame) {
+      print(
+          "⚠️ Microphone disabled during game - ignoring startListening request");
+      return;
+    }
+
     // Don't start listening if welcome message is playing
     if (_welcomeMessagePlaying) {
       print("⚠️ Not starting listening - welcome message playing");
@@ -1173,10 +1357,10 @@ class _SessionViewState extends State<SessionView> {
 
   Future<void> _initializeGame() async {
     try {
-      print("DEBUG: Initializing game connections");
+      print("🎮 DEBUG: Initializing game connections");
 
       if (!mounted) {
-        print("DEBUG: Widget not mounted during game initialization");
+        print("🎮 DEBUG: Widget not mounted during game initialization");
         return;
       }
 
@@ -1186,14 +1370,16 @@ class _SessionViewState extends State<SessionView> {
         _correctAnswers = 0;
         _wrongAnswers = 0;
         _currentLevel = 1;
+        _isGameInitialized = false; // Start with false
       });
 
       // Preload assets with error handling
       try {
+        print("🎮 DEBUG: Preloading game assets");
         await _gameManager.preloadGameAssets(context);
-        print("DEBUG: Game assets preloaded successfully");
+        print("🎮 DEBUG: Game assets preloaded successfully");
       } catch (e) {
-        print("DEBUG: Error preloading game assets: $e");
+        print("🎮 DEBUG: Error preloading game assets: $e");
         // Continue even if preloading fails
       }
 
@@ -1206,14 +1392,15 @@ class _SessionViewState extends State<SessionView> {
       _gameManager.onGameCompleted = (score, isLastLevel) {
         try {
           print(
-              "DEBUG: onGameCompleted called with score=$score, isLastLevel=$isLastLevel");
+              "🎮 DEBUG: onGameCompleted called with score=$score, isLastLevel=$isLastLevel");
+          _ttsService.setGameMode(false);
 
           // Play clapping animation when a game is completed successfully
           _playAnimation(widget.avatarModel.clappingAnimation);
 
           // After clapping, show celebration message with error handling
           _ttsService.speak("برافو! أحسنت").catchError((e) {
-            print("DEBUG: Error speaking celebration: $e");
+            print("🎮 DEBUG: Error speaking celebration: $e");
           });
 
           // Return to idle animation after a delay
@@ -1234,38 +1421,38 @@ class _SessionViewState extends State<SessionView> {
           }
 
           print(
-              "DEBUG: After completion: _totalScore=$_totalScore, level=$_currentLevel");
+              "🎮 DEBUG: After completion: _totalScore=$_totalScore, level=$_currentLevel");
         } catch (e, stack) {
-          print("DEBUG: Error in onGameCompleted: $e");
-          print("DEBUG: Stack trace: $stack");
+          print("🎮 DEBUG: Error in onGameCompleted: $e");
+          print("🎮 DEBUG: Stack trace: $stack");
         }
       };
 
       // Similar error handling for other callbacks
       _gameManager.onGameFailed = () {
         try {
-          print("DEBUG: onGameFailed called");
+          print("🎮 DEBUG: onGameFailed called");
           setState(() {
             _wrongAnswers = _gameManager.wrongAnswers;
           });
-          print("DEBUG: After game failed: wrongAnswers=$_wrongAnswers");
+          print("🎮 DEBUG: After game failed: wrongAnswers=$_wrongAnswers");
         } catch (e) {
-          print("DEBUG: Error in onGameFailed: $e");
+          print("🎮 DEBUG: Error in onGameFailed: $e");
         }
       };
 
       _gameManager.onGameStatsUpdated = (score, correct, wrong) {
         try {
           print(
-              "DEBUG: onGameStatsUpdated called with score=$score, correct=$correct, wrong=$wrong");
+              "🎮 DEBUG: onGameStatsUpdated called with score=$score, correct=$correct, wrong=$wrong");
           setState(() {
             _totalScore = score;
             _correctAnswers = correct;
             _wrongAnswers = wrong;
           });
-          print("DEBUG: After stats update: _totalScore=$_totalScore");
+          print("🎮 DEBUG: After stats update: _totalScore=$_totalScore");
         } catch (e) {
-          print("DEBUG: Error in onGameStatsUpdated: $e");
+          print("🎮 DEBUG: Error in onGameStatsUpdated: $e");
         }
       };
 
@@ -1277,30 +1464,58 @@ class _SessionViewState extends State<SessionView> {
           "حاول تاني",
           "برافو! الإجابة صحيحة"
         ]);
-        print("DEBUG: Game phrases pre-cached");
+        print("🎮 DEBUG: Game phrases pre-cached");
       } catch (e) {
-        print("DEBUG: Error pre-caching game phrases: $e");
+        print("🎮 DEBUG: Error pre-caching game phrases: $e");
       }
 
-      _isGameInitialized = true;
-      print("DEBUG: Game initialization complete");
+      // Explicitly force a clean game state
+      if (_gameManager.isGameInProgress) {
+        print("🎮 DEBUG: Forcing game reset during initialization");
+        try {
+          _gameManager.resetGame();
+        } catch (e) {
+          print("🎮 DEBUG: Error resetting game: $e");
+        }
+      }
+
+      // IMPORTANT: Set the initialization flag to true
+      setState(() {
+        _isGameInitialized = true;
+      });
+      print(
+          "🎮 DEBUG: Game initialization complete (_isGameInitialized=$_isGameInitialized)");
     } catch (e) {
-      print("DEBUG: Critical error in game initialization: $e");
-      _isGameInitialized = false;
+      print("🎮 DEBUG: Critical error in game initialization: $e");
+      // Ensure initialization flag is set to false on error
+      setState(() {
+        _isGameInitialized = false;
+      });
     }
   }
 
   Future<void> _resetGame() async {
     try {
-      // First, explicitly cancel any running timers
-      _silenceTimer?.cancel();
-      _isSilenceTimerActive = false;
+      print("DEBUG: Starting game reset");
 
-      // Next, reset the game manager state
-      _gameManager.resetGame();
+      // First, explicitly cancel any running timers
+      if (_silenceTimer != null) {
+        print("DEBUG: Canceling silence timer");
+        _silenceTimer!.cancel();
+        _isSilenceTimerActive = false;
+      }
+
+      // Next, reset the game manager state with proper error handling
+      try {
+        print("DEBUG: Resetting GameManager");
+        _gameManager.resetGame();
+      } catch (e) {
+        print("ERROR: Failed to reset GameManager: $e");
+        // Continue despite error
+      }
 
       // Then wait to ensure the game manager has time to clean up
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 300));
 
       // Then reset our local game state
       setState(() {
@@ -1309,12 +1524,14 @@ class _SessionViewState extends State<SessionView> {
         _wrongAnswers = 0;
         _currentLevel = 1;
         _gameStartTime = DateTime.now();
+        _isStartingGame = false; // Make sure this gets reset
       });
 
       print("DEBUG: Game state completely reset");
       return Future.value(); // Explicit return
     } catch (e) {
       print("DEBUG: Error in resetGame: $e");
+      setState(() => _isStartingGame = false);
       // Ensure we return a completed future even with errors
       return Future.value();
     }
@@ -1363,65 +1580,408 @@ class _SessionViewState extends State<SessionView> {
     super.dispose();
   }
 
-  Widget _buildVoiceControlUI() {
+  Future<void> _prepareForStartingGame() async {
+    print("🎮 DEBUG: Preparing to start game");
+
+    // Stop any ongoing listening
+    if (_isListening) {
+      print("🎮 DEBUG: Stopping listening before game");
+      await _speech.stop();
+      _cancelSilenceTimer();
+      setState(() => _isListening = false);
+    }
+
+    // Reset game state completely
+    print("🎮 DEBUG: Resetting game state");
+
+    // First ensure any existing game is closed
+    if (_gameManager.isGameInProgress) {
+      print("🎮 DEBUG: Force closing existing game");
+      try {
+        _gameManager.resetGame();
+        // Wait a moment to ensure game is fully reset
+        await Future.delayed(Duration(milliseconds: 500));
+      } catch (e) {
+        print("🎮 DEBUG: Error resetting game: $e");
+        // Continue despite error
+      }
+    }
+
+    // Now reset the local game state
+    setState(() {
+      _totalScore = 0;
+      _correctAnswers = 0;
+      _wrongAnswers = 0;
+      _currentLevel = 1;
+      _gameStartTime = DateTime.now();
+    });
+
+    // IMPORTANT: Set game mode BEFORE any TTS operations
+    print("🎮 DEBUG: Setting TTS to game mode");
+
+    try {
+      // First make absolutely sure we're not in welcome mode
+      try {
+        _ttsService.setWelcomeMessageMode(false);
+      } catch (e) {
+        print("🎮 DEBUG: setWelcomeMessageMode not available: $e");
+      }
+
+      // Then explicitly set game mode
+      _ttsService.setGameMode(true);
+
+      // Verify game mode is set - add a debug log to confirm
+      print("🎮 DEBUG: Game mode status: ${_ttsService.isInGameMode}");
+    } catch (e) {
+      print("🎮 DEBUG: Error setting game mode: $e");
+      // Continue despite error
+    }
+
+    // Add an extra validation step - stop any ongoing audio completely
+    try {
+      print("🎮 DEBUG: Stopping all audio before game announcement");
+      await _ttsService.stopAllAudio();
+      await Future.delayed(
+          Duration(milliseconds: 200)); // Small delay for cleanup
+    } catch (e) {
+      print("🎮 DEBUG: Error stopping audio: $e");
+    }
+
+    // Announce game start using a Completer for better control
+    print("🎮 DEBUG: Announcing game start");
+    final speakCompleter = Completer<void>();
+
+    // Set speaking state and animation
+    setState(() => _isSpeaking = true);
+    _playAnimation(widget.avatarModel.talkingAnimation);
+
+    try {
+      // Store original completion handler (safely)
+      Function? originalCompletionHandler = _completionHandler;
+
+      // Create a new temporary completion handler
+      void tempCompletionHandler() {
+        print("🎮 DEBUG: Game introduction speech completed");
+        // Complete our local completer
+        if (!speakCompleter.isCompleted) {
+          speakCompleter.complete();
+        }
+
+        // Reset states
+        if (mounted) {
+          setState(() {
+            _isSpeaking = false;
+          });
+          _playAnimation(widget.avatarModel.idleAnimation);
+        }
+      }
+
+      // Set our temporary handler
+      _ttsService.setCompletionHandler(tempCompletionHandler);
+
+      // IMPORTANT: Verify game mode is still set before speaking
+      print("🎮 DEBUG: Verifying game mode before speaking announcement");
+      try {
+        // Check if we lost game mode somehow
+        if (!_ttsService.isInGameMode) {
+          print("🎮 DEBUG: Game mode was lost - resetting it");
+          _ttsService.setGameMode(true);
+        }
+      } catch (e) {
+        print("🎮 DEBUG: Error checking game mode: $e");
+      }
+
+      // Speak the game introduction
+      print("🎮 DEBUG: Speaking game introduction");
+      await _ttsService.speak("طيب تعالي نلعب لعبه");
+
+      // Wait for speech completion with timeout
+      await speakCompleter.future.timeout(
+        Duration(seconds: 5),
+        onTimeout: () {
+          print("🎮 DEBUG: Speech timed out, continuing anyway");
+          if (!speakCompleter.isCompleted) {
+            speakCompleter.complete();
+          }
+        },
+      );
+
+      // Restore original completion handler (safely)
+      if (originalCompletionHandler != null) {
+        _ttsService.setCompletionHandler(originalCompletionHandler);
+      } else {
+        // If original was null, use an empty function to avoid null issues
+        _ttsService.setCompletionHandler(() {
+          print("🎮 DEBUG: Using default empty completion handler");
+        });
+      }
+    } catch (e) {
+      print("🎮 ERROR: Failed to announce game: $e");
+      // Continue even if announcement fails
+    }
+
+    // Ensure speaking state is reset and animation returns to idle
+    setState(() => _isSpeaking = false);
+    _playAnimation(widget.avatarModel.idleAnimation);
+
+    // Add a small delay to ensure UI updates
+    await Future.delayed(Duration(milliseconds: 500));
+
+    // IMPORTANT: Verify that game mode is STILL SET before starting the game
+    print("🎮 DEBUG: Verifying game mode before starting game");
+    try {
+      if (!_ttsService.isInGameMode) {
+        print("🎮 DEBUG: Game mode was lost - resetting it again");
+        _ttsService.setGameMode(true);
+      }
+    } catch (e) {
+      print("🎮 DEBUG: Error checking game mode: $e");
+    }
+
+    // Start the game with retry logic
+    bool gameStarted = false;
+    int retryCount = 0;
+    Exception? lastError;
+
+    while (!gameStarted && retryCount < 3) {
+      try {
+        print(
+            "🎮 DEBUG: Starting game with GameManager (attempt ${retryCount + 1})");
+
+        // Double-check game mode one last time
+        _ttsService.setGameMode(true);
+
+        _gameManager.startGame(context, 1);
+        gameStarted = true;
+        print("🎮 DEBUG: Game started successfully");
+      } catch (e) {
+        lastError = e is Exception ? e : Exception(e.toString());
+        print("🎮 ERROR: Failed to start game (attempt ${retryCount + 1}): $e");
+        retryCount++;
+
+        // Wait a moment before retrying
+        if (retryCount < 3) {
+          await Future.delayed(Duration(milliseconds: 300));
+        }
+      }
+    }
+
+    // If we couldn't start the game after 3 attempts, throw an error
+    if (!gameStarted) {
+      setState(() => _isStartingGame = false);
+      throw lastError ??
+          Exception("Failed to start game after multiple attempts");
+    }
+  }
+
+// Add a helper method to reset the welcome message flag
+  void _clearWelcomeFlag() {
+    if (_welcomeMessagePlaying) {
+      print("🎮 DEBUG: Clearing welcome message flag");
+      setState(() {
+        _welcomeMessagePlaying = false;
+      });
+
+      // Also try to reset the TTS service welcome mode if it exists
+      try {
+        if (_ttsService.setWelcomeMessageMode != null) {
+          _ttsService.setWelcomeMessageMode(false);
+        }
+      } catch (e) {
+        print("🎮 DEBUG: This TTS service doesn't have setWelcomeMessageMode");
+        // Try fallback to game mode
+        try {
+          _ttsService.setGameMode(false);
+        } catch (e) {
+          print("🎮 DEBUG: Error resetting TTS modes: $e");
+        }
+      }
+    }
+  }
+
+  Widget _buildControlButtons() {
+    return LayoutBuilder(builder: (context, constraints) {
+      // Determine if we're on a small screen
+      final isSmallScreen = constraints.maxWidth < 360;
+
+      return Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 8.0 : 16.0, vertical: 8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Status indicator text
+            Text(
+              _isListening
+                  ? "أنا أستمع إليك..."
+                  : (_isSpeaking
+                      ? "أنا أتحدث..."
+                      : (_isThinking ? "أنا أفكر..." : "...")),
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white70
+                    : Colors.black54,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            if (_debugButtonPressed)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Text(
+                  _lastButtonDebugMessage,
+                  style: TextStyle(color: Colors.red, fontSize: 12),
+                ),
+              ),
+
+            // Use Wrap for flexible button layout on smaller screens
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: isSmallScreen ? 4.0 : 8.0,
+              runSpacing: 8.0,
+              children: [
+                // Listen button
+                _buildResponsiveButton(
+                  onPressed: (_isListening ||
+                          _isSpeaking ||
+                          _isThinking ||
+                          _isMicDisabledDuringGame ||
+                          _welcomeMessagePlaying)
+                      ? null
+                      : _startListening,
+                  icon: Icons.mic,
+                  label: isSmallScreen ? "Listen" : "Start Listening",
+                  color: Colors.blue,
+                ),
+
+                // Interrupt button
+                _buildResponsiveButton(
+                  onPressed: (_isListening || _isSpeaking || _isThinking)
+                      ? () {
+                          // Stop all current processes
+                          if (_isListening) {
+                            _speech.stop();
+                            _cancelSilenceTimer();
+                            setState(() => _isListening = false);
+                          }
+                          if (_isSpeaking) {
+                            _ttsService.stop();
+                            setState(() => _isSpeaking = false);
+                          }
+                          if (_isThinking) {
+                            setState(() => _isThinking = false);
+                          }
+                          // Return to idle animation
+                          _playAnimation(widget.avatarModel.idleAnimation);
+                        }
+                      : null,
+                  icon: Icons.stop_circle,
+                  label: isSmallScreen ? "Stop" : "Interrupt",
+                  color: Colors.red,
+                ),
+
+                // Start game button - simplify the logic to make it more reliable
+                _buildResponsiveButton(
+                  onPressed: (!_isStartingGame &&
+                          !_gameManager.isGameInProgress &&
+                          !_isListening &&
+                          !_isSpeaking &&
+                          !_isThinking &&
+                          !_welcomeMessagePlaying &&
+                          _isGameInitialized)
+                      ? () {
+                          print("🎮 DEBUG: Start Game button pressed");
+                          setState(() {
+                            _debugButtonPressed = true;
+                            _lastButtonDebugMessage = "Starting game...";
+                            _isStartingGame = true;
+                          });
+
+                          // Use error handling when starting game
+                          _prepareForStartingGame().then((_) {
+                            if (mounted) {
+                              setState(() {
+                                _lastButtonDebugMessage =
+                                    "Game started successfully!";
+                              });
+                            }
+                          }).catchError((error) {
+                            print("🎮 ERROR: Failed to prepare game: $error");
+                            if (mounted) {
+                              setState(() {
+                                _isStartingGame = false;
+                                _lastButtonDebugMessage =
+                                    "Game start failed: $error";
+                              });
+                            }
+                          });
+                        }
+                      : null,
+                  icon: Icons.games,
+                  label: isSmallScreen
+                      ? (_isStartingGame ? "Starting..." : "Game")
+                      : (_isStartingGame ? "Starting Game..." : "Start Game"),
+                  color: Colors.green,
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+// Helper method to create responsive buttons
+  Widget _buildResponsiveButton({
+    required VoidCallback? onPressed,
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon),
+      label: Text(label),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        disabledBackgroundColor: Colors.grey.withOpacity(0.3),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 8,
+        ),
+        // Ensure text wrapping for very small devices
+        textStyle: const TextStyle(
+          fontSize: 14,
+        ),
+      ),
+    );
+  }
+
+  // Add waiting screen widget
+  Widget _buildWaitingScreen() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Status indicator text
-          Text(
-            _isListening
-                ? "أنا أستمع إليك..."
-                : (_isSpeaking
-                    ? "أنا أتحدث..."
-                    : (_isThinking ? "أنا أفكر..." : "...")),
-            style: TextStyle(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white70
-                  : Colors.black54,
-              fontStyle: FontStyle.italic,
+      color: Colors.black,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
             ),
-          ),
-          const SizedBox(height: 10),
-          // Converted to stop/interrupt button
-          ElevatedButton.icon(
-            onPressed: () {
-              if (_isListening) {
-                _speech.stop();
-                _cancelSilenceTimer();
-                setState(() => _isListening = false);
-              } else if (_isSpeaking) {
-                _ttsService.stop();
-                setState(() => _isSpeaking = false);
-              } else if (_isThinking) {
-                setState(() => _isThinking = false);
-                _playAnimation(widget.avatarModel.idleAnimation);
-                _startListening();
-              }
-              // Return to idle state
-              _playAnimation(widget.avatarModel.idleAnimation);
-            },
-            icon: const Icon(Icons.stop_circle),
-            label: Text(_isThinking ? "إيقاف التفكير" : "إيقاف المحادثة"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+            SizedBox(height: 20),
+            Text(
+              "Preparing Avatar...",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-
-          // Small gap
-          const SizedBox(height: 8),
-
-          // Add TTS API toggle button
-          IconButton(
-            onPressed: _toggleTtsApi,
-            icon: Icon(_useTtsApi ? Icons.volume_up : Icons.volume_off),
-            tooltip:
-                _useTtsApi ? "Disable TTS API (Silent Mode)" : "Enable TTS API",
-            color: _useTtsApi ? Colors.green : Colors.grey,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1451,20 +2011,8 @@ class _SessionViewState extends State<SessionView> {
             ),
           ),
         ),
-        body: _isWaitingForAvatar
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text(
-                      "Preparing your session...",
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ],
-                ),
-              )
+        body: _showWaitingScreen
+            ? _buildWaitingScreen()
             : Stack(
                 children: [
                   Column(
@@ -1497,12 +2045,11 @@ class _SessionViewState extends State<SessionView> {
                           ],
                         ),
                       ),
-                      // Replace this button with our new UI
-                      _buildVoiceControlUI(), // <-- HERE: This is the new UI
+                      // Use the new control buttons UI
+                      _buildControlButtons(),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          // ... your existing buttons ...
                           ElevatedButton.icon(
                             onPressed: _endSession,
                             icon: const Icon(Icons.call_end),

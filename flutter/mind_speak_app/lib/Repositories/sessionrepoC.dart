@@ -224,18 +224,26 @@ class FirebaseSessionRepository implements SessionRepository {
     }
   }
 
-  @override
   Future<void> updateChildAggregateStats(
       String childId, SessionStatistics sessionStats) async {
     try {
       final childRef = _firestore.collection('child').doc(childId);
 
+      print("Updating aggregate stats for child: $childId");
+      print("Session stats being added: ${sessionStats.toJson()}");
+
       await _firestore.runTransaction((transaction) async {
         final childDoc = await transaction.get(childRef);
 
-        if (!childDoc.exists) return;
+        if (!childDoc.exists) {
+          print("Child document not found: $childId");
+          return;
+        }
 
-        final currentStats = childDoc.data()?['aggregateStats'] ??
+        final childData = childDoc.data();
+        print("Current child data: $childData");
+
+        final currentStats = childData?['aggregateStats'] ??
             {
               'totalSessions': 0,
               'totalMessages': 0,
@@ -243,28 +251,120 @@ class FirebaseSessionRepository implements SessionRepository {
               'averageMessagesPerSession': 0,
             };
 
-        final newTotalSessions = (currentStats['totalSessions'] as int) + 1;
-        final newTotalMessages =
-            (currentStats['totalMessages'] as int) + sessionStats.totalMessages;
-        final newAvgDuration =
-            ((currentStats['averageSessionDuration'] as int) *
-                        (newTotalSessions - 1) +
-                    sessionStats.sessionDuration.inMinutes) /
-                newTotalSessions;
-        final newAvgMessages = newTotalMessages / newTotalSessions;
+        print("Current aggregate stats: $currentStats");
 
-        transaction.update(childRef, {
+        // Use safe type casting with null/default handling
+        final currentTotalSessions =
+            (currentStats['totalSessions'] as num?)?.toInt() ?? 0;
+        final currentTotalMessages =
+            (currentStats['totalMessages'] as num?)?.toInt() ?? 0;
+        final currentAvgDuration =
+            (currentStats['averageSessionDuration'] as num?)?.toInt() ?? 0;
+
+        final newTotalSessions = currentTotalSessions + 1;
+        final newTotalMessages =
+            currentTotalMessages + sessionStats.totalMessages;
+
+        // Safe calculation for average
+        final newAvgDuration = newTotalSessions > 0
+            ? ((currentAvgDuration * (newTotalSessions - 1) +
+                    sessionStats.sessionDuration.inMinutes) /
+                newTotalSessions)
+            : sessionStats.sessionDuration.inMinutes;
+
+        final newAvgMessages = newTotalSessions > 0
+            ? newTotalMessages / newTotalSessions
+            : sessionStats.totalMessages;
+
+        final updatedStats = {
+          'totalSessions': newTotalSessions,
+          'totalMessages': newTotalMessages,
+          'averageSessionDuration': newAvgDuration.round(),
+          'averageMessagesPerSession': newAvgMessages.round(),
+          'lastSessionDate': DateTime.now().toIso8601String(),
+        };
+
+        print("Updated aggregate stats: $updatedStats");
+
+        transaction.update(childRef, {'aggregateStats': updatedStats});
+      });
+
+      print("Successfully updated aggregate stats for child: $childId");
+    } catch (e) {
+      print("❌ Error updating child aggregate stats: $e");
+      // Don't throw, just log the error to prevent crashing the app
+    }
+  }
+
+  Future<void> recalculateAllChildStats() async {
+    try {
+      // Get all children
+      final childrenSnapshot = await _firestore.collection('child').get();
+
+      for (final childDoc in childrenSnapshot.docs) {
+        final childId = childDoc.id;
+        print("Recalculating stats for child: $childId");
+
+        // Get all sessions for this child
+        final sessionsSnapshot = await _firestore
+            .collection('sessions')
+            .where('childId', isEqualTo: childId)
+            .get();
+
+        if (sessionsSnapshot.docs.isEmpty) {
+          print("No sessions found for child: $childId");
+          continue;
+        }
+
+        int totalSessions = sessionsSnapshot.docs.length;
+        int totalMessages = 0;
+        int totalDuration = 0;
+        DateTime? lastSessionDate;
+
+        // Calculate aggregate stats
+        for (final sessionDoc in sessionsSnapshot.docs) {
+          final sessionData = sessionDoc.data();
+          final stats = sessionData['statistics'] as Map<String, dynamic>?;
+
+          if (stats != null) {
+            totalMessages += (stats['totalMessages'] as num?)?.toInt() ?? 0;
+            totalDuration += (stats['sessionDuration'] as num?)?.toInt() ?? 0;
+
+            // Track latest session date
+            if (sessionData['startTime'] != null) {
+              final sessionDate = DateTime.parse(sessionData['startTime']);
+              if (lastSessionDate == null ||
+                  sessionDate.isAfter(lastSessionDate)) {
+                lastSessionDate = sessionDate;
+              }
+            }
+          }
+        }
+
+        // Calculate averages
+        final avgDuration =
+            totalSessions > 0 ? totalDuration / totalSessions : 0;
+        final avgMessages =
+            totalSessions > 0 ? totalMessages / totalSessions : 0;
+
+        // Update child document
+        await _firestore.collection('child').doc(childId).update({
           'aggregateStats': {
-            'totalSessions': newTotalSessions,
-            'totalMessages': newTotalMessages,
-            'averageSessionDuration': newAvgDuration.round(),
-            'averageMessagesPerSession': newAvgMessages.round(),
-            'lastSessionDate': DateTime.now().toIso8601String(),
+            'totalSessions': totalSessions,
+            'totalMessages': totalMessages,
+            'averageSessionDuration': avgDuration.round(),
+            'averageMessagesPerSession': avgMessages.round(),
+            'lastSessionDate': lastSessionDate?.toIso8601String() ??
+                DateTime.now().toIso8601String(),
           }
         });
-      });
+
+        print("Updated stats for child: $childId");
+      }
+
+      print("✅ All child stats recalculated successfully");
     } catch (e) {
-      throw Exception('Error updating child stats: $e');
+      print("❌ Error recalculating child stats: $e");
     }
   }
 }

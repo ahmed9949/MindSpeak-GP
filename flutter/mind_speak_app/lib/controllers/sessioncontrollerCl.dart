@@ -99,7 +99,6 @@ class SessionController extends ChangeNotifier {
     }
   }
 
-  /// Ends the current session and calculates statistics
   Future<SessionStatistics> endSession(
     Map<String, dynamic>? detectionStats, {
     int totalScore = 0,
@@ -119,6 +118,10 @@ class SessionController extends ChangeNotifier {
       final now = DateTime.now();
       final sessionDuration = now.difference(_startTime!);
 
+      // Make sure timeSpent is correctly set if passed as 0
+      final actualTimeSpent =
+          timeSpent > 0 ? timeSpent : sessionDuration.inSeconds;
+
       final totalMessages = _childMessageCount + _drMessageCount;
       final wordsPerMessage =
           totalMessages > 0 ? _totalWords ~/ totalMessages : 0;
@@ -128,7 +131,8 @@ class SessionController extends ChangeNotifier {
         totalMessages: totalMessages,
         childMessages: _childMessageCount,
         drMessages: _drMessageCount,
-        sessionDuration: sessionDuration,
+        sessionDuration:
+            Duration(seconds: actualTimeSpent), // Use the more accurate value
         sessionDate: _startTime!,
         wordsPerMessage: wordsPerMessage,
         sessionNumber: _state.sessionNumber,
@@ -139,15 +143,27 @@ class SessionController extends ChangeNotifier {
           'miniGameStats': {
             'correctAnswers': correctAnswers,
             'wrongAnswers': wrongAnswers,
-            'timeSpent': timeSpent,
+            'timeSpent': actualTimeSpent,
           },
         },
       );
 
+      print("Ending session with stats: ${stats.toJson()}");
+
       // Save basic session data
       await _repository.endSession(_state.sessionId!, stats);
       await _repository.saveSessionStatistics(_state.sessionId!, stats);
-      await _repository.updateChildAggregateStats(_state.sessionId!, stats);
+
+      // FIX: Get the childId from the session using the sessionId
+      final sessionData = await _repository.getSession(_state.sessionId!);
+      if (sessionData != null) {
+        final childId = sessionData.childId;
+        // Now use the childId we got from the sessionData
+        await _repository.updateChildAggregateStats(childId, stats);
+      } else {
+        print(
+            "❌ Warning: Could not get session data to update child aggregate stats");
+      }
 
       // Save statistics and end time in Firestore
       final sessionRef = FirebaseFirestore.instance

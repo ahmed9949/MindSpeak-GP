@@ -79,6 +79,17 @@ class GameManager {
   // NEW: Store current game data for potential repetition
   Map<String, dynamic>? _currentGameData;
 
+  Function? _onGameStartedCallback;
+  Function? _onGameEndedCallback;
+
+  void addGameStartedCallback(Function callback) {
+    _onGameStartedCallback = callback;
+  }
+
+  void addGameEndedCallback(Function callback) {
+    _onGameEndedCallback = callback;
+  }
+
   GameManager({
     required this.ttsService,
   }) {
@@ -363,7 +374,6 @@ class GameManager {
     return completer.future;
   }
 
-  /// Start a game with a specific level
   void startGame(BuildContext context, int level) {
     print(
         "DEBUG: Starting game at level $level, isGameInProgress=$_isGameInProgress");
@@ -377,6 +387,11 @@ class GameManager {
     _context = context;
     _currentLevelNotifier.value = level;
     _gameStartTime = DateTime.now();
+
+    // Call the callback to notify game started
+    if (_onGameStartedCallback != null) {
+      _onGameStartedCallback!();
+    }
 
     // Reset game stats
     print("DEBUG: Resetting game stats");
@@ -729,7 +744,7 @@ class GameManager {
     }
   }
 
-  /// Handle correct answer from a game
+  // Update _handleCorrectAnswer to notify when game ends
   Future<void> _handleCorrectAnswer(int points) async {
     print("DEBUG: _handleCorrectAnswer called with points: $points");
     print("DEBUG: Current total score before update: $_totalScore");
@@ -737,6 +752,10 @@ class GameManager {
 
     if (!_context.mounted) {
       _isGameInProgress = false;
+      // Notify game ended if not mounted
+      if (_onGameEndedCallback != null) {
+        _onGameEndedCallback!();
+      }
       print("DEBUG: Context not mounted in _handleCorrectAnswer");
       return;
     }
@@ -812,6 +831,11 @@ class GameManager {
     } else {
       print("DEBUG: Game sequence complete or context not mounted");
       _isGameInProgress = false;
+
+      // Notify game ended if game is complete
+      if (_onGameEndedCallback != null) {
+        _onGameEndedCallback!();
+      }
     }
   }
 
@@ -842,12 +866,16 @@ class GameManager {
     }
   }
 
-  /// Regular wrong answer handler - called by _handleWrongAnswerWithMemory
+// Also update _handleWrongAnswer to notify when game session ends abnormally
   void _handleWrongAnswer() {
     print("DEBUG: _handleWrongAnswer called");
 
     if (!_context.mounted) {
       _isGameInProgress = false;
+      // Notify game ended if not mounted
+      if (_onGameEndedCallback != null) {
+        _onGameEndedCallback!();
+      }
       print("DEBUG: Context not mounted in _handleWrongAnswer");
       return;
     }
@@ -878,9 +906,6 @@ class GameManager {
     } else {
       print("DEBUG: onGameFailed is null, not calling");
     }
-
-    // With the repetition system, we'll manage showing the next game ourselves
-    // so we don't need to call _showRandomMiniGame() here
 
     // Use frame sync for smoother transition
     print("DEBUG: Scheduling next mini-game after wrong answer");
@@ -1285,7 +1310,16 @@ class GameManager {
     _totalScore = 0;
     _cachedImages = null;
     _gameStartTime = null;
-    _isGameInProgress = false;
+
+    // If game was in progress, notify that it ended
+    if (_isGameInProgress) {
+      _isGameInProgress = false;
+      if (_onGameEndedCallback != null) {
+        _onGameEndedCallback!();
+      }
+    } else {
+      _isGameInProgress = false;
+    }
 
     // Reset game type tracking
     _playedGameTypes.forEach((key, value) => _playedGameTypes[key] = false);

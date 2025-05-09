@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
@@ -22,14 +23,15 @@ class StartSessionPage extends StatefulWidget {
 
 class _StartSessionPageState extends State<StartSessionPage> {
   final Flutter3DController _testController = Flutter3DController();
-  final Flutter3DController _preloadController =
-      Flutter3DController(); // New controller for preloading
+  final Flutter3DController _preloadController = Flutter3DController();
   bool _isTestingAnimations = false;
   String? _currentTestAnimation;
   List<String> _detectedAnimations = [];
 
   bool _isLoading = false;
-  bool _isPreloadingAvatar = false; // New state for tracking avatar preloading
+  bool _isPreloadingAvatar = false;
+  bool _isAvatarReady = false;
+  bool _isWelcomeMessageReady = false;
   String? _errorMessage;
   late ChatGptModel _model;
   late SessionRepository _sessionRepository;
@@ -38,10 +40,15 @@ class _StartSessionPageState extends State<StartSessionPage> {
   AvatarModel? _selectedAvatar;
   late PageController _pageController;
 
-  // New variables for avatar preloading
+  // Variables for avatar preloading
   String? _initialResponse;
   Map<String, dynamic>? _preloadedChildData;
   bool _avatarPreloaded = false;
+
+  // Loading screen state
+  bool _showLoadingScreen = false;
+  double _avatarLoadProgress = 0.0;
+  double _welcomeMessageLoadProgress = 0.0;
 
   final List<AvatarModel> avatars = [
     AvatarModel(
@@ -107,29 +114,6 @@ class _StartSessionPageState extends State<StartSessionPage> {
     }
   }
 
-  // New method to handle preloaded model event
-  void _onPreloadModelLoaded() {
-    if (_preloadController.onModelLoaded.value &&
-        mounted &&
-        _isPreloadingAvatar) {
-      print("✅ Preloaded 3D avatar model loaded successfully");
-      setState(() {
-        _avatarPreloaded = true;
-        _isPreloadingAvatar = false;
-      });
-
-      // If we already have the initial response, proceed to SessionView
-      if (_initialResponse != null && _preloadedChildData != null && mounted) {
-        // Add a small delay to ensure state is properly updated
-        Future.delayed(Duration(milliseconds: 100), () {
-          if (mounted) {
-            _navigateToSessionView();
-          }
-        });
-      }
-    }
-  }
-
   Future<Map<String, dynamic>?> _fetchChildData(String childId) async {
     try {
       DocumentSnapshot childDoc = await FirebaseFirestore.instance
@@ -146,6 +130,39 @@ class _StartSessionPageState extends State<StartSessionPage> {
     } catch (e) {
       setState(() => _errorMessage = 'Error fetching child data: $e');
       return null;
+    }
+  }
+
+  void _onPreloadModelLoaded() {
+    if (_preloadController.onModelLoaded.value &&
+        mounted &&
+        _isPreloadingAvatar) {
+      print("✅ Preloaded 3D avatar model loaded successfully");
+      setState(() {
+        _isAvatarReady = true;
+        _avatarLoadProgress = 1.0;
+        _isPreloadingAvatar = false;
+        _avatarPreloaded = true;
+      });
+
+      _checkAllComponentsReady();
+    }
+  }
+
+  void _checkAllComponentsReady() {
+    print(
+        "🔍 Checking components: Avatar ready: $_isAvatarReady, Welcome message ready: $_isWelcomeMessageReady");
+    if (_isAvatarReady &&
+        _isWelcomeMessageReady &&
+        mounted &&
+        _initialResponse != null &&
+        _preloadedChildData != null) {
+      // Add a small delay to ensure state is properly updated
+      Future.delayed(Duration(milliseconds: 100), () {
+        if (mounted) {
+          _navigateToSessionView();
+        }
+      });
     }
   }
 
@@ -182,17 +199,17 @@ Remember to:
 ''';
   }
 
-  // Function to preload the avatar
   Future<void> _preloadAvatar(AvatarModel avatar) async {
     if (_isPreloadingAvatar) return;
 
     setState(() {
       _isPreloadingAvatar = true;
       _avatarPreloaded = false;
+      _isAvatarReady = false;
+      _avatarLoadProgress = 0.2; // Start at 20%
     });
 
     // Create an offscreen container with the 3D model
-    // The model will be loaded but not visible to the user
     final preloadContainer = SizedBox(
       width: 1, // Minimal size
       height: 1,
@@ -216,19 +233,30 @@ Remember to:
             final entry = OverlayEntry(builder: (context) => preloadContainer);
             overlay.insert(entry);
 
+            // Update progress periodically
+            Timer.periodic(Duration(milliseconds: 500), (timer) {
+              if (mounted && !_isAvatarReady) {
+                setState(() {
+                  // Increment progress until 80%
+                  _avatarLoadProgress = min(0.8, _avatarLoadProgress + 0.1);
+                });
+              } else {
+                timer.cancel();
+              }
+            });
+
             // Remove after a timeout (safety measure)
-            Future.delayed(Duration(seconds: 10), () {
-              if (!_avatarPreloaded) {
+            Future.delayed(Duration(seconds: 15), () {
+              if (!_isAvatarReady && mounted) {
                 print("⚠️ Avatar preload timeout, proceeding anyway");
                 setState(() {
-                  _avatarPreloaded = true;
+                  _isAvatarReady = true;
+                  _avatarLoadProgress = 1.0;
                   _isPreloadingAvatar = false;
+                  _avatarPreloaded = true;
                 });
 
-                // If we already have the initial response, proceed to SessionView
-                if (_initialResponse != null && _preloadedChildData != null) {
-                  _navigateToSessionView();
-                }
+                _checkAllComponentsReady();
               }
               try {
                 entry.remove();
@@ -242,7 +270,6 @@ Remember to:
     }
   }
 
-  // New method to navigate to SessionView with proper null checks
   void _navigateToSessionView() {
     if (!mounted) {
       print("⚠️ Cannot navigate: widget not mounted");
@@ -265,6 +292,12 @@ Remember to:
     }
 
     try {
+      // Hide loading screen before navigation
+      setState(() {
+        _showLoadingScreen = false;
+        _isLoading = false;
+      });
+
       // Additional safety check - don't pass null values to the constructor
       final avatar = _selectedAvatar!;
       final response = _initialResponse!;
@@ -288,6 +321,7 @@ Remember to:
               childData: childData,
               avatarModel: avatar,
               avatarPreloaded: _avatarPreloaded,
+              isFullyPreloaded: true, // Add this new flag
             ),
           ),
         ),
@@ -299,12 +333,17 @@ Remember to:
         _initialResponse = null;
         _preloadedChildData = null;
         _avatarPreloaded = false;
+        _isAvatarReady = false;
+        _isWelcomeMessageReady = false;
+        _avatarLoadProgress = 0.0;
+        _welcomeMessageLoadProgress = 0.0;
       });
     } catch (e) {
       print("❌ Error navigating to SessionView: $e");
       setState(() {
         _errorMessage = "Error starting session: $e";
         _isLoading = false;
+        _showLoadingScreen = false;
       });
     }
   }
@@ -320,6 +359,11 @@ Remember to:
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _showLoadingScreen = true;
+      _isAvatarReady = false;
+      _isWelcomeMessageReady = false;
+      _avatarLoadProgress = 0.0;
+      _welcomeMessageLoadProgress = 0.0;
     });
 
     // Validate animation names before starting
@@ -353,8 +397,31 @@ Remember to:
       // Start preloading the avatar while waiting for the API response
       _preloadAvatar(_selectedAvatar!);
 
+      // Update welcome message progress while waiting
+      setState(() => _welcomeMessageLoadProgress = 0.3);
+
+      // Start welcome message generation in parallel with avatar loading
+      _getWelcomeMessage(prompt, childData);
+    } catch (e) {
+      debugPrint('❌ Error starting session: $e');
+      setState(() {
+        _errorMessage = 'Error starting session: $e';
+        _isLoading = false;
+        _showLoadingScreen = false;
+      });
+    }
+  }
+
+  Future<void> _getWelcomeMessage(
+      String prompt, Map<String, dynamic> childData) async {
+    try {
+      // Update progress
+      setState(() => _welcomeMessageLoadProgress = 0.5);
+
       final responseText =
           await _model.sendMessage(prompt, childData: childData);
+
+      setState(() => _welcomeMessageLoadProgress = 0.8);
 
       debugPrint('API response received: $responseText');
 
@@ -368,24 +435,154 @@ Remember to:
       _initialResponse = responseText;
       _preloadedChildData = childData;
 
-      // If avatar is already preloaded, navigate immediately
-      // Otherwise, wait for _onPreloadModelLoaded to trigger
-      if (_avatarPreloaded && mounted) {
-        // Add a small delay to ensure state is properly updated
-        Future.delayed(Duration(milliseconds: 100), () {
-          if (mounted) {
-            _navigateToSessionView();
-          }
-        });
-      }
-    } catch (e) {
-      debugPrint('❌ Error starting session: $e');
       setState(() {
-        _errorMessage = 'Error starting session: $e';
+        _isWelcomeMessageReady = true;
+        _welcomeMessageLoadProgress = 1.0;
+      });
+
+      // Check if avatar is already preloaded, if so navigate immediately
+      _checkAllComponentsReady();
+    } catch (e) {
+      print("❌ Error getting welcome message: $e");
+      setState(() {
+        _errorMessage = 'Error getting welcome message: $e';
         _isLoading = false;
+        _showLoadingScreen = false;
       });
     }
   }
+
+  // Loading screen widget
+  Widget _buildLoadingScreen() {
+    return Container(
+      color: Colors.black.withOpacity(0.8),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+            ),
+            SizedBox(height: 24),
+            Text(
+              "Preparing your session...",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 40),
+
+            // Avatar loading progress
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.person,
+                        color: _isAvatarReady ? Colors.green : Colors.white),
+                    SizedBox(width: 8),
+                    Text(
+                      "Loading avatar:",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      "${(_avatarLoadProgress * 100).toInt()}%",
+                      style: TextStyle(
+                        color: _isAvatarReady ? Colors.green : Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Container(
+                  width: 250,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: _avatarLoadProgress,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _isAvatarReady ? Colors.green : Colors.blue,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            SizedBox(height: 16),
+
+            // Welcome message loading progress
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.chat,
+                        color: _isWelcomeMessageReady
+                            ? Colors.green
+                            : Colors.white),
+                    SizedBox(width: 8),
+                    Text(
+                      "Preparing welcome:",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      "${(_welcomeMessageLoadProgress * 100).toInt()}%",
+                      style: TextStyle(
+                        color: _isWelcomeMessageReady
+                            ? Colors.green
+                            : Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Container(
+                  width: 250,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: _welcomeMessageLoadProgress,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color:
+                            _isWelcomeMessageReady ? Colors.green : Colors.blue,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // void _checkAllComponentsReady() {
+  //   if (_isAvatarReady && _isWelcomeMessageReady && mounted) {
+  //     _navigateToSessionView();
+  //   }
+  // }
 
   void _selectAndStartSession(AvatarModel avatar) async {
     setState(() {

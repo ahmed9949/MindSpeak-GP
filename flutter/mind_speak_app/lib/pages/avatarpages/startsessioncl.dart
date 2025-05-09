@@ -22,11 +22,14 @@ class StartSessionPage extends StatefulWidget {
 
 class _StartSessionPageState extends State<StartSessionPage> {
   final Flutter3DController _testController = Flutter3DController();
+  final Flutter3DController _preloadController =
+      Flutter3DController(); // New controller for preloading
   bool _isTestingAnimations = false;
   String? _currentTestAnimation;
   List<String> _detectedAnimations = [];
 
   bool _isLoading = false;
+  bool _isPreloadingAvatar = false; // New state for tracking avatar preloading
   String? _errorMessage;
   late ChatGptModel _model;
   late SessionRepository _sessionRepository;
@@ -34,6 +37,12 @@ class _StartSessionPageState extends State<StartSessionPage> {
   late SessionAnalyzerController _analyzerController;
   AvatarModel? _selectedAvatar;
   late PageController _pageController;
+
+  // New variables for avatar preloading
+  String? _initialResponse;
+  Map<String, dynamic>? _preloadedChildData;
+  bool _avatarPreloaded = false;
+
   final List<AvatarModel> avatars = [
     AvatarModel(
       name: 'nadara',
@@ -47,6 +56,7 @@ class _StartSessionPageState extends State<StartSessionPage> {
       greetingAnimation: 'Armature.001|mixamo.com|Layer0',
     ),
   ];
+
   @override
   void initState() {
     super.initState();
@@ -61,6 +71,9 @@ class _StartSessionPageState extends State<StartSessionPage> {
       viewportFraction: 0.6,
       initialPage: 0,
     );
+
+    // Setup preload controller listener
+    _preloadController.onModelLoaded.addListener(_onPreloadModelLoaded);
   }
 
   void _initializeServices() {
@@ -74,7 +87,47 @@ class _StartSessionPageState extends State<StartSessionPage> {
   @override
   void dispose() {
     _pageController.dispose();
+    _preloadController.onModelLoaded.removeListener(_onPreloadModelLoaded);
     super.dispose();
+  }
+
+  // Method to validate avatar animations
+  void _validateSelectedAvatar() {
+    if (_selectedAvatar != null) {
+      print("\n🔍 VALIDATING SELECTED AVATAR MODEL");
+      print("Avatar Name: ${_selectedAvatar!.name}");
+      print("Avatar Model Path: ${_selectedAvatar!.modelPath}");
+      print("Animation Names:");
+      print("- idle: '${_selectedAvatar!.idleAnimation}'");
+      print("- talking: '${_selectedAvatar!.talkingAnimation}'");
+      print("- thinking: '${_selectedAvatar!.thinkingAnimation}'");
+      print("- clapping: '${_selectedAvatar!.clappingAnimation}'");
+      print("- greeting: '${_selectedAvatar!.greetingAnimation}'");
+      print("\n");
+    }
+  }
+
+  // New method to handle preloaded model event
+  void _onPreloadModelLoaded() {
+    if (_preloadController.onModelLoaded.value &&
+        mounted &&
+        _isPreloadingAvatar) {
+      print("✅ Preloaded 3D avatar model loaded successfully");
+      setState(() {
+        _avatarPreloaded = true;
+        _isPreloadingAvatar = false;
+      });
+
+      // If we already have the initial response, proceed to SessionView
+      if (_initialResponse != null && _preloadedChildData != null && mounted) {
+        // Add a small delay to ensure state is properly updated
+        Future.delayed(Duration(milliseconds: 100), () {
+          if (mounted) {
+            _navigateToSessionView();
+          }
+        });
+      }
+    }
   }
 
   Future<Map<String, dynamic>?> _fetchChildData(String childId) async {
@@ -112,9 +165,9 @@ Child Information:
 
 Task:
 You are a therapist helping this child improve their communication skills.
-1. Start by engaging with their interest in $interest choose on interest to talk about to not make the child confusd if a the one interest contain many details choose one detail
+1. Start by engaging with their interest in $interest choose random  interest to talk about to not make the child confusd if a the one interest contain many details choose one detail
 2. Gradually expand the conversation beyond this interest
-3. Keep responses short and clear
+3. Keep responses short simple clear and easy to understand 
 4. Use positive reinforcement
 5. Be patient and encouraging
 6. Speak in egyptian slang
@@ -129,6 +182,133 @@ Remember to:
 ''';
   }
 
+  // Function to preload the avatar
+  Future<void> _preloadAvatar(AvatarModel avatar) async {
+    if (_isPreloadingAvatar) return;
+
+    setState(() {
+      _isPreloadingAvatar = true;
+      _avatarPreloaded = false;
+    });
+
+    // Create an offscreen container with the 3D model
+    // The model will be loaded but not visible to the user
+    final preloadContainer = SizedBox(
+      width: 1, // Minimal size
+      height: 1,
+      child: Opacity(
+        opacity: 0.0, // Invisible
+        child: Flutter3DViewer(
+          src: avatar.modelPath,
+          controller: _preloadController,
+        ),
+      ),
+    );
+
+    // Add the container to the widget tree temporarily
+    if (mounted) {
+      setState(() {
+        // Render the preload container
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            // Add to overlay for offscreen rendering
+            final overlay = Overlay.of(context);
+            final entry = OverlayEntry(builder: (context) => preloadContainer);
+            overlay.insert(entry);
+
+            // Remove after a timeout (safety measure)
+            Future.delayed(Duration(seconds: 10), () {
+              if (!_avatarPreloaded) {
+                print("⚠️ Avatar preload timeout, proceeding anyway");
+                setState(() {
+                  _avatarPreloaded = true;
+                  _isPreloadingAvatar = false;
+                });
+
+                // If we already have the initial response, proceed to SessionView
+                if (_initialResponse != null && _preloadedChildData != null) {
+                  _navigateToSessionView();
+                }
+              }
+              try {
+                entry.remove();
+              } catch (e) {
+                // Entry might already be removed
+              }
+            });
+          }
+        });
+      });
+    }
+  }
+
+  // New method to navigate to SessionView with proper null checks
+  void _navigateToSessionView() {
+    if (!mounted) {
+      print("⚠️ Cannot navigate: widget not mounted");
+      return;
+    }
+
+    if (_selectedAvatar == null) {
+      print("⚠️ Cannot navigate: no avatar selected");
+      return;
+    }
+
+    if (_initialResponse == null) {
+      print("⚠️ Cannot navigate: initial response is null");
+      return;
+    }
+
+    if (_preloadedChildData == null) {
+      print("⚠️ Cannot navigate: child data is null");
+      return;
+    }
+
+    try {
+      // Additional safety check - don't pass null values to the constructor
+      final avatar = _selectedAvatar!;
+      final response = _initialResponse!;
+      final childData = _preloadedChildData!;
+
+      print(
+          "✅ Navigating to SessionView with preloaded avatar: ${avatar.name}");
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MultiProvider(
+            providers: [
+              ChangeNotifierProvider.value(value: _sessionController),
+              Provider.value(value: _analyzerController),
+              Provider.value(value: _model),
+            ],
+            child: SessionView(
+              initialPrompt: "",
+              initialResponse: response,
+              childData: childData,
+              avatarModel: avatar,
+              avatarPreloaded: _avatarPreloaded,
+            ),
+          ),
+        ),
+      );
+
+      // Reset preload state after navigation
+      setState(() {
+        _isLoading = false;
+        _initialResponse = null;
+        _preloadedChildData = null;
+        _avatarPreloaded = false;
+      });
+    } catch (e) {
+      print("❌ Error navigating to SessionView: $e");
+      setState(() {
+        _errorMessage = "Error starting session: $e";
+        _isLoading = false;
+      });
+    }
+  }
+
   Future<void> _startSession() async {
     if (_selectedAvatar == null) {
       setState(() {
@@ -141,6 +321,9 @@ Remember to:
       _isLoading = true;
       _errorMessage = null;
     });
+
+    // Validate animation names before starting
+    _validateSelectedAvatar();
 
     try {
       final childId =
@@ -167,6 +350,9 @@ Remember to:
 
       _model.clearConversation();
 
+      // Start preloading the avatar while waiting for the API response
+      _preloadAvatar(_selectedAvatar!);
+
       final responseText =
           await _model.sendMessage(prompt, childData: childData);
 
@@ -178,33 +364,24 @@ Remember to:
 
       await _sessionController.addTherapistMessage(responseText);
 
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MultiProvider(
-              providers: [
-                ChangeNotifierProvider.value(value: _sessionController),
-                Provider.value(value: _analyzerController),
-                Provider.value(value: _model),
-              ],
-              child: SessionView(
-                initialPrompt: prompt,
-                initialResponse: responseText,
-                childData: childData,
-                avatarModel: _selectedAvatar!, // Pass the selected avatar model
-              ),
-            ),
-          ),
-        );
+      // Store data for later navigation
+      _initialResponse = responseText;
+      _preloadedChildData = childData;
+
+      // If avatar is already preloaded, navigate immediately
+      // Otherwise, wait for _onPreloadModelLoaded to trigger
+      if (_avatarPreloaded && mounted) {
+        // Add a small delay to ensure state is properly updated
+        Future.delayed(Duration(milliseconds: 100), () {
+          if (mounted) {
+            _navigateToSessionView();
+          }
+        });
       }
     } catch (e) {
       debugPrint('❌ Error starting session: $e');
       setState(() {
         _errorMessage = 'Error starting session: $e';
-      });
-    } finally {
-      setState(() {
         _isLoading = false;
       });
     }
@@ -375,6 +552,23 @@ Remember to:
     );
   }
 
+  // Loading indicator with avatar preloading status
+  Widget _buildLoadingIndicator() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CircularProgressIndicator(),
+        SizedBox(height: 16),
+        Text(
+          _isPreloadingAvatar
+              ? "Loading avatar (${_avatarPreloaded ? "Ready" : "Loading..."})"
+              : "Starting session...",
+          style: TextStyle(fontSize: 16),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -409,7 +603,7 @@ Remember to:
                 _buildAvatarSelector(),
                 const SizedBox(height: 24),
                 if (_isLoading)
-                  const CircularProgressIndicator()
+                  _buildLoadingIndicator()
                 else
                   ElevatedButton.icon(
                     onPressed: _selectedAvatar != null ? _startSession : null,

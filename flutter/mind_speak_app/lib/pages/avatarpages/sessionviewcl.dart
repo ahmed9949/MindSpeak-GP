@@ -27,6 +27,7 @@ class SessionView extends StatefulWidget {
   final String initialResponse;
   final Map<String, dynamic> childData;
   final AvatarModel avatarModel;
+  final bool avatarPreloaded; // New parameter to track if avatar was preloaded
 
   const SessionView({
     super.key,
@@ -34,6 +35,7 @@ class SessionView extends StatefulWidget {
     required this.initialResponse,
     required this.childData,
     required this.avatarModel,
+    this.avatarPreloaded = false, // Default to false for backward compatibility
   });
 
   @override
@@ -48,6 +50,7 @@ class _SessionViewState extends State<SessionView> {
   late GameManager _gameManager;
   Timer? _statsUpdateTimer;
   bool _isStartingGame = false;
+  bool _welcomeMessagePlaying = false;
 
   late AiService _aiService;
   late DetectionController _detectionController;
@@ -83,16 +86,19 @@ class _SessionViewState extends State<SessionView> {
   @override
   void initState() {
     super.initState();
-    print("DEBUG: SessionView initState started");
+    print("📱 SessionView initState started");
+
+    // Add a flag to track welcome message
+    _welcomeMessagePlaying = true;
 
     // Initialize TTS with common phrases
     _ttsService.initialize().then((_) {
-      print("DEBUG: TTS service ready with preloaded phrases");
+      print("✅ TTS service ready with preloaded phrases");
     });
 
     // Create GameManager first before initializing games
     _gameManager = GameManager(ttsService: _ttsService);
-    print("DEBUG: GameManager instance created");
+    print("📱 GameManager instance created");
 
     // Initialize session after creating GameManager
     _initializeSession();
@@ -103,47 +109,30 @@ class _SessionViewState extends State<SessionView> {
     // Start periodic stats update
     _startStatsUpdateTimer();
 
-    // In initState, add:
-    FlutterError.onError = (FlutterErrorDetails details) {
-      print("CRITICAL ERROR: ${details.exception}");
-      print("Stack trace: ${details.stack}");
-
-      // Try to recover by resetting the UI state
-      if (mounted) {
-        setState(() {
-          _isListening = false;
-          _isSpeaking = false;
-          _isThinking = false;
-          _playAnimation(widget.avatarModel.idleAnimation);
-        });
-      }
-
-      // Report the error normally
-      FlutterError.presentError(details);
-    };
-
     // Store a reference to the completion handler
     _completionHandler = () {
       if (mounted) {
         try {
-          print(
-              "TTS completed, returning to idle animation and starting listening");
-          setState(() => _isSpeaking = false);
+          print("🔊 TTS completed, resetting all states properly");
+          // Reset all states to ensure clean state
+          setState(() {
+            _isSpeaking = false;
+            _isThinking = false; // Make sure thinking is also reset
+            _welcomeMessagePlaying = false; // Always clear this flag
+          });
           _playAnimation(widget.avatarModel.idleAnimation);
 
           // Only start listening if not in a game
           if (!_gameManager.isGameInProgress) {
             Future.delayed(const Duration(milliseconds: 500), () {
-              if (mounted &&
-                  !_isListening &&
-                  !_isThinking &&
-                  !_gameManager.isGameInProgress) {
+              if (mounted && !_isListening && !_isThinking && !_isSpeaking) {
+                print("🎤 Starting listening from completion handler");
                 _startListening();
               }
             });
           }
         } catch (e) {
-          print("DEBUG: Error in TTS completion handler: $e");
+          print("❌ Error in TTS completion handler: $e");
         }
       }
     };
@@ -151,12 +140,108 @@ class _SessionViewState extends State<SessionView> {
     // Set it in the TTS service
     _ttsService.setCompletionHandler(_completionHandler!);
 
-    // Preload game assets for smoother performance
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _gameManager.preloadGameAssets(context);
-      print("DEBUG: Game assets preloading started");
-    });
+    // Setup model loaded listener
+    controller.onModelLoaded.addListener(_onModelLoaded);
   }
+
+  Future<void> _simplifiedSpeak(String text) async {
+    print("🎤 Using simplified speak method");
+
+    // Reset all states first
+    if (_isThinking) {
+      setState(() => _isThinking = false);
+    }
+
+    // Stop any current audio
+    await _ttsService.stop();
+
+    // Show talking animation
+    setState(() {
+      _isSpeaking = true;
+      _isListening = false;
+    });
+    _playAnimation(widget.avatarModel.talkingAnimation);
+
+    // Attempt to use TTS with a backup timer
+    bool ttsFinished = false;
+
+    // Set timeout to ensure we continue even if TTS fails silently
+    Timer(Duration(seconds: 10), () {
+      if (!ttsFinished && mounted) {
+        print("⚠️ TTS timeout in simplified speak");
+
+        // Force completion
+        ttsFinished = true;
+        setState(() {
+          _isSpeaking = false;
+          _isThinking = false;
+        });
+        _playAnimation(widget.avatarModel.idleAnimation);
+
+        // Start listening again
+        Future.delayed(Duration(milliseconds: 800), () {
+          if (mounted && !_isListening && !_isThinking && !_isSpeaking) {
+            _startListening();
+          }
+        });
+      }
+    });
+
+    // Try to speak
+    try {
+      print("🎤 TTS attempt: '$text'");
+      await _ttsService.speak(text);
+      ttsFinished = true;
+    } catch (e) {
+      print("❌ Error in simplified speak: $e");
+      ttsFinished = true;
+
+      // Ensure transition to listening
+      setState(() {
+        _isSpeaking = false;
+        _isThinking = false;
+      });
+      _playAnimation(widget.avatarModel.idleAnimation);
+
+      // Start listening again
+      Future.delayed(Duration(milliseconds: 800), () {
+        if (mounted && !_isListening && !_isThinking && !_isSpeaking) {
+          _startListening();
+        }
+      });
+    }
+  }
+
+// Add this method to check TTS API key
+  // Future<void> _checkTtsApiKey() async {
+  //   try {
+  //     bool apiKeyValid = await _ttsService.validateApiKey();
+  //     if (!apiKeyValid) {
+  //       print("🔴 WARNING: TTS API key validation failed");
+
+  //       // Show a warning to the user
+  //       WidgetsBinding.instance.addPostFrameCallback((_) {
+  //         if (mounted) {
+  //           ScaffoldMessenger.of(context).showSnackBar(
+  //             SnackBar(
+  //               content: Text(
+  //                   "TTS API key may be invalid. Voice may not work properly."),
+  //               duration: Duration(seconds: 5),
+  //               action: SnackBarAction(
+  //                 label: 'Dismiss',
+  //                 onPressed: () {},
+  //               ),
+  //             ),
+  //           );
+  //         }
+  //       });
+  //     }
+  //   } catch (e) {
+  //     print("❌ Error checking TTS API key: $e");
+  //   }
+  // }
+
+  bool _isWaitingForAvatar = false;
 
   void _startSilenceTimer() {
     _silenceTimer?.cancel();
@@ -353,36 +438,46 @@ class _SessionViewState extends State<SessionView> {
     }
   }
 
+// Fix for nullable function error in the _onModelLoaded method
+// 5. Also modify the _onModelLoaded method to use the simplified speak for welcome
   void _onModelLoaded() {
     if (controller.onModelLoaded.value && mounted) {
-      print("3D Model loaded successfully");
+      print("✅ 3D Model loaded successfully");
 
-      // Start with greeting animation first
+      // Start with greeting animation
       _playAnimation(widget.avatarModel.greetingAnimation);
-      print("Playing greeting animation");
+      print("▶️ Playing greeting animation");
 
-      // For the welcome message, add a delay to let the greeting animation play
-      if (widget.initialResponse.isNotEmpty) {
-        Future.delayed(const Duration(milliseconds: 1000), () {
-          if (!mounted) return;
+      // For the welcome message, add a delay to let the greeting animation play fully
+      Future.delayed(const Duration(milliseconds: 2000), () {
+        if (!mounted) return;
 
-          print("Preparing to speak welcome message");
-          _ttsService.setAudioReadyHandler(() {
-            if (mounted) {
-              print(
-                  "Welcome message prep started, switching to talking animation");
-              setState(() => _isSpeaking = true);
-              _playAnimation(widget.avatarModel.talkingAnimation);
-            }
+        // Set welcome message playing flag
+        _welcomeMessagePlaying = true;
+
+        // Ensure we're not listening during welcome
+        if (_isListening) {
+          _speech.stop();
+          setState(() => _isListening = false);
+        }
+
+        print("🎤 Preparing to speak welcome message");
+
+        // No custom completion handler needed with simplified approach
+
+        // Trim and validate welcome message
+        final welcomeText = widget.initialResponse.trim().isNotEmpty
+            ? widget.initialResponse
+            : "مرحبا! كيف حالك اليوم؟";
+
+        // Speak welcome message with simplified approach
+        _simplifiedSpeak(welcomeText).then((_) {
+          // Ensure welcome flag is cleared
+          setState(() {
+            _welcomeMessagePlaying = false;
           });
-
-          // Note: We don't override the completion handler here anymore
-          // since it's set once in initState to auto-start listening
-
-          _speak(widget.initialResponse);
-          // Listening will auto-start after welcome via the completion handler
         });
-      }
+      });
     }
   }
 
@@ -566,8 +661,43 @@ class _SessionViewState extends State<SessionView> {
     }
   }
 
+  void _forceResetThinkingState() {
+    print("🔄 Forcing reset of thinking state");
+    if (_isThinking) {
+      setState(() {
+        _isThinking = false;
+        _isSpeaking = false;
+      });
+
+      // Reset to idle animation
+      _playAnimation(widget.avatarModel.idleAnimation);
+
+      // Try to stop any ongoing TTS
+      _ttsService.stop();
+
+      // Start listening
+      Future.delayed(Duration(milliseconds: 300), () {
+        if (mounted && !_isListening && !_isThinking && !_isSpeaking) {
+          _startListening();
+        }
+      });
+    }
+  }
+
+// Modify the method that processes user input to use the flag
+
+// Also update _processUserInput to handle the welcome flag
   Future<void> _processUserInput(String text) async {
     if (text.isEmpty) return;
+
+    // Don't process input during welcome message
+    if (_welcomeMessagePlaying) {
+      print("⚠️ Ignoring user input during welcome message");
+      return;
+    }
+
+    // Debug TTS state before processing
+    _debugTtsState();
 
     // Cancel silence timer during processing
     _cancelSilenceTimer();
@@ -588,20 +718,56 @@ class _SessionViewState extends State<SessionView> {
           await _chatModel.sendMessage(prompt, childData: widget.childData);
       await sessionController.addTherapistMessage(aiResponse);
 
-      // Set thinking to false before starting to speak
-      setState(() => _isThinking = false);
-      await _speak(aiResponse);
+      // Debug TTS state after getting response
+      _debugTtsState();
 
-      // Note: Listening will auto-start after speaking via the completion handler
+      // Use the simplified speak method instead
+      await _simplifiedSpeak(aiResponse);
     } catch (e) {
       const errorMsg = "عذراً، حدث خطأ أثناء المعالجة.";
       await sessionController.addTherapistMessage(errorMsg);
       setState(() => _isThinking = false);
-      await _speak(errorMsg);
+      await _simplifiedSpeak(errorMsg);
     }
   }
+  // Future<void> _simulateSpeech(String text) async {
+  //   print(
+  //       "🔄 Simulating speech for: \"${text.substring(0, min(30, text.length))}...\"");
 
-  Future<void> _speak(String text) async {
+  //   // Show talking animation
+  //   setState(() {
+  //     _isThinking = false;
+  //     _isSpeaking = true;
+  //   });
+  //   _playAnimation(widget.avatarModel.talkingAnimation);
+
+  //   // Simulate speech duration based on text length
+  //   final speechDuration = Duration(milliseconds: max(1000, 100 * text.length));
+  //   await Future.delayed(speechDuration);
+
+  //   // End speaking
+  //   setState(() => _isSpeaking = false);
+  //   _playAnimation(widget.avatarModel.idleAnimation);
+
+  //   // Start listening again
+  //   Future.delayed(Duration(milliseconds: 500), () {
+  //     if (mounted && !_isListening && !_isThinking && !_isSpeaking) {
+  //       _startListening();
+  //     }
+  //   });
+  // }
+  void _debugTtsState() {
+    print("\n🔍 DEBUG TTS STATE");
+    print("_isPlaying: ${_ttsService.isPlaying}");
+    print("_isPreparingAudio: ${_ttsService.isPreparingAudio}");
+    print("_welcomeMessagePlaying: $_welcomeMessagePlaying");
+    print("_isThinking: $_isThinking");
+    print("_isSpeaking: $_isSpeaking");
+    print("_isListening: $_isListening");
+    print("\n");
+  }
+
+  Future<void> _speak(String text, {bool useChildName = false}) async {
     try {
       // Stop any current speech
       if (_isSpeaking) {
@@ -613,29 +779,96 @@ class _SessionViewState extends State<SessionView> {
         try {
           setState(() => _isSpeaking = true);
 
+          // Set a timeout to prevent getting stuck
+          bool ttsCompleted = false;
+          Timer(Duration(seconds: 8), () {
+            if (!ttsCompleted && mounted) {
+              print("⚠️ TTS timeout - forcing transition to next state");
+              setState(() {
+                _isThinking = false;
+                _isSpeaking = false;
+                // Clear welcome flag if it was set
+                _welcomeMessagePlaying = false;
+              });
+              _playAnimation(widget.avatarModel.idleAnimation);
+
+              // Only start listening if not in welcome message mode
+              if (!_welcomeMessagePlaying) {
+                Future.delayed(Duration(milliseconds: 500), () {
+                  if (mounted &&
+                      !_isListening &&
+                      !_isThinking &&
+                      !_isSpeaking) {
+                    _startListening();
+                  }
+                });
+              }
+            }
+          });
+
           // Set handlers to coordinate animations
           _ttsService.setAudioReadyHandler(() {
             if (mounted) {
-              // Start the talking animation immediately when the handler is called
               print(
-                  "Audio ready handler triggered, starting talking animation");
+                  "🔊 Audio ready handler triggered, starting talking animation");
+              setState(() {
+                _isThinking = false;
+                _isSpeaking = true;
+              });
               _playAnimation(widget.avatarModel.talkingAnimation);
             }
           });
 
-          // Note: Completion handler is now set once in initState
+          _ttsService.setPreparingAudioHandler(() {
+            if (mounted) {
+              print(
+                  "⏳ Preparing audio handler triggered, showing thinking animation");
+              setState(() => _isThinking = true);
+              _playAnimation(widget.avatarModel.thinkingAnimation);
+            }
+          });
+
+          // Do not override the completion handler - it's set in initState
+          // When we need custom completion for welcome, we temporarily override and restore it
 
           print(
-              "Starting TTS for: \"${text.substring(0, min(30, text.length))}...\"");
-          await _ttsService.speak(text);
+              "🎤 Starting TTS for: \"${text.substring(0, min(30, text.length))}...\"");
+
+          // Pass the child's name to the speak method if requested
+          if (useChildName && _childName != null && _childName!.isNotEmpty) {
+            print("🔍 Calling TTS with child name: $_childName");
+            await _ttsService
+                .speak(text, childName: _childName)
+                .catchError((e) {
+              print("❌ Error in TTS with child name: $e");
+              ttsCompleted = true;
+              return null;
+            });
+          } else {
+            print("🔍 Calling TTS without child name");
+            await _ttsService.speak(text).catchError((e) {
+              print("❌ Error in TTS: $e");
+              ttsCompleted = true;
+              return null;
+            });
+          }
+
+          ttsCompleted = true;
+          print("✅ TTS speak call completed successfully");
         } catch (e) {
           print("❌ Error in TTS service: $e");
-          setState(() => _isSpeaking = false);
+          setState(() {
+            _isSpeaking = false;
+            _isThinking = false;
+          });
           _playAnimation(widget.avatarModel.idleAnimation);
 
-          // Even on error, try to start listening
-          if (mounted && !_isListening && !_isThinking) {
-            Future.delayed(const Duration(milliseconds: 500), () {
+          // Even on error, try to start listening if not in welcome mode
+          if (mounted &&
+              !_isListening &&
+              !_isThinking &&
+              !_welcomeMessagePlaying) {
+            Future.delayed(Duration(milliseconds: 500), () {
               _startListening();
             });
           }
@@ -644,14 +877,48 @@ class _SessionViewState extends State<SessionView> {
     } catch (e) {
       print("❌ Error in _speak: $e");
       if (mounted) {
-        setState(() => _isSpeaking = false);
+        setState(() {
+          _isSpeaking = false;
+          _isThinking = false;
+        });
         _playAnimation(widget.avatarModel.idleAnimation);
       }
     }
   }
 
+  bool _useTtsApi = true;
+
+// Add this method to toggle TTS API usage
+  void _toggleTtsApi() {
+    setState(() {
+      _useTtsApi = !_useTtsApi;
+      print("🔄 TTS API usage set to: $_useTtsApi");
+    });
+
+    // Show a message to the user
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(_useTtsApi
+          ? "TTS API enabled"
+          : "TTS API disabled (using silent mode)"),
+      duration: Duration(seconds: 2),
+    ));
+  }
+
   void _playAnimation(String animation) {
-    controller.playAnimation(animationName: animation);
+    print("🔍 DEBUG: _playAnimation called with: '$animation'");
+    try {
+      controller.playAnimation(animationName: animation);
+      print("✅ Animation command sent: '$animation'");
+    } catch (e) {
+      print("❌ ERROR in _playAnimation: $e");
+      // Check if we can get animation names to help debugging
+      try {
+        print("🔍 DEBUG: Attempting to list available animations");
+        // If your controller has a method to get animation names, call it here
+      } catch (e2) {
+        print("⚠️ Cannot list animations: $e2");
+      }
+    }
   }
 
   Future<void> _endSession() async {
@@ -846,7 +1113,14 @@ class _SessionViewState extends State<SessionView> {
     }
   }
 
+// Updated _startListening method to respect welcome flag
   Future<void> _startListening() async {
+    // Don't start listening if welcome message is playing
+    if (_welcomeMessagePlaying) {
+      print("⚠️ Not starting listening - welcome message playing");
+      return;
+    }
+
     if (_isSpeaking) {
       // Stop current speech to avoid overlap
       await _ttsService.stop();
@@ -861,14 +1135,14 @@ class _SessionViewState extends State<SessionView> {
 
         // Start the silence timer as soon as we start listening
         _startSilenceTimer();
-        print("DEBUG: Started listening with silence detection");
+        print("🎤 Started listening with silence detection");
 
         await _speech.listen(
           onResult: (result) {
             // Reset silence timer on any partial result (even non-final)
             if (result.recognizedWords.isNotEmpty) {
               _startSilenceTimer();
-              print("DEBUG: Speech detected, restarting silence timer");
+              print("🎤 Speech detected, restarting silence timer");
             }
 
             if (result.finalResult) {
@@ -885,7 +1159,7 @@ class _SessionViewState extends State<SessionView> {
           localeId: 'ar-EG',
         );
       } else {
-        print("DEBUG: Speech recognition not available");
+        print("⚠️ Speech recognition not available");
       }
     } else {
       // If we're already listening and the button is pressed,
@@ -893,7 +1167,7 @@ class _SessionViewState extends State<SessionView> {
       await _speech.stop();
       _cancelSilenceTimer();
       setState(() => _isListening = false);
-      print("DEBUG: Manually stopped listening");
+      print("🎤 Manually stopped listening");
     }
   }
 
@@ -1048,16 +1322,44 @@ class _SessionViewState extends State<SessionView> {
 
   @override
   void dispose() {
-    print("DEBUG: SessionView dispose called");
+    print("📱 SessionView dispose called");
     _silenceTimer?.cancel();
     controller.onModelLoaded.removeListener(_onModelLoaded);
-    _speech.stop();
-    _ttsService.stop();
+
+    // IMPROVED: More thorough cleanup
+    try {
+      _speech.stop();
+    } catch (e) {
+      print("⚠️ Error stopping speech in dispose: $e");
+    }
+
+    try {
+      _ttsService.stop();
+    } catch (e) {
+      print("⚠️ Error stopping TTS in dispose: $e");
+    }
+
     _frameTimer?.cancel();
     _statsUpdateTimer?.cancel();
-    _recorder.closeRecorder();
-    _cameraController.dispose();
-    _gameManager.dispose();
+
+    try {
+      _recorder.closeRecorder();
+    } catch (e) {
+      print("⚠️ Error closing recorder in dispose: $e");
+    }
+
+    try {
+      _cameraController.dispose();
+    } catch (e) {
+      print("⚠️ Error disposing camera controller: $e");
+    }
+
+    try {
+      _gameManager.dispose();
+    } catch (e) {
+      print("⚠️ Error disposing game manager: $e");
+    }
+
     super.dispose();
   }
 
@@ -1092,16 +1394,32 @@ class _SessionViewState extends State<SessionView> {
               } else if (_isSpeaking) {
                 _ttsService.stop();
                 setState(() => _isSpeaking = false);
+              } else if (_isThinking) {
+                setState(() => _isThinking = false);
+                _playAnimation(widget.avatarModel.idleAnimation);
+                _startListening();
               }
               // Return to idle state
               _playAnimation(widget.avatarModel.idleAnimation);
             },
             icon: const Icon(Icons.stop_circle),
-            label: const Text("إيقاف المحادثة"),
+            label: Text(_isThinking ? "إيقاف التفكير" : "إيقاف المحادثة"),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
+          ),
+
+          // Small gap
+          const SizedBox(height: 8),
+
+          // Add TTS API toggle button
+          IconButton(
+            onPressed: _toggleTtsApi,
+            icon: Icon(_useTtsApi ? Icons.volume_up : Icons.volume_off),
+            tooltip:
+                _useTtsApi ? "Disable TTS API (Silent Mode)" : "Enable TTS API",
+            color: _useTtsApi ? Colors.green : Colors.grey,
           ),
         ],
       ),
@@ -1133,74 +1451,88 @@ class _SessionViewState extends State<SessionView> {
             ),
           ),
         ),
-        body: Stack(
-          children: [
-            Column(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: RepaintBoundary(
-                    key: _avatarKey,
-                    child: Flutter3DViewer(
-                      src: widget.avatarModel.modelPath,
-                      controller: controller,
-                      activeGestureInterceptor: true,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 6),
-                      Text(
-                        "Total Points: $_totalScore",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: isDark ? Colors.white : Colors.black,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Replace this button with our new UI
-                _buildVoiceControlUI(), // <-- HERE: This is the new UI
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    // ... your existing buttons ...
-                    ElevatedButton.icon(
-                      onPressed: _endSession,
-                      icon: const Icon(Icons.call_end),
-                      label: const Text("End Call"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                      ),
+        body: _isWaitingForAvatar
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text(
+                      "Preparing your session...",
+                      style: TextStyle(fontSize: 16),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-              ],
-            ),
-            Positioned(
-              bottom: 0,
-              right: 0,
-              child: Opacity(
-                opacity: 0.0,
-                child: SizedBox(
-                  width: 1,
-                  height: 1,
-                  child: _isCameraInitialized
-                      ? CameraPreview(_cameraController)
-                      : Container(),
-                ),
+              )
+            : Stack(
+                children: [
+                  Column(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: RepaintBoundary(
+                          key: _avatarKey,
+                          child: Flutter3DViewer(
+                            src: widget.avatarModel.modelPath,
+                            controller: controller,
+                            activeGestureInterceptor: true,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 6),
+                            Text(
+                              "Total Points: $_totalScore",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Replace this button with our new UI
+                      _buildVoiceControlUI(), // <-- HERE: This is the new UI
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          // ... your existing buttons ...
+                          ElevatedButton.icon(
+                            onPressed: _endSession,
+                            icon: const Icon(Icons.call_end),
+                            label: const Text("End Call"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Opacity(
+                      opacity: 0.0,
+                      child: SizedBox(
+                        width: 1,
+                        height: 1,
+                        child: _isCameraInitialized
+                            ? CameraPreview(_cameraController)
+                            : Container(),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }

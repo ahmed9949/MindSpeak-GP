@@ -1,187 +1,5 @@
-// import 'dart:convert';
-// import 'dart:math';
-// import 'dart:typed_data';
-// import 'package:http/http.dart' as http;
-// import 'package:audioplayers/audioplayers.dart';
-// import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-// // Enhanced ChatGptTtsService with better synchronization
-// class ChatGptTtsService {
-//   final String _apiKey = dotenv.env['OPEN_AI_API_KEY']!;
-//   final String _voice = 'nova';
-//   final String _model = 'gpt-4o-mini-tts';
-
-//   final AudioPlayer _audioPlayer = AudioPlayer();
-//   final Map<String, Uint8List> _audioCache = {}; // ✅ cache
-
-//   Function? _completionHandler;
-//   Function? _cancelHandler;
-//   Function? _startPlaybackHandler;
-//   Function? _audioReadyHandler; // New callback for when audio is ready
-
-//   bool _isPlaying = false;
-//   bool _isPreparingAudio = false; // Track when we're fetching audio
-
-//   final List<String> _commonPhrases = [
-//     "برافو! أحسنت",
-//     "حاول تاني",
-//     "برافو! الإجابة صحيحة",
-//     "لا، حاول مرة أخرى"
-//   ];
-
-//   ChatGptTtsService() {
-//     _audioPlayer.onPlayerComplete.listen((_) {
-//       _isPlaying = false;
-//       _completionHandler?.call();
-//     });
-
-//     _audioPlayer.onPlayerStateChanged.listen((state) {
-//       if (state == PlayerState.playing) {
-//         _startPlaybackHandler?.call();
-//       } else if (state == PlayerState.completed) {
-//         _isPlaying = false;
-//         _completionHandler?.call();
-//       }
-//     });
-//   }
-
-//   void setCompletionHandler(Function callback) {
-//     _completionHandler = callback;
-//   }
-
-//   void setCancelHandler(Function callback) {
-//     _cancelHandler = callback;
-//   }
-
-//   void setStartPlaybackHandler(Function callback) {
-//     _startPlaybackHandler = callback;
-//   }
-
-//   // New: Set a callback for when audio is ready but before playback
-//   void setAudioReadyHandler(Function callback) {
-//     _audioReadyHandler = callback;
-//   }
-
-//   Future<void> initialize() async {
-//     print("🔄 Initializing TTS service...");
-//     for (final phrase in _commonPhrases) {
-//       await _prefetchAudio(phrase);
-//     }
-//     print("✅ Common TTS phrases preloaded");
-//   }
-
-//   Future<void> prefetchDynamic(List<String> phrases) async {
-//     for (final phrase in phrases) {
-//       if (!_audioCache.containsKey(phrase)) {
-//         await _prefetchAudio(phrase);
-//       }
-//     }
-//   }
-
-//   Future<void> _prefetchAudio(String text) async {
-//     if (_audioCache.containsKey(text)) return;
-
-//     try {
-//       final url = Uri.parse("https://api.openai.com/v1/audio/speech");
-
-//       final response = await http.post(
-//         url,
-//         headers: {
-//           "Authorization": "Bearer $_apiKey",
-//           "Content-Type": "application/json",
-//         },
-//         body: jsonEncode({
-//           "model": _model,
-//           "input": text,
-//           "voice": _voice,
-//           "speed": 1.1, // Slight speed boost
-//         }),
-//       );
-
-//       if (response.statusCode == 200) {
-//         _audioCache[text] = response.bodyBytes;
-//         print("✅ Pre-cached: \"$text\"");
-//       } else {
-//         print("❌ Failed to cache \"$text\": ${response.statusCode}");
-//       }
-//     } catch (e) {
-//       print("❌ Error caching \"$text\": $e");
-//     }
-//   }
-
-//   Future<void> speak(String text) async {
-//     try {
-//       await stop(); // stop current speech
-//       _isPlaying = true;
-
-//       Uint8List audioBytes;
-
-//       if (_audioCache.containsKey(text)) {
-//         print("▶️ Using cached audio for: \"$text\"");
-//         audioBytes = _audioCache[text]!;
-
-//         // Signal that audio is ready before playing
-//         _audioReadyHandler?.call();
-
-//         // Small delay to allow animation to start
-//         await Future.delayed(const Duration(milliseconds: 50));
-
-//         await _audioPlayer.play(BytesSource(audioBytes));
-//         return;
-//       }
-
-//       final url = Uri.parse("https://api.openai.com/v1/audio/speech");
-
-//       print(
-//           "🎤 Requesting TTS for: \"${text.substring(0, min(30, text.length))}...\"");
-
-//       final response = await http.post(
-//         url,
-//         headers: {
-//           "Authorization": "Bearer $_apiKey",
-//           "Content-Type": "application/json",
-//         },
-//         body: jsonEncode({
-//           "model": _model,
-//           "input": text,
-//           "voice": _voice,
-//         }),
-//       );
-
-//       if (response.statusCode == 200) {
-//         if (!_isPlaying) return;
-//         audioBytes = response.bodyBytes;
-//         _audioCache[text] = audioBytes;
-
-//         // Signal that audio is ready before playing
-//         _audioReadyHandler?.call();
-
-//         // Small delay to allow animation to start
-//         await Future.delayed(const Duration(milliseconds: 50));
-
-//         await _audioPlayer.play(BytesSource(audioBytes));
-//         print("▶️ TTS playback started");
-//       } else {
-//         _isPlaying = false;
-//         throw Exception('TTS error: ${response.statusCode} - ${response.body}');
-//       }
-//     } catch (e) {
-//       _isPlaying = false;
-//       print("❌ TTS speak error: $e");
-//     }
-//   }
-
-//   Future<void> stop() async {
-//     if (_isPlaying) {
-//       _isPlaying = false;
-//       await _audioPlayer.stop();
-//       _cancelHandler?.call();
-//     }
-//   }
-
-//   bool get isPlaying => _isPlaying;
-// }
-
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
@@ -195,35 +13,61 @@ class ChatGptTtsService {
   final String _model;
 
   final AudioPlayer _audioPlayer = AudioPlayer();
+  final AudioPlayer _thinkingAudioPlayer = AudioPlayer();
   final Map<String, Uint8List> _audioCache = {};
+  
+  // Rate limiting variables
+  final Duration _minRequestInterval = Duration(milliseconds: 300);
+  DateTime _lastRequestTime = DateTime.now().subtract(Duration(seconds: 10));
+  
+  // Retry configuration
+  final int _maxRetries = 2; // Reduced to avoid excessive retries
 
   Function? _completionHandler;
   Function? _cancelHandler;
   Function? _startPlaybackHandler;
   Function? _audioReadyHandler;
-  Function? _preparingAudioHandler; // New: Called when waiting for audio
+  Function? _preparingAudioHandler;
 
   bool _isPlaying = false;
   bool _isPreparingAudio = false;
+  bool _isPlayingFillerPhrase = false;
+  bool _isWelcomeOrEndingMessage = false;
+  
+  // Flag to prevent playing multiple thinking phrases
+  bool _thinkingPhraseAlreadyPlayed = false;
+  
+  // Flag to prevent duplicate error messages
+  bool _errorMessageShown = false;
+  
+  Timer? _thinkingPhraseChainTimer;
+  
+  // List of messages that are considered welcome or ending
+  final List<String> _welcomeOrEndingPhrases = [
+    "مرحبا!",
+    "أهلاً",
+    "مرحباً",
+    "السلام عليكم",
+    "الى اللقاء",
+    "إلى اللقاء",
+    "وداعاً",
+    "مع السلامة",
+  ];
 
-  // Expanded list of common phrases that will be pre-cached
-// In ChatGptTtsService class:
-  final List<String> _commonPhrases = [
+  // Very minimal list of essential phrases to cache
+  final List<String> _priorityPhrases = [
     "برافو! أحسنت",
     "حاول تاني",
-    "جميل جدا",
-    "ممتاز",
-    "أحسنت",
-    "رائع",
-    "نعم",
-    "لا",
-    "مرة أخرى",
-    "حاول مرة أخرى",
-    "برافو! الإجابة صحيحة",
-    "لا، حاول مرة أخرى",
-    "فكر جيدا",
-    "هذا صحيح",
-    "طيب تعالي نلعب لعبه" // Add this phrase to ensure it's cached
+    "هممم دعني أفكر...",
+    "لحظة واحدة...",
+    // "عذراً، حدث خطأ أثناء المعالجة."
+  ];
+
+  // Thinking phrases with placeholders for child's name - SIMPLIFIED
+  final List<String> _thinkingPhrases = [
+    "هممم دعني أفكر...",
+    "لحظة واحدة...",
+    "طيب...",
   ];
 
   ChatGptTtsService(
@@ -231,18 +75,43 @@ class ChatGptTtsService {
       : _apiKey = apiKey ?? dotenv.env['OPEN_AI_API_KEY'] ?? '',
         _voice = voice,
         _model = model {
+    // Main audio player completion listener
     _audioPlayer.onPlayerComplete.listen((_) {
+      print("✅ Main audio playback completed");
       _isPlaying = false;
-      _completionHandler?.call();
+      _isWelcomeOrEndingMessage = false;
+      _errorMessageShown = false;
+      
+      if (_completionHandler != null) {
+        _completionHandler!();
+      }
     });
 
+    // Main audio player state change listener
     _audioPlayer.onPlayerStateChanged.listen((state) {
       if (state == PlayerState.playing) {
-        _startPlaybackHandler?.call();
+        if (_startPlaybackHandler != null) {
+          _startPlaybackHandler!();
+        }
       } else if (state == PlayerState.completed) {
         _isPlaying = false;
-        _completionHandler?.call();
+        _isWelcomeOrEndingMessage = false;
+        _errorMessageShown = false;
+        
+        if (_completionHandler != null) {
+          _completionHandler!();
+        }
       }
+    });
+
+    // Thinking audio player state change listener
+    _thinkingAudioPlayer.onPlayerComplete.listen((_) {
+      print("✅ Thinking phrase completed");
+      _isPlayingFillerPhrase = false;
+      
+      // Don't chain multiple thinking phrases - this is what's causing multiple plays
+      // Instead, mark that we've already played one
+      _thinkingPhraseAlreadyPlayed = true;
     });
   }
 
@@ -262,146 +131,429 @@ class ChatGptTtsService {
     _audioReadyHandler = callback;
   }
 
-  // New: Set a callback for when we're waiting for audio
   void setPreparingAudioHandler(Function callback) {
     _preparingAudioHandler = callback;
+  }
+
+  // Check if a phrase is a welcome or ending message
+  bool _isWelcomeOrEnding(String text) {
+    String lowerText = text.toLowerCase();
+    
+    // Check if the text starts with any welcome or ending phrase
+    for (final phrase in _welcomeOrEndingPhrases) {
+      if (lowerText.startsWith(phrase.toLowerCase())) {
+        return true;
+      }
+    }
+    
+    // Additional checks based on content patterns
+    if (lowerText.contains("كيف حالك") && lowerText.contains("مرحبا")) {
+      return true;
+    }
+    
+    if (lowerText.contains("الى اللقاء") || lowerText.contains("إلى اللقاء")) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  // Wait for rate limiting - ensures we don't flood the API with requests
+  Future<void> _waitForRateLimit() async {
+    final now = DateTime.now();
+    final timeSinceLastRequest = now.difference(_lastRequestTime);
+    
+    if (timeSinceLastRequest < _minRequestInterval) {
+      final waitTime = _minRequestInterval - timeSinceLastRequest;
+      print("⏱️ Rate limiting: waiting ${waitTime.inMilliseconds}ms before next API call");
+      await Future.delayed(waitTime);
+    }
+    
+    _lastRequestTime = DateTime.now();
   }
 
   Future<void> initialize() async {
     print("🔄 Initializing TTS service...");
 
-    // Pre-cache all the common phrases in parallel for efficiency
+    // Only pre-cache the priority phrases - fewer chances of errors
     final futures = <Future>[];
-    for (final phrase in _commonPhrases) {
-      futures.add(_prefetchAudio(phrase));
+    
+    for (final phrase in _priorityPhrases) {
+      futures.add(_prefetchAudio(phrase).catchError((e) {
+        print("⚠️ Failed to cache priority phrase: $phrase");
+        return null;
+      }));
     }
-
+    
     await Future.wait(futures);
-    print("✅ ${_commonPhrases.length} common TTS phrases preloaded");
+    print("✅ TTS service initialized with ${_audioCache.length} cached phrases");
   }
 
   Future<void> prefetchDynamic(List<String> phrases) async {
-    final futures = <Future>[];
-    for (final phrase in phrases) {
-      if (!_audioCache.containsKey(phrase)) {
-        futures.add(_prefetchAudio(phrase));
+    // Process in small batches with fewer total phrases
+    const batchSize = 2;
+    List<String> prunedList = phrases.take(4).toList(); // Only take a few phrases
+    
+    for (int i = 0; i < prunedList.length; i += batchSize) {
+      final batch = prunedList.skip(i).take(batchSize);
+      final futures = <Future>[];
+      
+      for (final phrase in batch) {
+        if (!_audioCache.containsKey(phrase)) {
+          futures.add(_prefetchAudio(phrase).catchError((e) {
+            print("⚠️ Failed to cache dynamic phrase: $phrase");
+            return null;
+          }));
+        }
+      }
+      
+      await Future.wait(futures);
+      
+      // Brief delay between batches
+      if (i + batchSize < phrases.length) {
+        await Future.delayed(Duration(milliseconds: 200));
       }
     }
-    await Future.wait(futures);
   }
 
   Future<void> _prefetchAudio(String text) async {
     if (_audioCache.containsKey(text)) return;
-
+    
     try {
+      // Wait for rate limiting
+      await _waitForRateLimit();
+      
       final url = Uri.parse("https://api.openai.com/v1/audio/speech");
-
-      final response = await http.post(
-        url,
-        headers: {
-          "Authorization": "Bearer $_apiKey",
-          "Content-Type": "application/json",
-        },
-        body: jsonEncode({
-          "model": _model,
-          "input": text,
-          "voice": _voice,
-          "speed": 1.1, // Slight speed boost
-        }),
-      );
-
+      
+      final response = await http
+          .post(
+            url,
+            headers: {
+              "Authorization": "Bearer $_apiKey",
+              "Content-Type": "application/json",
+            },
+            body: jsonEncode({
+              "model": _model,
+              "input": text,
+              "voice": _voice,
+              "speed": 1.1,
+            }),
+          )
+          .timeout(Duration(seconds: 5));
+      
       if (response.statusCode == 200) {
         _audioCache[text] = response.bodyBytes;
         print("✅ Pre-cached: \"$text\"");
       } else {
-        print("❌ Failed to cache \"$text\": ${response.statusCode}");
+        print("⚠️ Failed to cache \"$text\": ${response.statusCode}");
       }
     } catch (e) {
       print("❌ Error caching \"$text\": $e");
+      throw e;
     }
   }
 
-  Future<void> speak(String text) async {
+  // Play a single thinking phrase - no chaining
+  Future<void> playThinkingPhrase(String? childName) async {
+    // Don't play if: already playing, welcome message, or already played a thinking phrase
+    if (_isPlayingFillerPhrase || _isWelcomeOrEndingMessage || _thinkingPhraseAlreadyPlayed) {
+      return;
+    }
+    
     try {
-      await stop(); // stop current speech
-      _isPlaying = true;
-
-      // Check if this is a short common phrase that might be cached
-      final isCommonPhrase = _commonPhrases.contains(text) ||
-          _audioCache.containsKey(text) ||
-          text.length < 15;
-
-      if (isCommonPhrase && _audioCache.containsKey(text)) {
-        // For common phrases that are cached, go straight to talking animation
-        print("▶️ Common phrase found in cache: \"$text\"");
-        _audioReadyHandler?.call(); // Start talking animation immediately
-
-        // Small delay to ensure animation has time to start
-        await Future.delayed(const Duration(milliseconds: 50));
-
-        await _audioPlayer.play(BytesSource(_audioCache[text]!));
-        return;
-      }
-
-      // For longer non-cached phrases, show thinking animation while waiting
-      _isPreparingAudio = true;
-      _preparingAudioHandler?.call(); // Start thinking animation
-      print("🧠 Showing thinking animation while preparing audio");
-
-      final url = Uri.parse("https://api.openai.com/v1/audio/speech");
-
-      print(
-          "🎤 Requesting TTS for: \"${text.substring(0, min(30, text.length))}...\"");
-
-      final response = await http.post(
-        url,
-        headers: {
-          "Authorization": "Bearer $_apiKey",
-          "Content-Type": "application/json",
-        },
-        body: jsonEncode({
-          "model": _model,
-          "input": text,
-          "voice": _voice,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        if (!_isPlaying) return;
-
-        _isPreparingAudio = false;
-        Uint8List audioBytes = response.bodyBytes;
-        _audioCache[text] = audioBytes;
-
-        // Now that audio is ready, switch to talking animation
-        _audioReadyHandler?.call();
-
-        // Small delay to ensure animation has time to switch
-        await Future.delayed(const Duration(milliseconds: 50));
-
-        await _audioPlayer.play(BytesSource(audioBytes));
-        print("▶️ TTS audio playback started");
+      // Select a simple thinking phrase
+      String phrase = "هممم دعني أفكر...";
+      
+      // Check if phrase is in cache
+      if (_audioCache.containsKey(phrase)) {
+        print("▶️ Playing thinking phrase: \"$phrase\"");
+        _isPlayingFillerPhrase = true;
+        _thinkingPhraseAlreadyPlayed = true;
+        
+        await _thinkingAudioPlayer.stop();
+        _thinkingAudioPlayer.play(BytesSource(_audioCache[phrase]!));
       } else {
-        _isPlaying = false;
-        _isPreparingAudio = false;
-        throw Exception('TTS error: ${response.statusCode} - ${response.body}');
+        print("⚠️ No cached thinking phrases available");
       }
     } catch (e) {
-      _isPlaying = false;
-      _isPreparingAudio = false;
-      print("❌ TTS speak error: $e");
+      print("❌ Error playing thinking phrase: $e");
+      _isPlayingFillerPhrase = false;
     }
   }
 
+  // Main speak method
+  Future<void> speak(String text, {String? childName, bool? isWelcomeOrEnding}) async {
+    if (text.trim().isEmpty) {
+      print("⚠️ Attempted to speak empty text, ignoring");
+      return;
+    }
+    
+    try {
+      print("\n🔊 TTS speak() called for: '${text.substring(0, min(30, text.length))}...'");
+
+      // Always stop current playback and reset states
+      print("🛑 Stopping any current audio playback");
+      await stopAllAudio();
+
+      // Reset state for new TTS request
+      _isPlaying = true;
+      _thinkingPhraseAlreadyPlayed = false;
+      _errorMessageShown = false;
+      
+      // Check if this is a welcome or ending message
+      _isWelcomeOrEndingMessage = isWelcomeOrEnding ?? _isWelcomeOrEnding(text);
+      
+      if (_isWelcomeOrEndingMessage) {
+        print("🎭 This is a welcome or ending message - skipping thinking phrases");
+      }
+
+      // Check if this is already cached
+      if (_audioCache.containsKey(text)) {
+        // Found in cache, go straight to talking animation
+        print("▶️ Phrase found in cache: \"${text.substring(0, min(30, text.length))}...\"");
+
+        if (_audioReadyHandler != null) {
+          _audioReadyHandler!.call();
+        }
+
+        try {
+          print("▶️ Playing cached audio");
+          await _audioPlayer.play(BytesSource(_audioCache[text]!));
+          print("✅ Cached audio started playing");
+          return;
+        } catch (e) {
+          print("❌ Error playing cached audio: $e");
+          _handleError();
+          return;
+        }
+      }
+
+      // For non-cached phrases, show thinking animation
+      _isPreparingAudio = true;
+
+      if (_preparingAudioHandler != null) {
+        _preparingAudioHandler!.call();
+      }
+
+      print("🧠 Showing thinking animation while preparing audio");
+
+      // Play a single thinking phrase if not a welcome/ending message
+      if (!_isWelcomeOrEndingMessage) {
+        playThinkingPhrase(childName);
+      }
+
+      // Set a timeout for the TTS request
+      const ttsTimeout = Duration(seconds: 10);
+      final completer = Completer<Uint8List?>();
+      
+      // Start the TTS request
+      requestTtsAudio(text).then((audio) {
+        if (!completer.isCompleted) completer.complete(audio);
+      }).catchError((e) {
+        if (!completer.isCompleted) completer.complete(null);
+        print("❌ TTS request error: $e");
+      });
+      
+      // Set timeout
+      Future.delayed(ttsTimeout, () {
+        if (!completer.isCompleted) {
+          print("⚠️ TTS request timed out after ${ttsTimeout.inSeconds} seconds");
+          completer.complete(null);
+        }
+      });
+      
+      // Wait for either completion or timeout
+      final audioBytes = await completer.future;
+      
+      // Stop thinking phrases
+      await stopThinkingAudio();
+      
+      if (audioBytes != null) {
+        print("✅ TTS audio received (${audioBytes.length} bytes)");
+        
+        // Store in cache only if not too large
+        if (audioBytes.length < 200000) { // Reduced size for caching
+          _audioCache[text] = audioBytes;
+        }
+
+        // Signal ready for talking animation
+        _isPreparingAudio = false;
+        if (_audioReadyHandler != null) {
+          _audioReadyHandler!.call();
+        }
+
+        // Play the audio
+        await _audioPlayer.play(BytesSource(audioBytes));
+        print("▶️ Main TTS audio playback started");
+      } else {
+        print("❌ Failed to get TTS audio - using fallback");
+        _handleError();
+      }
+    } catch (e) {
+      print("❌ TTS outer error: $e");
+      _handleError();
+    }
+  }
+
+  // Handle errors in a consistent way
+  void _handleError() {
+    _isPlaying = false;
+    _isPreparingAudio = false;
+    
+    // Only show error message once
+    if (!_errorMessageShown) {
+      _errorMessageShown = true;
+      
+      // Try to play the error message if available in cache
+      final errorMsg = "عذراً، حدث خطأ أثناء المعالجة.";
+      if (_audioCache.containsKey(errorMsg)) {
+        if (_audioReadyHandler != null) {
+          _audioReadyHandler!.call();
+        }
+        
+        _audioPlayer.play(BytesSource(_audioCache[errorMsg]!));
+      } else if (_completionHandler != null) {
+        _completionHandler!();
+      }
+    } else {
+      // If we already showed an error message, just call completion
+      if (_completionHandler != null) {
+        _completionHandler!();
+      }
+    }
+  }
+
+  // Make the TTS API request with simple retry
+  Future<Uint8List?> requestTtsAudio(String text) async {
+    int attempts = 0;
+    const maxAttempts = 2;
+    
+    while (attempts < maxAttempts) {
+      try {
+        await _waitForRateLimit();
+        
+        final url = Uri.parse("https://api.openai.com/v1/audio/speech");
+        
+        print("🎤 Sending TTS API request (attempt ${attempts+1})");
+        
+        final response = await http
+            .post(
+              url,
+              headers: {
+                "Authorization": "Bearer $_apiKey",
+                "Content-Type": "application/json",
+              },
+              body: jsonEncode({
+                "model": _model,
+                "input": text,
+                "voice": _voice,
+              }),
+            )
+            .timeout(Duration(seconds: 7));
+        
+        if (response.statusCode == 200) {
+          return response.bodyBytes;
+        } else {
+          print("❌ TTS API error: ${response.statusCode}");
+          attempts++;
+          if (attempts < maxAttempts) {
+            await Future.delayed(Duration(milliseconds: 500));
+          }
+        }
+      } catch (e) {
+        print("❌ TTS API request error: $e");
+        attempts++;
+        if (attempts < maxAttempts) {
+          await Future.delayed(Duration(milliseconds: 500));
+        }
+      }
+    }
+    
+    return null;
+  }
+
+  // Stop main audio only
   Future<void> stop() async {
-    if (_isPlaying) {
+    print("🛑 TTS stop() called for main audio");
+
+    try {
       _isPlaying = false;
-      _isPreparingAudio = false;
-      await _audioPlayer.stop();
-      _cancelHandler?.call();
+      
+      // Stop main audio player
+      await _audioPlayer.stop().timeout(Duration(milliseconds: 300),
+        onTimeout: () {
+          print("⚠️ Main audio stop timeout - ignoring");
+          return;
+        });
+
+      if (_cancelHandler != null) {
+        _cancelHandler!();
+      }
+    } catch (e) {
+      print("⚠️ Error in stop(): $e");
+      _isPlaying = false;
     }
   }
 
+  // Stop thinking audio only
+  Future<void> stopThinkingAudio() async {
+    print("🛑 Stopping thinking phrases");
+    
+    try {
+      // Cancel timer if active
+      _thinkingPhraseChainTimer?.cancel();
+      _thinkingPhraseChainTimer = null;
+      
+      // Stop thinking audio player
+      await _thinkingAudioPlayer.stop().timeout(Duration(milliseconds: 300),
+        onTimeout: () {
+          print("⚠️ Thinking audio stop timeout - ignoring");
+          return;
+        });
+      
+      _isPlayingFillerPhrase = false;
+    } catch (e) {
+      print("⚠️ Error stopping thinking audio: $e");
+      _isPlayingFillerPhrase = false;
+    }
+  }
+  
+  // Stop all audio and reset states
+  Future<void> stopAllAudio() async {
+    print("🛑 Stopping all audio");
+    
+    try {
+      // Cancel any active timers
+      _thinkingPhraseChainTimer?.cancel();
+      _thinkingPhraseChainTimer = null;
+      
+      // Reset all state flags
+      _isPlaying = false;
+      _isPreparingAudio = false;
+      _isPlayingFillerPhrase = false;
+      // Don't reset welcome flag yet
+      
+      // Stop both audio players in parallel
+      await Future.wait([
+        _audioPlayer.stop().timeout(Duration(milliseconds: 300), 
+          onTimeout: () => print("⚠️ Main audio stop timeout")),
+        _thinkingAudioPlayer.stop().timeout(Duration(milliseconds: 300), 
+          onTimeout: () => print("⚠️ Thinking audio stop timeout")), 
+      ]);
+      
+      if (_cancelHandler != null) {
+        _cancelHandler!();
+      }
+    } catch (e) {
+      print("⚠️ Error in stopAllAudio(): $e");
+      // Ensure states are reset even on error
+      _isPlaying = false; 
+      _isPreparingAudio = false;
+      _isPlayingFillerPhrase = false;
+    }
+  }
+
+  // Public getters
   bool get isPlaying => _isPlaying;
   bool get isPreparingAudio => _isPreparingAudio;
 }

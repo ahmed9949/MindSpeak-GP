@@ -7,7 +7,7 @@ class ChatGptModel {
   // Keep track of conversation history
   final List<Map<String, String>> _conversationHistory = [];
 
-  ChatGptModel({required this.apiKey, this.model = "gpt-3.5-turbo"}) {
+  ChatGptModel({required this.apiKey, this.model = "gpt-4o"}) {
     // Initialize with system message
     _conversationHistory.add({
       "role": "system",

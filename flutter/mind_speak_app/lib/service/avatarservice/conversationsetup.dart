@@ -76,7 +76,7 @@ class ConversationModule {
   static List<SingleChildWidget> providers() {
     final sessionRepository = FirebaseSessionRepository();
     final apiKey = dotenv.env['OPEN_AI_API_KEY']!;
-    final model = ChatGptModel(apiKey: apiKey, model: 'gpt-3.5-turbo');
+    final model = ChatGptModel(apiKey: apiKey, model: 'gpt-4o');
 
     final sessionController = SessionController(sessionRepository);
     // final analyzerController = SessionAnalyzerController(model);
@@ -90,7 +90,7 @@ class ConversationModule {
 
   static ChatGptModel createGenerativeModel() {
     final apiKey = dotenv.env['OPEN_AI_API_KEY']!;
-    return ChatGptModel(apiKey: apiKey, model: 'gpt-3.5-turbo');
+    return ChatGptModel(apiKey: apiKey, model: 'gpt-4o');
   }
 
   static String? getChildId(BuildContext context) {

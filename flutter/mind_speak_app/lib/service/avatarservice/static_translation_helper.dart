@@ -62,18 +62,25 @@ class StaticTranslationHelper {
     'hand': 'يد',
     'foot': 'قدم',
     'neck': 'رقبة',
-    'knee': 'رقبة',
+    'knee': 'ركبة',
   };
 
   static final Map<String, String> _vegetables = {
-    'beetroot': 'كوع',
-    'bell pepper': 'عين',
-    'cabbage': 'أنف',
-    'carrot': 'أذن',
-    'cauliflower': 'يد',
-    'foot': 'قدم',
-    'neck': 'رقبة',
-    'knee': 'رقبة',
+    'beetroot': 'بنجر',
+    'bell pepper': 'فلفل',
+    'cabbage': 'خس',
+    'carrot': 'جزر',
+    'cauliflower': 'قرنبيط',
+    'cucumber': 'خيار',
+    'eggplant': 'بتجان',
+    'garlic': 'توم',
+    'ginger': 'جنزبيل',
+    'onion': 'بصل',
+    'peas': 'بسلة',
+    'potato': 'بطاطس',
+    'sweet potato': 'بطاطا',
+    'sweetcorn': 'درة',
+    'tomato': 'طماطم',
   };
 
   // static final Map<String, String> _vehicles = {
@@ -113,7 +120,7 @@ class StaticTranslationHelper {
   static final Map<String, List<String>> _synonyms = {
     'cat': ['بسة', 'قط'], // Alternative forms for cat
     'dog': ['كلبة'], // Female form for dog
-    'chicken': ['دجاج', 'فرخة'], // Variations for chicken
+    'chicken': ['دجاج', 'فرخة', 'فراخ'], // Variations for chicken
     'bird': ['طائر', 'عصفورة'], // Variations for bird
     'apple': ['تفاح'], // Singular/plural variations
     'banana': ['موزة'], // Singular form

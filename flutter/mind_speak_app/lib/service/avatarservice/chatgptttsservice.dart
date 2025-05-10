@@ -43,10 +43,10 @@ class ChatGptTtsService {
 
   // Waiting phrases in Egyptian Arabic
   final List<String> _waitingPhrases = [
-    "لحظة واحدة من فضلك...",
-    "أنا بفكر...",
-    "ثانية واحدة...",
-    "جاري التفكير..."
+    "لحظة واحدة من فضلك",
+    "أنا بفكر",
+    "ثانية واحدة",
+    "جاري التفكير"
   ];
 
   ChatGptTtsService() {
@@ -474,6 +474,7 @@ class ChatGptTtsService {
       _completionHandler?.call(); // Ensure completion is called even on error
     }
   }
+
   Future<void> stop() async {
     _waitingPhraseTimer?.cancel();
     _queuedTtsTimeoutTimer?.cancel();
@@ -481,22 +482,21 @@ class ChatGptTtsService {
     _queuedTtsAudio = null;
     _isSpeakingMain = false;
     _mainTtsRetryCount = 0;
-    
+
     if (_isPlaying) {
       _isPlaying = false;
       await _audioPlayer.stop();
       _cancelHandler?.call();
     }
   }
-  
+
   void dispose() {
     _waitingPhraseTimer?.cancel();
     _queuedTtsTimeoutTimer?.cancel();
     _audioPlayer.dispose();
   }
+
   // Getter to check if main speech is active
   bool get isMainSpeechActive => _isSpeakingMain;
   bool get isPlaying => _isPlaying;
-
- 
 }

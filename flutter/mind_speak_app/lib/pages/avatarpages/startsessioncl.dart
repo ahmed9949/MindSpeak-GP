@@ -10,6 +10,8 @@ import 'package:mind_speak_app/providers/color_provider.dart';
 import 'package:mind_speak_app/providers/session_provider.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
 import 'package:mind_speak_app/service/avatarservice/openai.dart';
+import 'package:mind_speak_app/service/avatarservice/chatgptttsservice.dart';
+
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -44,6 +46,7 @@ class _StartSessionPageState extends State<StartSessionPage> {
   String? _initialResponse;
   Map<String, dynamic>? _preloadedChildData;
   bool _avatarPreloaded = false;
+  bool _isWelcomeTtsReady = false;
 
   // Loading screen state
   bool _showLoadingScreen = false;
@@ -151,9 +154,11 @@ class _StartSessionPageState extends State<StartSessionPage> {
 
   void _checkAllComponentsReady() {
     print(
-        "🔍 Checking components: Avatar ready: $_isAvatarReady, Welcome message ready: $_isWelcomeMessageReady");
+        "🔍 Checking components: Avatar ready: $_isAvatarReady, Welcome message ready: $_isWelcomeMessageReady, TTS ready: $_isWelcomeTtsReady");
+
     if (_isAvatarReady &&
         _isWelcomeMessageReady &&
+        _isWelcomeTtsReady && // Add this new condition
         mounted &&
         _initialResponse != null &&
         _preloadedChildData != null) {
@@ -420,7 +425,6 @@ Remember to:
 
       final responseText =
           await _model.sendMessage(prompt, childData: childData);
-
       setState(() => _welcomeMessageLoadProgress = 0.8);
 
       debugPrint('API response received: $responseText');
@@ -435,8 +439,22 @@ Remember to:
       _initialResponse = responseText;
       _preloadedChildData = childData;
 
+      // Create a temporary TTS service to prefetch the welcome message audio
+      final tempTtsService = ChatGptTtsService();
+
+      // Show increased progress while fetching TTS audio
+      setState(() => _welcomeMessageLoadProgress = 0.9);
+
+      // Prefetch the TTS audio for the welcome message
+      await tempTtsService.prefetchDynamic([responseText]).catchError((e) {
+        // Continue even if prefetch fails - we'll still try TTS in SessionView
+        print("⚠️ Warning: Failed to prefetch welcome TTS: $e");
+      });
+
+      // Now mark both welcome message and TTS as ready
       setState(() {
         _isWelcomeMessageReady = true;
+        _isWelcomeTtsReady = true;
         _welcomeMessageLoadProgress = 1.0;
       });
 
@@ -450,9 +468,8 @@ Remember to:
         _showLoadingScreen = false;
       });
     }
-  }
+  } // Loading screen widget
 
-  // Loading screen widget
   Widget _buildLoadingScreen() {
     return Container(
       color: Colors.black.withOpacity(0.8),

@@ -1,7 +1,9 @@
+
 class AvatarModel {
   final String name;
   final String imagePath;
   final String modelPath;
+  final String voiceId;
 
   // Animation names using the exact format from your logs
   final String idleAnimation;
@@ -14,6 +16,7 @@ class AvatarModel {
     required this.name,
     required this.imagePath,
     required this.modelPath,
+    required this.voiceId,
     this.idleAnimation = 'idle', // Match exact casing from logs
     this.talkingAnimation = 'talking', // Match exact casing from logs
     this.thinkingAnimation = 'thinking',

@@ -99,6 +99,28 @@ class SessionController extends ChangeNotifier {
     }
   }
 
+  /// Updates additional data for the current session
+  Future<void> updateSessionData(Map<String, dynamic> data) async {
+    if (_state.sessionId == null || _state.status != SessionStatus.active) {
+      _setError('No active session to update');
+      return;
+    }
+
+    try {
+      // Update the session document with the provided data
+      final sessionRef = FirebaseFirestore.instance
+          .collection('sessions')
+          .doc(_state.sessionId!);
+
+      await sessionRef.update(data);
+
+      print("✅ Session data updated: $data");
+    } catch (e) {
+      _setError('Failed to update session data: $e');
+      print("❌ Error updating session data: $e");
+    }
+  }
+
   Future<SessionStatistics> endSession(
     Map<String, dynamic>? detectionStats, {
     int totalScore = 0,

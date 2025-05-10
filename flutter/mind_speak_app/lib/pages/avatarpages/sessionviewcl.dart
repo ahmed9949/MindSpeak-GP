@@ -8,6 +8,7 @@ import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:mind_speak_app/components/games/game_manager.dart';
 import 'package:mind_speak_app/controllers/detectioncontroller.dart';
+import 'package:mind_speak_app/models/avatar.dart';
 import 'package:mind_speak_app/pages/homepage.dart';
 import 'package:mind_speak_app/providers/color_provider.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
@@ -25,6 +26,7 @@ class SessionView extends StatefulWidget {
   final String initialResponse;
   final Map<String, dynamic> childData;
   final ChatGptTtsService? preloadedTtsService;
+  final AvatarModel? avatar;
 
   const SessionView({
     super.key,
@@ -32,6 +34,7 @@ class SessionView extends StatefulWidget {
     required this.initialResponse,
     required this.childData,
     this.preloadedTtsService,
+    this.avatar,
   });
 
   @override
@@ -50,6 +53,7 @@ class _SessionViewState extends State<SessionView> {
   late DetectionController _detectionController;
   late ChatGptModel _chatModel;
   late String? _sessionId;
+  late AvatarModel _avatar;
 
   // Camera variables
   late CameraController _cameraController;
@@ -72,7 +76,7 @@ class _SessionViewState extends State<SessionView> {
   int _correctAnswers = 0;
   int _wrongAnswers = 0;
   bool _isGameInitialized = false;
-  String _currentAnimation = "idle.001";
+  String _currentAnimation = "idle";
   bool _animationLocked = false;
   DateTime _lastAnimationChange = DateTime.now();
   Timer? _stateCheckTimer;
@@ -94,6 +98,12 @@ class _SessionViewState extends State<SessionView> {
       print("DEBUG: Using pre-loaded TTS service");
     }
     // Set up TTS handlers
+    // Alternative if passing directly:
+    _avatar = widget.avatar ?? Provider.of<AvatarModel>(context, listen: false);
+    print(
+        "DEBUG: Using avatar: ${_avatar.name} with model ${_avatar.modelPath}");
+    print(
+        "DEBUG: Avatar animations - idle: ${_avatar.idleAnimation}, talking: ${_avatar.talkingAnimation}");
 
     // Set up TTS handlers with specific animation states
     _ttsService.setCompletionHandler(() {
@@ -102,6 +112,7 @@ class _SessionViewState extends State<SessionView> {
         _updateAnimationForSpeechState("mainEnd");
       }
     });
+    _setupTtsWatchdog();
 
     _ttsService.setCancelHandler(() {
       if (mounted) {
@@ -240,25 +251,91 @@ class _SessionViewState extends State<SessionView> {
     }
   }
 
+  Future<void> _resetTtsState() async {
+    print("🔄 Resetting TTS state");
+
+    // First, try to stop the TTS service
+    await _ttsService.stop();
+
+    // Force reset internal TTS state
+    if (_ttsService is ChatGptTtsService) {
+      (_ttsService as ChatGptTtsService).forceResetState();
+    }
+
+    // Reset UI state
+    if (mounted) {
+      setState(() {
+        _isSpeaking = false;
+        _animationLocked = false;
+      });
+
+      // Reset animation
+      _playAnimation(_avatar.idleAnimation);
+    }
+
+    // Small delay to ensure stable state
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    print("✅ TTS state reset complete");
+  }
+
   void _updateAnimationForSpeechState(String state) {
     print("🎭 Speech state changed: $state");
 
     switch (state) {
       case "waitingStart":
-      case "mainStart":
-        if (!_isSpeaking) {
-          setState(() => _isSpeaking = true);
-        }
-        _playAnimation("newtalk");
+        _lockAnimation(true);
+        // Directly use the avatar's talking animation
+        _playAnimation(_avatar.talkingAnimation);
         break;
 
       case "waitingEnd":
+        // Don't unlock or change animation if main speech is about to start
+        if (!_ttsService.isMainSpeechActive && !_ttsService.isPlaying) {
+          print(
+              "🎭 Waiting phrase ended, no main speech detected - returning to idle");
+          _lockAnimation(false);
+          _playAnimation(_avatar.idleAnimation);
+        } else {
+          print(
+              "🎭 Waiting phrase ended, but main speech is active - keeping talk animation");
+        }
+        break;
+
+      case "mainStart":
+        _lockAnimation(true);
+        // Directly use the avatar's talking animation
+        _playAnimation(_avatar.talkingAnimation);
+        break;
+
       case "mainEnd":
-        if (_isSpeaking &&
-            !_ttsService.isPlaying &&
-            !_ttsService.isMainSpeechActive) {
-          setState(() => _isSpeaking = false);
-          _playAnimation("idle.001");
+        // Immediate check - if nothing is playing, unlock animation right away
+        if (!_ttsService.isPlaying && !_ttsService.isMainSpeechActive) {
+          _lockAnimation(false);
+          _playAnimation(_avatar.idleAnimation);
+
+          // Also reset the speaking state if needed
+          if (_isSpeaking) {
+            print(
+                "🎭 mainEnd: Forcing _isSpeaking to false as TTS is not active");
+            setState(() => _isSpeaking = false);
+          }
+        } else {
+          // Only short delay if actually playing
+          print("🎭 mainEnd: Delaying animation unlock as TTS is still active");
+          Future.delayed(const Duration(milliseconds: 200), () {
+            if (mounted &&
+                !_ttsService.isPlaying &&
+                !_ttsService.isMainSpeechActive) {
+              _lockAnimation(false);
+              _playAnimation(_avatar.idleAnimation);
+
+              // Also reset the speaking state if needed
+              if (_isSpeaking) {
+                setState(() => _isSpeaking = false);
+              }
+            }
+          });
         }
         break;
     }
@@ -266,9 +343,16 @@ class _SessionViewState extends State<SessionView> {
 
   void _onModelLoaded() {
     if (controller.onModelLoaded.value && mounted) {
-      _playAnimation("idle.001");
-      debugPrint(
-          '3D Model loaded, initial response: "${widget.initialResponse}"');
+      // Play initial idle animation - directly using the avatar's idle animation
+      _playAnimation(_avatar.idleAnimation);
+
+      // Log available animations for debugging
+      print("🎭 Loaded avatar: ${_avatar.name} with animations:");
+      print("   - idle: '${_avatar.idleAnimation}'");
+      print("   - talking: '${_avatar.talkingAnimation}'");
+      print("   - thinking: '${_avatar.thinkingAnimation}'");
+      print("   - clapping: '${_avatar.clappingAnimation}'");
+      print("   - greeting: '${_avatar.greetingAnimation}'");
 
       if (widget.initialResponse.isNotEmpty) {
         // Add a slight delay to ensure the UI is ready
@@ -290,12 +374,12 @@ class _SessionViewState extends State<SessionView> {
       onStatus: (status) {
         if (status == 'notListening' || status == 'done') {
           setState(() => _isListening = false);
-          _playAnimation("idle.001");
+          _playAnimation(_avatar.idleAnimation);
         }
       },
       onError: (error) {
         setState(() => _isListening = false);
-        _playAnimation("idle.001");
+        _playAnimation(_avatar.idleAnimation);
       },
     );
   }
@@ -332,30 +416,26 @@ class _SessionViewState extends State<SessionView> {
     _ttsStuckRecoveryTimer?.cancel();
 
     // Set up new timer
-    _ttsStuckRecoveryTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+    _ttsStuckRecoveryTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (mounted && _isSpeaking) {
+        bool actuallyPlaying =
+            _ttsService.isPlaying || _ttsService.isMainSpeechActive;
+
         // Check if stuck - speaking state but no animation for a long time
-        if (_currentAnimation != "newtalk" && _isSpeaking) {
+        if (!actuallyPlaying) {
           print(
-              "⚠️ TTS STUCK DETECTED: Speaking but animation is $_currentAnimation");
+              "⚠️ TTS STUCK DETECTED: UI speaking ($_currentAnimation) but TTS not active");
+          _logTtsState();
 
-          // Force animation refresh
-          _playAnimation("newtalk");
+          // Only attempt recovery if we've been in this state for a while
+          final stuckDuration = DateTime.now().difference(_lastAnimationChange);
 
-          // If stuck for too long, force completion
-          if (_ttsService.isPlaying) {
-            print("⚠️ Attempting recovery from stuck TTS");
-            // Try to restart any stuck playback
-            _ttsService.stop().then((_) {
-              Future.delayed(const Duration(milliseconds: 500), () {
-                if (mounted && _isSpeaking) {
-                  // Force back to idle
-                  setState(() => _isSpeaking = false);
-                  _lockAnimation(false);
-                  _playAnimation("idle.001");
-                }
-              });
-            });
+          if (stuckDuration.inSeconds > 2) {
+            print(
+                "⚠️ Attempting recovery from stuck TTS (stuck for ${stuckDuration.inSeconds}s)");
+
+            // Use our new comprehensive reset method
+            _resetTtsState();
           }
         }
       }
@@ -480,11 +560,110 @@ class _SessionViewState extends State<SessionView> {
     }
   }
 
+  Future<void> _speak(String text, {bool isConversation = false}) async {
+    if (mounted) {
+      try {
+        print("🎤 Starting speak method with isConversation=$isConversation");
+        print(
+            "🎤 Current state: _isSpeaking=$_isSpeaking, ttsService.isPlaying=${_ttsService.isPlaying}");
+
+        // Ensure we're not already in an inconsistent state
+        if (_ttsService.isPlaying) {
+          print("⚠️ TTS is already playing, stopping first");
+          await _ttsService.stop();
+          await Future.delayed(const Duration(milliseconds: 300));
+        }
+
+        setState(() => _isSpeaking = true);
+
+        // Directly use the avatar's talking animation
+        _playAnimation(_avatar.talkingAnimation);
+        _lockAnimation(true);
+
+        debugPrint(
+            'Starting TTS for text: "${text.substring(0, min(30, text.length))}..."');
+
+        // Set up a safety timer in case TTS gets stuck
+        final safetyTimer = Timer(const Duration(seconds: 10), () {
+          if (mounted && _isSpeaking) {
+            print("⚠️ Safety timer triggered - TTS may be stuck");
+            _logTtsState();
+
+            if (!_ttsService.isPlaying && !_ttsService.isMainSpeechActive) {
+              print("⚠️ TTS appears stuck, performing recovery");
+              _ttsService.stop().then((_) {
+                if (mounted) {
+                  setState(() => _isSpeaking = false);
+                  _updateAnimationForSpeechState("mainEnd");
+                }
+              });
+            }
+          }
+        });
+
+        try {
+          await _ttsService.speak(text, isConversation: isConversation);
+          debugPrint('TTS speak method completed');
+        } finally {
+          safetyTimer.cancel(); // Clean up timer regardless of outcome
+        }
+      } catch (e) {
+        debugPrint('❌ Error in TTS service: $e');
+        setState(() => _isSpeaking = false);
+        _updateAnimationForSpeechState("mainEnd");
+      }
+    } else {
+      debugPrint('⚠️ Widget not mounted, skipping TTS');
+    }
+  }
+
+  void _setupTtsWatchdog() {
+    Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      // Only check when we think we're speaking
+      if (_isSpeaking) {
+        bool actuallyPlaying =
+            _ttsService.isPlaying || _ttsService.isMainSpeechActive;
+
+        if (!actuallyPlaying) {
+          // Give a small grace period before taking action
+          if (_lastAnimationChange.difference(DateTime.now()).inSeconds.abs() >
+              3) {
+            print("🚨 WATCHDOG: TTS state mismatch detected:");
+            _logTtsState();
+            print(
+                "🚨 WATCHDOG: Animation locked: $_animationLocked, Last change: $_lastAnimationChange");
+
+            // Take recovery action
+            print("🔄 WATCHDOG: Performing state recovery");
+            _ttsService.stop().then((_) {
+              if (mounted) {
+                setState(() => _isSpeaking = false);
+                _lockAnimation(false);
+                _playAnimation(_avatar.idleAnimation);
+              }
+            });
+          }
+        }
+      }
+    });
+  }
+
   Future<void> _processUserInput(String text) async {
     if (text.isEmpty) return;
 
     print("🗣️ Processing user input: \"$text\"");
     _logTtsState();
+
+    // Ensure we're in a clean state before starting
+    if (_isSpeaking || _ttsService.isPlaying) {
+      print("⚠️ Already speaking, resetting state first");
+      await _resetTtsState(); // Use our new reset method
+    }
 
     final sessionController =
         Provider.of<SessionController>(context, listen: false);
@@ -508,50 +687,55 @@ class _SessionViewState extends State<SessionView> {
       await sessionController.addTherapistMessage(aiResponse);
 
       print("🎤 Starting TTS for AI response");
-      // Log state before TTS
       _logTtsState();
 
-      // Use the conversation flag when speaking
-      await _speak(aiResponse, isConversation: true);
+      // Set speaking state
+      setState(() => _isSpeaking = true);
 
-      // Log state after TTS method returns
-      print("🎤 TTS method returned");
+      // Use the conversation flag when speaking
+      try {
+        await _speak(aiResponse, isConversation: true);
+        print("✅ _speak method completed successfully");
+      } catch (e) {
+        print("❌ Error in _speak: $e");
+
+        // Recovery attempt
+        if (mounted) {
+          print("🔄 Attempting recovery with simplified approach");
+          await _resetTtsState();
+
+          // Try one more time with conversation mode off
+          setState(() => _isSpeaking = true);
+          _ttsService.setConversationMode(false);
+          await _speak(aiResponse, isConversation: false);
+        }
+      }
+
+      // Add verification timeout to catch stuck states
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted && _isSpeaking) {
+          bool actuallyPlaying =
+              _ttsService.isPlaying || _ttsService.isMainSpeechActive;
+          if (!actuallyPlaying) {
+            print(
+                "⚠️ Verification check failed - TTS not active but UI thinks it's speaking");
+            _resetTtsState();
+          }
+        }
+      });
+
+      print("🎤 _processUserInput method completed");
       _logTtsState();
     } catch (e) {
       print("❌ Error in _processUserInput: $e");
       const errorMsg = "عذراً، حدث خطأ أثناء المعالجة.";
       await sessionController.addTherapistMessage(errorMsg);
+
+      // Reset state before trying to speak the error
+      await _resetTtsState();
+
+      setState(() => _isSpeaking = true);
       await _speak(errorMsg, isConversation: false);
-    } finally {
-      // Log final state
-      print("🎤 _processUserInput method completed");
-      _logTtsState();
-    }
-  }
-
-  Future<void> _speak(String text, {bool isConversation = false}) async {
-    if (!_isSpeaking && mounted) {
-      try {
-        setState(() => _isSpeaking = true);
-
-        // Play talk animation
-        _playAnimation("newtalk");
-
-        // Speak text
-        await _ttsService.speak(text, isConversation: isConversation);
-
-        // Reset state and animation when done
-        if (mounted) {
-          setState(() => _isSpeaking = false);
-          _playAnimation("idle.001");
-        }
-      } catch (e) {
-        debugPrint('❌ Error in TTS service: $e');
-        if (mounted) {
-          setState(() => _isSpeaking = false);
-          _playAnimation("idle.001");
-        }
-      }
     }
   }
 
@@ -567,13 +751,19 @@ class _SessionViewState extends State<SessionView> {
 
   void _playAnimation(String animation) {
     try {
-      // Only play animation if it's different from current animation
-      // or if it's a priority animation (newtalk)
-      if (_currentAnimation != animation || animation == "newtalk") {
-        print(
-            "🎭 Playing animation: $animation (previous: $_currentAnimation)");
+      // Skip if the animation name is empty
+      if (animation.trim().isEmpty) {
+        print("⚠️ Warning: Empty animation name provided");
+        return;
+      }
+
+      // Only play if different from current or it's a talking animation
+      if (_currentAnimation != animation ||
+          animation == _avatar.talkingAnimation) {
+        print("🎭 Playing animation: $animation");
         controller.playAnimation(animationName: animation);
         _currentAnimation = animation;
+        _lastAnimationChange = DateTime.now();
       } else {
         print("🎭 Animation skipped (duplicate): $animation");
       }
@@ -906,7 +1096,7 @@ class _SessionViewState extends State<SessionView> {
                   child: RepaintBoundary(
                     key: _avatarKey,
                     child: Flutter3DViewer(
-                      src: 'assets/models/banotamixamonewtalk.glb',
+                      src: _avatar.modelPath,
                       controller: controller,
                       activeGestureInterceptor: true,
                     ),
@@ -950,7 +1140,7 @@ class _SessionViewState extends State<SessionView> {
                       final available = await _speech.initialize();
                       if (available) {
                         setState(() => _isListening = true);
-                        _playAnimation("idle.001");
+                        _playAnimation(_avatar.idleAnimation);
                         await _speech.listen(
                           onResult: (result) {
                             if (result.finalResult) {
@@ -999,7 +1189,7 @@ class _SessionViewState extends State<SessionView> {
                           ? () async {
                               await _ttsService.stop();
                               setState(() => _isSpeaking = false);
-                              _playAnimation("idle.001");
+                              _playAnimation(_avatar.idleAnimation);
                             }
                           : null,
                       icon: const Icon(Icons.stop),

@@ -1225,7 +1225,7 @@ class GameManager {
       }
 
       // Create smooth fade-out effect
-      if (_context.mounted && overlayEntry != null) {
+      if (_context.mounted) {
         // Create fade out animation
         for (double opacity = 1.0; opacity > 0; opacity -= 0.1) {
           if (!_context.mounted) break;

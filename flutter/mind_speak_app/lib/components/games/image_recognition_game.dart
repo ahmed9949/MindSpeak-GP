@@ -344,7 +344,7 @@ class _ImageRecognitionGameState extends State<ImageRecognitionGame>
           boxShadow: hasSelected && index == correctIndex
               ? [
                   BoxShadow(
-                    color: Colors.green.withOpacity(0.5),
+                   color: Colors.green.withAlpha(128), // 0.5 * 255 = 127.5 ≈ 128
                     blurRadius: 8,
                     spreadRadius: 2,
                   )

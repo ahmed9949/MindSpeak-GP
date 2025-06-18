@@ -206,7 +206,7 @@ class _CategorySelectionPageState extends State<CarsForm> {
                   ? [Colors.grey[900]!, Colors.black]
                   : [
                       colorProvider.primaryColor,
-                      colorProvider.primaryColor.withOpacity(0.9)
+                      colorProvider.primaryColor.withAlpha(230)
                     ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,

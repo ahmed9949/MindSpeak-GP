@@ -193,11 +193,12 @@ class _ProfilePageState extends State<ProfilePage> {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: themeProvider.isDarkMode
-                  ? [Colors.grey[900]!, Colors.black]
-                  : [
-                      colorProvider.primaryColor,
-                      colorProvider.primaryColor.withOpacity(0.9)
-                    ],
+                 ? [Colors.grey[900]!, Colors.black]
+: [
+    colorProvider.primaryColor,
+    colorProvider.primaryColor.withAlpha((0.9 * 255).toInt()), // equivalent to 90% opacity
+  ],
+
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -284,7 +285,11 @@ class _ProfilePageState extends State<ProfilePage> {
               gradient: LinearGradient(
                 colors: themeProvider.isDarkMode
     ? [Colors.grey[900]!, Colors.black]
-    : [colorProvider.primaryColor, colorProvider.primaryColor.withOpacity(0.9)],
+    : [
+        colorProvider.primaryColor,
+        colorProvider.primaryColor.withAlpha((0.9 * 255).toInt()), // Alpha: 230
+      ],
+
 
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,

@@ -89,7 +89,7 @@ class _LogInState extends State<LogIn> with SingleTickerProviderStateMixin {
                           : LinearGradient(
                               colors: [
                                 colorProvider.primaryColor,
-                                colorProvider.primaryColor.withOpacity(0.8),
+                               colorProvider.primaryColor.withAlpha(204),
                               ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
@@ -165,9 +165,8 @@ class _LogInState extends State<LogIn> with SingleTickerProviderStateMixin {
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color:
-                                        const Color.fromARGB(255, 255, 255, 255)
-                                            .withOpacity(0.2),
+                                color: const Color.fromRGBO(255, 255, 255, 0.2),
+
                                     blurRadius: 20,
                                     spreadRadius: 5,
                                   ),
@@ -214,9 +213,13 @@ class _LogInState extends State<LogIn> with SingleTickerProviderStateMixin {
                                           vertical: 13.0, horizontal: 30.0),
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
-                                          colors: themeProvider.isDarkMode
+                                         colors: themeProvider.isDarkMode
     ? [Colors.grey[900]!, Colors.black]
-    : [colorProvider.primaryColor, colorProvider.primaryColor.withOpacity(0.9)],
+    : [
+        colorProvider.primaryColor,
+        colorProvider.primaryColor.withAlpha((0.9 * 255).toInt()),
+      ],
+
 
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
@@ -224,8 +227,8 @@ class _LogInState extends State<LogIn> with SingleTickerProviderStateMixin {
                                         borderRadius: BorderRadius.circular(30),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: colorProvider.primaryColor
-                                                .withOpacity(0.4),
+                                           color: colorProvider.primaryColor.withAlpha((0.4 * 255).toInt()),
+
                                             blurRadius: 8,
                                             offset: const Offset(0, 4),
                                           ),
@@ -385,15 +388,16 @@ class _LogInState extends State<LogIn> with SingleTickerProviderStateMixin {
         borderRadius: BorderRadius.circular(30),
         border: Border.all(
           color: isDark
-              ? const Color(0xFF3A3A3A)
-              : const Color(0xFFFAD4D4).withOpacity(0.6),
+    ? const Color(0xFF3A3A3A)
+    : const Color(0xFFFAD4D4).withAlpha((0.6 * 255).toInt()),
+
           width: 1.2,
         ),
         boxShadow: isDark
             ? []
             : [
                 BoxShadow(
-                  color: const Color(0xFFFAD4D4).withOpacity(0.15),
+color: const Color(0xFFFAD4D4).withAlpha((0.15 * 255).toInt()),
                   blurRadius: 6,
                   offset: const Offset(0, 3),
                 ),

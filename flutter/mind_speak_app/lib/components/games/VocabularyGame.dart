@@ -412,10 +412,11 @@ class _VocabularyGameState extends State<VocabularyGame>
         height: 90,
         decoration: BoxDecoration(
           color: hasSelected
-              ? (isCorrect
-                  ? Colors.green.withOpacity(0.2)
-                  : Colors.red.withOpacity(0.2))
-              : Colors.blue.withOpacity(0.1),
+    ? (isCorrect
+        ? Colors.green.withAlpha(51)
+        : Colors.red.withAlpha(51))
+    : Colors.blue.withAlpha(26),
+
           border: Border.all(
             color: hasSelected
                 ? (isCorrect ? Colors.green : Colors.red)
@@ -426,7 +427,7 @@ class _VocabularyGameState extends State<VocabularyGame>
           boxShadow: hasSelected && isCorrect
               ? [
                   BoxShadow(
-                    color: Colors.green.withOpacity(0.3),
+              color: Colors.green.withAlpha(77),
                     blurRadius: 8,
                     spreadRadius: 2,
                   )

@@ -276,9 +276,13 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
                   flexibleSpace: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                       colors: themeProvider.isDarkMode
+                      colors: themeProvider.isDarkMode
     ? [Colors.grey[900]!, Colors.black]
-    : [colorProvider.primaryColor, colorProvider.primaryColor.withOpacity(0.9)],
+    : [
+        colorProvider.primaryColor,
+        colorProvider.primaryColor.withAlpha(230), // 0.9 * 255 = 229.5 ≈ 230
+      ],
+
 
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
@@ -918,18 +922,19 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
   decoration: BoxDecoration(
     gradient: LinearGradient(
       colors: themeProvider.isDarkMode
-          ? [Colors.grey[900]!, Colors.black]
-          : [
-              colorProvider.primaryColor,
-              colorProvider.primaryColor.withOpacity(0.9)
-            ],
+    ? [Colors.grey[900]!, Colors.black]
+    : [
+        colorProvider.primaryColor,
+        colorProvider.primaryColor.withAlpha(230), // 0.9 * 255 ≈ 230
+      ],
+
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
     borderRadius: BorderRadius.circular(30),
     boxShadow: [
       BoxShadow(
-        color: Colors.blueAccent.withOpacity(0.5),
+color: Colors.blueAccent.withAlpha(128), // 0.5 * 255 = 127.5 ≈ 128
         blurRadius: 6,
         offset: const Offset(0, 3),
       ),

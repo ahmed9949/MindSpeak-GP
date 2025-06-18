@@ -57,11 +57,12 @@ class _SearchPageState extends State<SearchPage> {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: themeProvider.isDarkMode
-                  ? [Colors.grey[900]!, Colors.black]
-                  : [
-                      colorProvider.primaryColor,
-                      colorProvider.primaryColor.withOpacity(0.9)
-                    ],
+    ? [Colors.grey[900]!, Colors.black]
+    : [
+        colorProvider.primaryColor,
+        colorProvider.primaryColor.withAlpha(230), // 0.9 * 255 = 229.5 ≈ 230
+      ],
+
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -208,9 +209,13 @@ class _SearchPageState extends State<SearchPage> {
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-               colors: themeProvider.isDarkMode
+              colors: themeProvider.isDarkMode
     ? [Colors.grey[900]!, Colors.black]
-    : [colorProvider.primaryColor, colorProvider.primaryColor.withOpacity(0.9)],
+    : [
+        colorProvider.primaryColor,
+        colorProvider.primaryColor.withAlpha(230), // Equivalent to 0.9 opacity
+      ],
+
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -247,8 +252,9 @@ class _SearchPageState extends State<SearchPage> {
                       boxShadow: [
                         BoxShadow(
                           color: isDark
-                              ? Colors.black45
-                              : Colors.grey.withOpacity(0.2),
+    ? Colors.black45
+    : Colors.grey.withAlpha(51),
+
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         ),

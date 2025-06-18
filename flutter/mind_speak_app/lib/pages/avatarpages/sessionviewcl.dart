@@ -885,20 +885,24 @@ class _SessionViewState extends State<SessionView> {
       data: themeProvider.currentTheme,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text("Therapy Session"),
-          elevation: 0,
-          flexibleSpace: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDark
-                    ? [Colors.grey[900]!, Colors.black]
-                    : [primaryColor, primaryColor.withOpacity(0.9)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-        ),
+  title: const Text("Therapy Session"),
+  elevation: 0,
+  flexibleSpace: Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: isDark
+            ? [Colors.grey[900]!, Colors.black]
+            : [
+                primaryColor,
+                primaryColor.withAlpha(229), // 0.9 * 255 = 229
+              ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+    ),
+  ),
+),
+
         body: Stack(
           children: [
             Column(

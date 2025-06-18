@@ -291,7 +291,7 @@ class _HomePageState extends State<HomePage> {
             borderRadius: BorderRadius.circular(15),
             boxShadow: [
               BoxShadow(
-                color: isDark ? Colors.black26 : Colors.grey.withOpacity(0.2),
+              color: isDark ? Colors.black26 : Colors.grey.withAlpha(51),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -338,7 +338,11 @@ class _HomePageState extends State<HomePage> {
             gradient: LinearGradient(
                                colors: themeProvider.isDarkMode
     ? [Colors.grey[900]!, Colors.black]
-    : [colorProvider.primaryColor, colorProvider.primaryColor.withOpacity(0.9)],
+: [
+    colorProvider.primaryColor,
+    colorProvider.primaryColor.withAlpha(229), // 0.9 * 255
+  ],
+
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -699,8 +703,8 @@ class _HomePageState extends State<HomePage> {
                                                 "Sessions this week: $sessionCount\n$improvementText",
                                                 style: TextStyle(
                                                   fontSize: 14,
-                                                  color: Colors.white
-                                                      .withOpacity(0.9),
+                                                 color: Colors.white.withAlpha(229),
+
                                                 ),
                                               ),
                                             ],
@@ -723,51 +727,53 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildTherapistCard(Map<String, dynamic> therapist,
-      {required bool isDark}) {
-    return SizedBox(
-      width: 160,
-      child: Card(
-        color: isDark ? Colors.grey[850] : Colors.white,
-        elevation: 6,
-        shadowColor: Colors.black26,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+ Widget _buildTherapistCard(Map<String, dynamic> therapist, {required bool isDark}) {
+  return SizedBox(
+    width: 160,
+    height: 240, // optional height cap to avoid overflow
+    child: Card(
+      color: isDark ? Colors.grey[850] : Colors.white,
+      elevation: 6,
+      shadowColor: Colors.black26,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+        child: SingleChildScrollView( // added scroll to handle any overflow
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Image
-              therapist['therapistImage'] != null &&
-                      therapist['therapistImage'].isNotEmpty
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(40),
-                      child: Image.network(
-                        therapist['therapistImage'],
-                        height: 70,
-                        width: 70,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          print('Image load error: $error');
-                          return CircleAvatar(
-                            radius: 35,
-                            backgroundColor: Colors.grey[300],
-                            child: const Icon(Icons.person, color: Colors.grey),
-                          );
-                        },
-                      ),
-                    )
-                  : CircleAvatar(
-                      radius: 35,
-                      backgroundColor: Colors.grey[300],
-                      child: const Icon(Icons.person, color: Colors.grey),
-                    ),
+              // Image or Avatar
+              if (therapist['therapistImage'] != null &&
+                  therapist['therapistImage'].isNotEmpty)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(40),
+                  child: Image.network(
+                    therapist['therapistImage'],
+                    height: 70,
+                    width: 70,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      print('Image load error: $error');
+                      return CircleAvatar(
+                        radius: 35,
+                        backgroundColor: Colors.grey[300],
+                        child: const Icon(Icons.person, color: Colors.grey),
+                      );
+                    },
+                  ),
+                )
+              else
+                CircleAvatar(
+                  radius: 35,
+                  backgroundColor: Colors.grey[300],
+                  child: const Icon(Icons.person, color: Colors.grey),
+                ),
 
               const SizedBox(height: 10),
 
-              // Name
+              // Therapist Name
               Text(
                 therapist['name'] ?? 'Unknown',
                 style: TextStyle(
@@ -782,7 +788,7 @@ class _HomePageState extends State<HomePage> {
 
               const SizedBox(height: 4),
 
-              // Bio
+              // Therapist Bio
               Text(
                 therapist['bio'] ?? 'N/A',
                 style: TextStyle(
@@ -797,8 +803,10 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _buildTipCard(IconData icon, String text, BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -807,17 +815,18 @@ class _HomePageState extends State<HomePage> {
       margin: const EdgeInsets.symmetric(horizontal: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[850] : Colors.blueAccent.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(16),
+       color: isDark ? Colors.grey[850] : Colors.blueAccent.withAlpha(20),
+borderRadius: BorderRadius.circular(16),
+
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black.withOpacity(0.3) : Colors.black12,
+           color: isDark ? Colors.black.withAlpha(77) : Colors.black12,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
         border: Border.all(
-          color: isDark ? Colors.blueGrey : Colors.blueAccent.withOpacity(0.3),
+       color: isDark ? Colors.blueGrey : Colors.blueAccent.withAlpha(77),
           width: 1.2,
         ),
       ),

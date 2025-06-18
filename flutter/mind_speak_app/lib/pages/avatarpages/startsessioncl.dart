@@ -567,7 +567,7 @@ Remember to:
               gradient: LinearGradient(
                 colors: isDark
                     ? [Colors.grey[900]!, Colors.black]
-                    : [primaryColor, primaryColor.withOpacity(0.9)],
+                : [primaryColor, primaryColor.withAlpha(230)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -618,7 +618,7 @@ Remember to:
                 color: isDark ? Colors.grey[850] : Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withAlpha(26),
                     blurRadius: 4,
                     offset: const Offset(0, -2),
                   ),

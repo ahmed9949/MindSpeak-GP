@@ -460,11 +460,12 @@ class _MathFingersGameState extends State<MathFingersGame>
                               ? (isCorrect == true ? Colors.green : Colors.red)
                               : (isDark
                                   ? Colors.grey[800]
-                                  : primaryColor.withOpacity(0.9)),
+                               : primaryColor.withAlpha(229)),
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: primaryColor.withOpacity(0.3),
+                              color: primaryColor.withAlpha(77),
+
                               offset: const Offset(0, 3),
                               blurRadius: 6,
                             ),

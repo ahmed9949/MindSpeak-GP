@@ -60,7 +60,9 @@ class AvatarCard extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isSelected 
-              ? (isDark ? Colors.blue.withOpacity(0.3) : Colors.blue.withOpacity(0.1))
+              ? (isDark ? Colors.blue.withAlpha((0.3 * 255).toInt()) // 0.3 * 255 = 76
+               : Colors.blue.withAlpha((0.1 * 255).toInt()) // 0.1 * 255 = 25
+)
               : (isDark ? Colors.grey[800] : Colors.grey[100]),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(

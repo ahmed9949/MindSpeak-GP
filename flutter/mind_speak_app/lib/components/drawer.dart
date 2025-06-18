@@ -80,7 +80,7 @@ class _NavigationDraweState extends State<NavigationDrawe> {
           ? [Colors.grey[900]!, Colors.black]
           : [
               colorProvider.primaryColor,
-              colorProvider.primaryColor.withOpacity(0.9)
+              colorProvider.primaryColor.withAlpha(229) // 0.9 * 255 = 229
             ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -204,7 +204,7 @@ class _NavigationDraweState extends State<NavigationDrawe> {
       child: Text(
         title,
         style: TextStyle(
-          color: color.withOpacity(0.7),
+        color: color.withAlpha(179), // 0.7 * 255 = 178.5 ≈ 179
           fontSize: 14,
           fontWeight: FontWeight.bold,
         ),

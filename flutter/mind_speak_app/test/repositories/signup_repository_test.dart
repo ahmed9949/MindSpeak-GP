@@ -8,7 +8,6 @@ import 'package:mockito/annotations.dart';
 
 import 'package:mind_speak_app/models/User.dart';
 import 'package:mind_speak_app/models/Therapist.dart';
-import 'dart:io';
 
 @GenerateMocks([
   FirebaseAuth,

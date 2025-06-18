@@ -89,7 +89,7 @@ class _PredictScreenState extends State<PredictScreen> {
               gradient: LinearGradient(
                 colors: themeProvider.isDarkMode
                     ? [Colors.grey[900]!, Colors.black]
-                    : [primaryColor, primaryColor.withOpacity(0.9)],
+: [primaryColor, primaryColor.withAlpha((0.9 * 255).toInt())],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),

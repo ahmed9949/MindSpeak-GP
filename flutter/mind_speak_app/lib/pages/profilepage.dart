@@ -11,7 +11,7 @@ class ProfilePage extends StatefulWidget {
 
   const ProfilePage({
     super.key,
-    required this.controller, // Controller is required.
+    required this.controller,
   });
 
   @override
@@ -46,8 +46,6 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() {
         parentId = widget.controller.parentId;
         parentData = widget.controller.parentData;
-        // 🔍 Debug print
-        print('📦 parentData = $parentData');
         childrenData = widget.controller.childrenData;
         carsData = widget.controller.carsData;
         isLoading = false;
@@ -57,7 +55,6 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() {
         isLoading = false;
       });
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -139,17 +136,14 @@ class _ProfilePageState extends State<ProfilePage> {
         throw Exception('User not logged in');
       }
 
-      // Show loading indicator
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Deleting account... Please wait.'),
         ));
       }
 
-      // Delete account from Firebase
       await widget.controller.deleteParentAccount(userId);
 
-      // Clear local session data
       await sessionProvider.clearSession();
 
       if (mounted) {
@@ -158,7 +152,6 @@ class _ProfilePageState extends State<ProfilePage> {
           backgroundColor: Colors.green,
         ));
 
-        // Navigate to login page
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const LogIn()),
@@ -167,7 +160,7 @@ class _ProfilePageState extends State<ProfilePage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error deleting account: ${e.toString()}'),
+          content: Text('Error deleting account: \${e.toString()}'),
           backgroundColor: Colors.red,
         ));
       }
@@ -175,101 +168,107 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _showUpdateDialog(Map<String, dynamic> child) {
-  final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-  final colorProvider = Provider.of<ColorProvider>(context, listen: false);
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final colorProvider = Provider.of<ColorProvider>(context, listen: false);
 
-  TextEditingController ageController =
-      TextEditingController(text: child['age'].toString());
-  TextEditingController interestController =
-      TextEditingController(text: child['childInterest']);
+    TextEditingController nameController =
+        TextEditingController(text: child['name']);
+    TextEditingController ageController =
+        TextEditingController(text: child['age'].toString());
+    TextEditingController interestController =
+        TextEditingController(text: child['childInterest']);
 
-  showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        titlePadding: EdgeInsets.zero,
-        title: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: themeProvider.isDarkMode
-                 ? [Colors.grey[900]!, Colors.black]
-: [
-    colorProvider.primaryColor,
-    colorProvider.primaryColor.withAlpha((0.9 * 255).toInt()), // equivalent to 90% opacity
-  ],
-
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          titlePadding: EdgeInsets.zero,
+          title: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: themeProvider.isDarkMode
+                    ? [Colors.grey[900]!, Colors.black]
+                    : [
+                        colorProvider.primaryColor,
+                        colorProvider.primaryColor
+                            .withAlpha((0.9 * 255).toInt()),
+                      ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: const Text(
+              'Update Child',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-          child: const Text(
-            'Update Child',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: ageController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Age'),
-              ),
-              TextField(
-                controller: interestController,
-                decoration: const InputDecoration(labelText: 'Interest'),
-              ),
-              const SizedBox(height: 10),
-              ElevatedButton.icon(
-                onPressed: () => _pickImage(child['id']),
-                icon: const Icon(Icons.image),
-                label: const Text('Update Photo'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colorProvider.primaryColor,
-                  foregroundColor: Colors.white,
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Name'),
                 ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (!widget.controller.isValidAge(ageController.text)) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('Age must be between 3 and 12'),
-                  backgroundColor: Colors.red,
-                ));
-                return;
-              }
-              updateChild(child['id'], {
-                'age': int.parse(ageController.text),
-                'childInterest': interestController.text.trim(),
-              });
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colorProvider.primaryColor,
-              foregroundColor: Colors.white,
+                TextField(
+                  controller: ageController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Age'),
+                ),
+                TextField(
+                  controller: interestController,
+                  decoration: const InputDecoration(labelText: 'Interest'),
+                ),
+                const SizedBox(height: 10),
+                ElevatedButton.icon(
+                  onPressed: () => _pickImage(child['id']),
+                  icon: const Icon(Icons.image),
+                  label: const Text('Update Photo'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorProvider.primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
             ),
-            child: const Text('Update'),
           ),
-        ],
-      );
-    },
-  );
-}
-
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (!widget.controller.isValidAge(ageController.text)) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Age must be between 3 and 12'),
+                    backgroundColor: Colors.red,
+                  ));
+                  return;
+                }
+                updateChild(child['id'], {
+                  'name': nameController.text.trim(),
+                  'age': int.parse(ageController.text),
+                  'childInterest': interestController.text.trim(),
+                });
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colorProvider.primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Update'),
+            ),
+          ],
+        );
+      },
+    );
+  }
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);

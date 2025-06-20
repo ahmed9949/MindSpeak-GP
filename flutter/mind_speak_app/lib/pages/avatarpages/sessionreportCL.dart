@@ -1,4 +1,3 @@
-// lib/views/session/session_report_page.dart
 import 'package:flutter/material.dart';
 import 'package:mind_speak_app/models/sessiondata.dart';
 import 'package:provider/provider.dart';
@@ -17,6 +16,7 @@ class _SessionReportPageState extends State<SessionReportPage> {
   bool _isLoading = true;
   List<SessionData> _sessions = [];
   String? _errorMessage;
+  Map<String, String> _sessionComments = {};
 
   @override
   void initState() {
@@ -31,9 +31,7 @@ class _SessionReportPageState extends State<SessionReportPage> {
     });
 
     try {
-      // Get childId from the SessionProvider
-      final childId =
-          Provider.of<SessionProvider>(context, listen: false).childId;
+      final childId = Provider.of<SessionProvider>(context, listen: false).childId;
 
       if (childId == null || childId.isEmpty) {
         setState(() {
@@ -43,7 +41,6 @@ class _SessionReportPageState extends State<SessionReportPage> {
         return;
       }
 
-      // Get sessions from Firestore
       final snapshot = await FirebaseFirestore.instance
           .collection('sessions')
           .where('childId', isEqualTo: childId)
@@ -57,6 +54,11 @@ class _SessionReportPageState extends State<SessionReportPage> {
 
       setState(() {
         _sessions = sessions;
+      });
+
+      await _loadDoctorComments(sessions);
+
+      setState(() {
         _isLoading = false;
       });
     } catch (e) {
@@ -66,6 +68,38 @@ class _SessionReportPageState extends State<SessionReportPage> {
       });
     }
   }
+Future<void> _loadDoctorComments(List<SessionData> sessions) async {
+  try {
+    final commentsSnapshot = await FirebaseFirestore.instance
+        .collection('sessionComments')
+        .get();
+
+    final allComments = commentsSnapshot.docs;
+
+    for (var session in sessions) {
+      final sessionId = (session.sessionId).toString();
+
+      final matchedDocs = allComments.where((doc) => doc.id == sessionId);
+
+      if (matchedDocs.isNotEmpty) {
+        final comment = matchedDocs.first.data()['comment'];
+        print('✅ Matched sessionId: $sessionId with comment: $comment');
+
+        if (comment != null) {
+          _sessionComments[sessionId] = comment;
+        }
+      } else {
+        print('⚠️ No comment found for sessionId: $sessionId');
+      }
+    }
+
+    setState(() {});
+  } catch (e) {
+    print('❌ Failed to fetch doctor comments: $e');
+  }
+}
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -93,38 +127,27 @@ class _SessionReportPageState extends State<SessionReportPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              _errorMessage!,
-              style: const TextStyle(color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
+            Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadSessions,
-              child: const Text('Retry'),
-            ),
+            ElevatedButton(onPressed: _loadSessions, child: const Text('Retry')),
           ],
         ),
       );
     }
 
     if (_sessions.isEmpty) {
-      return const Center(
-        child: Text('No sessions available for this child'),
-      );
+      return const Center(child: Text('No sessions available for this child'));
     }
 
     return ListView.builder(
       itemCount: _sessions.length,
-      itemBuilder: (context, index) {
-        final session = _sessions[index];
-        return _buildSessionCard(session);
-      },
+      itemBuilder: (context, index) => _buildSessionCard(_sessions[index]),
     );
   }
 
   Widget _buildSessionCard(SessionData session) {
     final startDate = DateFormat('yyyy-MM-dd HH:mm').format(session.startTime);
+    final sessionId = (session.sessionId ?? session.sessionNumber.toString()).toString();
 
     return Card(
       margin: const EdgeInsets.all(8.0),
@@ -133,13 +156,7 @@ class _SessionReportPageState extends State<SessionReportPage> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('Session #${session.sessionNumber}'),
-            Text(
-              startDate,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
-            ),
+            Text(startDate, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
           ],
         ),
         children: [
@@ -153,6 +170,8 @@ class _SessionReportPageState extends State<SessionReportPage> {
                 _buildConversationSection(session.conversation),
                 const Divider(height: 24),
                 _buildRecommendationsSection(session.recommendations),
+                const Divider(height: 24),
+                _buildDoctorCommentSection(sessionId),
               ],
             ),
           ),
@@ -161,39 +180,50 @@ class _SessionReportPageState extends State<SessionReportPage> {
     );
   }
 
-  Widget _buildBasicStatistics(Map<String, dynamic> statistics) {
+  Widget _buildDoctorCommentSection(String sessionId) {
+    final comment = _sessionComments[sessionId.toString()];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Session Statistics',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          'Doctor\'s Comment',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Table(
-          border: TableBorder.all(
-            color: Colors.grey,
-            width: 0.5,
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.orange[50],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.orange.shade200),
           ),
-          columnWidths: const {
-            0: FlexColumnWidth(2),
-            1: FlexColumnWidth(1),
-          },
+          child: Text(
+            comment ?? 'No comment available for this session.',
+            style: const TextStyle(fontSize: 15),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBasicStatistics(Map<String, dynamic> statistics) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Session Statistics', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        Table(
+          border: TableBorder.all(color: Colors.grey, width: 0.5),
+          columnWidths: const {0: FlexColumnWidth(2), 1: FlexColumnWidth(1)},
           children: [
             _buildTableHeader(),
-            _buildTableRow('Total Messages',
-                statistics['totalMessages']?.toString() ?? '0'),
-            _buildTableRow('Child Messages',
-                statistics['childMessages']?.toString() ?? '0'),
-            _buildTableRow('Therapist Messages',
-                statistics['drMessages']?.toString() ?? '0'),
-            _buildTableRow('Duration (min)',
-                statistics['sessionDuration']?.toString() ?? '0'),
-            _buildTableRow('Words/Message',
-                statistics['wordsPerMessage']?.toString() ?? '0'),
+            _buildTableRow('Total Messages', statistics['totalMessages']?.toString() ?? '0'),
+            _buildTableRow('Child Messages', statistics['childMessages']?.toString() ?? '0'),
+            _buildTableRow('Therapist Messages', statistics['drMessages']?.toString() ?? '0'),
+            _buildTableRow('Duration (min)', statistics['sessionDuration']?.toString() ?? '0'),
+            _buildTableRow('Words/Message', statistics['wordsPerMessage']?.toString() ?? '0'),
           ],
         ),
       ],
@@ -202,29 +232,15 @@ class _SessionReportPageState extends State<SessionReportPage> {
 
   TableRow _buildTableHeader() {
     return const TableRow(
-      decoration: BoxDecoration(
-        color: Colors.blue,
-      ),
+      decoration: BoxDecoration(color: Colors.blue),
       children: [
         Padding(
           padding: EdgeInsets.all(8.0),
-          child: Text(
-            'Metric',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
+          child: Text('Metric', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         ),
         Padding(
           padding: EdgeInsets.all(8.0),
-          child: Text(
-            'Value',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
+          child: Text('Value', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         ),
       ],
     );
@@ -233,17 +249,8 @@ class _SessionReportPageState extends State<SessionReportPage> {
   TableRow _buildTableRow(String label, String value) {
     return TableRow(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Text(label),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Text(
-            value,
-            textAlign: TextAlign.center,
-          ),
-        ),
+        Padding(padding: const EdgeInsets.all(8.0), child: Text(label)),
+        Padding(padding: const EdgeInsets.all(8.0), child: Text(value, textAlign: TextAlign.center)),
       ],
     );
   }
@@ -252,13 +259,7 @@ class _SessionReportPageState extends State<SessionReportPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Conversation',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        const Text('Conversation', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         ListView.builder(
           shrinkWrap: true,
@@ -267,7 +268,6 @@ class _SessionReportPageState extends State<SessionReportPage> {
           itemBuilder: (context, index) {
             final message = conversation[index];
             final isChild = message.containsKey('child');
-
             return Container(
               margin: const EdgeInsets.symmetric(vertical: 4.0),
               padding: const EdgeInsets.all(8.0),
@@ -275,9 +275,7 @@ class _SessionReportPageState extends State<SessionReportPage> {
                 color: isChild ? Colors.blue[50] : Colors.grey[100],
                 borderRadius: BorderRadius.circular(8.0),
               ),
-              child: Text(
-                '${isChild ? "Child" : "Therapist"}: ${message[isChild ? 'child' : 'dr']}',
-              ),
+              child: Text('${isChild ? "Child" : "Therapist"}: ${message[isChild ? 'child' : 'dr']}'),
             );
           },
         ),
@@ -286,20 +284,12 @@ class _SessionReportPageState extends State<SessionReportPage> {
   }
 
   Widget _buildRecommendationsSection(Map<String, dynamic>? recommendations) {
-    if (recommendations == null) {
-      return const SizedBox.shrink();
-    }
+    if (recommendations == null) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Recommendations',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        const Text('Recommendations', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
@@ -312,17 +302,9 @@ class _SessionReportPageState extends State<SessionReportPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildRecommendationBox(
-                'For Parents',
-                recommendations['parents'] ?? 'No recommendations available',
-                Colors.blue[50]!,
-              ),
+              _buildRecommendationBox('For Parents', recommendations['parents'] ?? 'No recommendations available', Colors.blue[50]!),
               const SizedBox(height: 12),
-              _buildRecommendationBox(
-                'For Therapists',
-                recommendations['therapists'] ?? 'No recommendations available',
-                Colors.green[50]!,
-              ),
+              _buildRecommendationBox('For Therapists', recommendations['therapists'] ?? 'No recommendations available', Colors.green[50]!),
             ],
           ),
         ),
@@ -341,13 +323,7 @@ class _SessionReportPageState extends State<SessionReportPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 8),
           Text(content),
         ],
@@ -355,4 +331,3 @@ class _SessionReportPageState extends State<SessionReportPage> {
     );
   }
 }
-

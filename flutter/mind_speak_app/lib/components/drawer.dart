@@ -8,6 +8,7 @@ import 'package:mind_speak_app/pages/predict.dart';
 import 'package:mind_speak_app/pages/avatarpages/aggregatestats.dart';
 import 'package:mind_speak_app/pages/avatarpages/sessionreportCL.dart';
 import 'package:mind_speak_app/pages/logout.dart';
+import 'package:mind_speak_app/pages/settings.dart';
 import 'package:mind_speak_app/providers/color_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:mind_speak_app/providers/theme_provider.dart';
@@ -122,10 +123,10 @@ class _NavigationDraweState extends State<NavigationDrawe> {
             ),
             _buildDrawerItem(
               icon: Icons.settings,
-              label: "Settings",
+              label: "Colors",
               iconColor: iconColor,
               textColor: textColor,
-              onTap: () => Navigator.pop(context),
+              onTap: () => _navigate(context,  ThemeColorSelectorPage()),
             ),
             Divider(color: isDark ? Colors.grey : Colors.blueGrey[100]),
             _buildSectionTitle("Therapy Tools", textColor),

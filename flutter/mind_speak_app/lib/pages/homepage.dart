@@ -436,7 +436,7 @@ class _HomePageState extends State<HomePage> {
                                 35), // Add padding to the left side for spacing
                         _buildTopCard(
                           context,
-                          "Doctors",
+                          "Therapits",
                           "assets/doctor.png",
                           const SearchPage(),
                         ),

@@ -140,6 +140,17 @@ flutter:
     - assets/avatars/avatarimage/nadara.png
     - assets/avatars/3dmodels/banotabenadara.glb
     - assets/avatars/3dmodels/batman.glb
+    - assets/Firebase/Animals/
+    - assets/Firebase/Body_Parts/
+    - assets/Firebase/Fingers/
+    - assets/Firebase/Fruits/
+    - assets/Firebase/vegetables/
+    - assets/Firebase/child_images/
+    - assets/Firebase/national_proofs/
+    - assets/Firebase/therapist_images/
+
+
+
 
     # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

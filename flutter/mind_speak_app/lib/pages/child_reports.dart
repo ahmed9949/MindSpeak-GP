@@ -122,25 +122,28 @@ class _ChildReportsPageState extends State<ChildReportsPage> {
   }
 
   Widget _buildCarsSection() {
-    if (_carsData == null) return const SizedBox.shrink();
+  if (_carsData == null) return const SizedBox.shrink();
 
-    final List<dynamic> questions = _carsData!['selectedQuestions'] ?? [];
+  final List<dynamic> questions = _carsData!['selectedQuestions'] ?? [];
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  return Padding(
+    padding: const EdgeInsets.all(16.0),
+    child: Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ExpansionTile(
+        title: const Text(
+          'CARS Evaluation',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        childrenPadding: const EdgeInsets.all(16.0),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16.0),
         children: [
-          const Text(
-            'CARS Evaluation',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
           Table(
-            border: TableBorder.all(color: Colors.grey),
+            border: TableBorder.all(color: Colors.grey.shade300),
             columnWidths: const {
               0: FlexColumnWidth(1),
-              1: FlexColumnWidth(2),
+              1: FlexColumnWidth(4),
             },
             children: questions.asMap().entries.map<TableRow>((entry) {
               final index = entry.key;
@@ -150,7 +153,7 @@ class _ChildReportsPageState extends State<ChildReportsPage> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: Text('Q$index'),
+                    child: Text('Q${index + 1}'),
                   ),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
@@ -160,11 +163,12 @@ class _ChildReportsPageState extends State<ChildReportsPage> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 16),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _buildSessionCard(SessionData session) {
     final startDate = DateFormat('yyyy-MM-dd HH:mm').format(session.startTime);

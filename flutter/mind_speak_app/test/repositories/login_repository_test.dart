@@ -7,6 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:mind_speak_app/repositories/LoginRepository.dart';
 import 'package:mind_speak_app/models/User.dart';
+import 'package:mind_speak_app/models/Child.dart';
 import 'package:mind_speak_app/models/Therapist.dart';
 
 import 'login_repository_test.mocks.dart';

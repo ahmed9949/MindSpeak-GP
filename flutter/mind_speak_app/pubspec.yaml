@@ -140,6 +140,10 @@ flutter:
     - assets/avatars/avatarimage/nadara.png
     - assets/avatars/3dmodels/banotabenadara.glb
     - assets/avatars/3dmodels/batman.glb
+    - assets/avatars/3dmodels/banotamixamonewtalk.glb
+    - assets/avatars/3dmodels/banotasafra.glb
+    - assets/avatars/3dmodels/elsa_frozen.glb
+    - assets/avatars/3dmodels/
 
     # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

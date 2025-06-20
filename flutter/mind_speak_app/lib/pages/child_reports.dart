@@ -24,12 +24,21 @@ class _ChildReportsPageState extends State<ChildReportsPage> {
   String? _errorMessage;
   List<SessionData> _sessions = [];
   Map<String, dynamic>? _carsData;
+  Map<String, TextEditingController> _commentControllers = {};
 
   @override
   void initState() {
     super.initState();
     _loadSessions();
     _loadCarsData();
+  }
+
+  @override
+  void dispose() {
+    for (var controller in _commentControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
   }
 
   Future<void> _loadSessions() async {
@@ -49,6 +58,12 @@ class _ChildReportsPageState extends State<ChildReportsPage> {
         final data = doc.data();
         return SessionData.fromJson(data);
       }).toList();
+
+      // Initialize comment controllers
+      for (var session in sessions) {
+        final sessionId = session.sessionId ?? session.sessionNumber.toString();
+        _commentControllers[sessionId] = TextEditingController();
+      }
 
       setState(() {
         _sessions = sessions;
@@ -80,6 +95,33 @@ class _ChildReportsPageState extends State<ChildReportsPage> {
     }
   }
 
+  Future<void> _saveDoctorComment(String sessionId, int sessionNumber) async {
+    final comment = _commentControllers[sessionId]?.text.trim();
+    if (comment == null || comment.isEmpty) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('sessionComments')
+          .doc(sessionId)
+          .set({
+        'commentId': sessionId,
+        'childId': widget.childId,
+        'sessionId': sessionId,
+        'sessionNumber': sessionNumber,
+        'comment': comment,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Comment saved successfully')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save comment: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -102,76 +144,75 @@ class _ChildReportsPageState extends State<ChildReportsPage> {
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
               ? Center(child: Text(_errorMessage!))
-              : _sessions.isEmpty
+              : _sessions.isEmpty && _carsData == null
                   ? const Center(child: Text("No reports available."))
                   : Column(
                       children: [
-                        _buildCarsSection(),
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: _sessions.length,
-                            itemBuilder: (context, index) {
-                              final session = _sessions[index];
-                              return _buildSessionCard(session);
-                            },
+                        if (_carsData != null) _buildCarsSection(),
+                        if (_sessions.isNotEmpty)
+                          Expanded(
+                            child: ListView.builder(
+                              itemCount: _sessions.length,
+                              itemBuilder: (context, index) {
+                                final session = _sessions[index];
+                                return _buildSessionCard(session);
+                              },
+                            ),
                           ),
-                        ),
                       ],
                     ),
     );
   }
 
   Widget _buildCarsSection() {
-  if (_carsData == null) return const SizedBox.shrink();
+    final List<dynamic> questions = _carsData!['selectedQuestions'] ?? [];
 
-  final List<dynamic> questions = _carsData!['selectedQuestions'] ?? [];
-
-  return Padding(
-    padding: const EdgeInsets.all(16.0),
-    child: Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ExpansionTile(
-        title: const Text(
-          'CARS Evaluation',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        childrenPadding: const EdgeInsets.all(16.0),
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16.0),
-        children: [
-          Table(
-            border: TableBorder.all(color: Colors.grey.shade300),
-            columnWidths: const {
-              0: FlexColumnWidth(1),
-              1: FlexColumnWidth(4),
-            },
-            children: questions.asMap().entries.map<TableRow>((entry) {
-              final index = entry.key;
-              final value = entry.value;
-
-              return TableRow(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text('Q${index + 1}'),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text(value.toString()),
-                  ),
-                ],
-              );
-            }).toList(),
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Card(
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: ExpansionTile(
+          title: const Text(
+            'CARS Evaluation',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-        ],
+          childrenPadding: const EdgeInsets.all(16.0),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16.0),
+          children: [
+            Table(
+              border: TableBorder.all(color: Colors.grey.shade300),
+              columnWidths: const {
+                0: FlexColumnWidth(1),
+                1: FlexColumnWidth(4),
+              },
+              children: questions.asMap().entries.map<TableRow>((entry) {
+                final index = entry.key;
+                final value = entry.value;
+                return TableRow(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text('Q${index + 1}'),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(value.toString()),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
-
+    );
+  }
 
   Widget _buildSessionCard(SessionData session) {
     final startDate = DateFormat('yyyy-MM-dd HH:mm').format(session.startTime);
+    final sessionId = session.sessionId ?? session.sessionNumber.toString();
+    final controller = _commentControllers[sessionId]!;
 
     return Card(
       margin: const EdgeInsets.all(8.0),
@@ -194,6 +235,41 @@ class _ChildReportsPageState extends State<ChildReportsPage> {
                 _buildConversationSection(session.conversation),
                 const Divider(),
                 _buildRecommendationsSection(session.recommendations),
+                const SizedBox(height: 16),
+                const Text(
+                  'Doctor Comment',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: controller,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your comment here...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Align(
+  alignment: Alignment.centerRight,
+  child: ElevatedButton.icon(
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Theme.of(context).colorScheme.primary,
+      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      textStyle: const TextStyle(fontSize: 16),
+    ),
+    onPressed: () =>
+        _saveDoctorComment(sessionId, session.sessionNumber),
+    icon: const Icon(Icons.save),
+    label: const Text('Save'),
+  ),
+),
+
               ],
             ),
           ),
@@ -221,8 +297,8 @@ class _ChildReportsPageState extends State<ChildReportsPage> {
                 'Therapist Messages', stats['drMessages']?.toString() ?? '0'),
             _buildTableRow(
                 'Duration (min)', stats['sessionDuration']?.toString() ?? '0'),
-            _buildTableRow(
-                'Words/Message', stats['wordsPerMessage']?.toString() ?? '0'),
+            _buildTableRow('Words/Message',
+                stats['wordsPerMessage']?.toString() ?? '0'),
           ],
         ),
       ],

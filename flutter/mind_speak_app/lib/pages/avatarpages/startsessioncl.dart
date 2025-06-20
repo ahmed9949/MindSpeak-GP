@@ -339,7 +339,39 @@ class _StartSessionPageState extends State<StartSessionPage> {
       clappingAnimation: 'clapping',
       greetingAnimation: 'greeting',
     ),
-    // Add more avatars as needed
+    AvatarModel(
+      name: 'banota pink',
+      imagePath: 'assets/avatars/avatarimage/nadara.png',
+      modelPath: 'assets/avatars/3dmodels/banotamixamonewtalk.glb',
+      voiceId: 'nova',
+      idleAnimation: 'idle.001',
+      talkingAnimation: 'newtalk',
+      thinkingAnimation: '',
+      clappingAnimation: '',
+      greetingAnimation: '',
+    ),
+    AvatarModel(
+      name: 'banota safra',
+      imagePath: 'assets/avatars/avatarimage/nadara.png',
+      modelPath: 'assets/avatars/3dmodels/banotasafra.glb',
+      voiceId: 'nova',
+      idleAnimation: 'idle',
+      talkingAnimation: 'talking',
+      thinkingAnimation: '',
+      clappingAnimation: 'clapping',
+      greetingAnimation: 'greeting',
+    ),
+    AvatarModel(
+      name: 'elsa',
+      imagePath: 'assets/avatars/avatarimage/nadara.png',
+      modelPath: 'assets/avatars/3dmodels/elsa_frozen.glb',
+      voiceId: 'nova',
+      idleAnimation: 'level_wave_placeholder',
+      talkingAnimation: 'level_greatmove_02_placeholder',
+      thinkingAnimation: '',
+      clappingAnimation: 'clapping',
+      greetingAnimation: 'greeting',
+    ),
   ];
 
   @override
@@ -567,7 +599,7 @@ Remember to:
               gradient: LinearGradient(
                 colors: isDark
                     ? [Colors.grey[900]!, Colors.black]
-                : [primaryColor, primaryColor.withAlpha(230)],
+                    : [primaryColor, primaryColor.withAlpha(230)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -618,7 +650,7 @@ Remember to:
                 color: isDark ? Colors.grey[850] : Colors.white,
                 boxShadow: [
                   BoxShadow(
-                  color: Colors.black.withAlpha(26),
+                    color: Colors.black.withAlpha(26),
                     blurRadius: 4,
                     offset: const Offset(0, -2),
                   ),

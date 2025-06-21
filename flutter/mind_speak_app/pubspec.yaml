@@ -140,6 +140,9 @@ flutter:
     - assets/avatars/avatarimage/nadara.png
     - assets/avatars/3dmodels/banotabenadara.glb
     - assets/avatars/3dmodels/batman.glb
+    - assets/avatars/3dmodels/banotamixamonewtalk.glb
+    - assets/avatars/3dmodels/banotasafra.glb
+    - assets/avatars/3dmodels/elsa_frozen.glb
     - assets/Firebase/Animals/
     - assets/Firebase/Body_Parts/
     - assets/Firebase/Fingers/
